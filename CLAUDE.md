@@ -37,6 +37,23 @@
 - **모든 구현 전 설계 확인 필수** (implementation gate Rule #6).
 - **코드 주석은 한국어로** (Korean comments Rule #10).
 
+## Design System (frontend/DESIGN.md 준수)
+
+모든 프론트엔드 UI 작업 시 `frontend/DESIGN.md` 디자인 시스템을 따른다.
+
+- **색상**: 하드코딩 금지 — CSS 변수만 사용 (`--primary`, `--muted`, `--border` 등)
+  - 주요 액션: `--primary` (Meta Blue `#0064E0`)
+  - 텍스트: `--foreground` (Dark Charcoal `#1C2B33`), `--muted-foreground` (Slate Gray `#5D6C7B`)
+  - 배경: `--background` (White), `--secondary` / `--muted` (Soft Gray `#F1F4F7`)
+  - 구분선: `--border` (`#DEE3E9`)
+- **타이포그래피**: Geist Variable 폰트. 헤딩은 굵게, 본문은 짧고 스캔 가능하게.
+- **간격**: 8px 그리드 기반 (`p-2`, `p-4`, `p-8` 등 Tailwind 짝수 단위 사용).
+- **CTA 버튼**: pill 형태 (`rounded-full`), `--primary` 배경, 간결한 텍스트.
+- **카드**: 넉넉한 여백, `--shadow-card` 또는 `--shadow-card-subtle` 적용.
+- **다크 모드**: `ThemeContext` 사용 — CSS variable이 자동 전환되므로 별도 dark: 클래스 최소화.
+- **팀 테마**: `TeamThemeContext` 사용 — 팀 색상은 `--team-primary`, `--team-secondary` 변수로.
+- **shadcn 컴포넌트 추가 시**: `npx shadcn@latest add <컴포넌트>` 사용 (Tailwind v4 충돌 방지).
+
 ## Architecture
 
 ```
