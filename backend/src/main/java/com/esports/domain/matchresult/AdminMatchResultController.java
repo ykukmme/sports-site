@@ -17,7 +17,7 @@ public class AdminMatchResultController {
         this.matchResultCommandService = matchResultCommandService;
     }
 
-    // POST /admin/matches/{matchId}/result — 경기 결과 등록
+    // POST /api/admin/matches/{matchId}/result — 경기 결과 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<MatchResultResponse> create(
@@ -26,7 +26,7 @@ public class AdminMatchResultController {
         return ApiResponse.ok(matchResultCommandService.create(matchId, request));
     }
 
-    // PUT /admin/matches/{matchId}/result — 경기 결과 수정
+    // PUT /api/admin/matches/{matchId}/result — 경기 결과 수정
     @PutMapping
     public ApiResponse<MatchResultResponse> update(
             @PathVariable Long matchId,

@@ -33,11 +33,11 @@ apiClient.interceptors.response.use(
     const status = error.response?.status ?? 0
     const body = error.response?.data
 
-    // 401: 인증 만료 — /admin/** 경로에서만 로그인 페이지로 이동
+    // 401: 인증 만료 — 어드민 API 경로에서만 로그인 페이지로 이동
     // 팬 사이트 공개 API는 어드민 인증과 무관하므로 리다이렉트 제외
     if (status === 401) {
       const url = error.config?.url ?? ''
-      if (url.startsWith('/admin')) {
+      if (url.startsWith('/api/admin')) {
         window.location.href = '/admin/login'
       }
       return Promise.reject(new ApiError(401, 'UNAUTHORIZED', '인증이 필요합니다.'))

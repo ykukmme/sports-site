@@ -1,4 +1,4 @@
-// 어드민 인증 가드 — /admin/auth/me로 쿠키 유효성 확인 후 라우팅 결정
+// 어드민 인증 가드 — /api/admin/auth/me로 쿠키 유효성 확인 후 라우팅 결정
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAdminAuth } from '../../hooks/useAdminAuth'
 import { Loader2 } from 'lucide-react'

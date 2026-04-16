@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // 어드민 인증 컨트롤러 — JWT 토큰 발급 (httpOnly 쿠키로 전달)
-// /admin/auth/login, /admin/auth/logout 은 SecurityConfig에서 permitAll로 설정됨
+// /api/admin/auth/login, /api/admin/auth/logout 은 SecurityConfig에서 permitAll로 설정됨
 @RestController
 @RequestMapping("/api/admin/auth")
 public class AdminAuthController {

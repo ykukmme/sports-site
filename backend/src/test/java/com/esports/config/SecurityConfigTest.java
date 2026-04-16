@@ -40,25 +40,25 @@ class SecurityConfigTest {
 
     @Test
     void adminEndpointReturns401WithoutToken() throws Exception {
-        // JWT 없이 /admin/** 접근 시 401 반환 (Hard Rule #7)
-        mockMvc.perform(get("/admin/matches"))
+        // JWT 없이 /api/admin/** 접근 시 401 반환 (Hard Rule #7)
+        mockMvc.perform(get("/api/admin/matches"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void adminEndpointAllowedWithValidToken() throws Exception {
-        // 유효한 JWT로 /admin/** 접근 시 통과 (200 또는 404 — 컨트롤러 미구현이면 404)
+        // 유효한 JWT로 /api/admin/** 접근 시 통과 (200 또는 404 — 컨트롤러 미구현이면 404)
         String token = tokenProvider.generateToken("admin");
 
-        mockMvc.perform(get("/admin/matches")
+        mockMvc.perform(get("/api/admin/matches")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
     }
 
     @Test
     void loginEndpointAllowedWithoutToken() throws Exception {
-        // /admin/auth/login 은 인증 없이 접근 가능 (400 또는 200 — 요청 바디에 따라)
-        mockMvc.perform(post("/admin/auth/login"))
+        // /api/admin/auth/login 은 인증 없이 접근 가능 (400 또는 200 — 요청 바디에 따라)
+        mockMvc.perform(post("/api/admin/auth/login"))
                 .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
     }
 }

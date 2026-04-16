@@ -34,7 +34,7 @@ class AdminMatchResultControllerTest {
 
     @Test
     void createWithoutAuthReturns401() throws Exception {
-        mockMvc.perform(post("/admin/matches/1/result")
+        mockMvc.perform(post("/api/admin/matches/1/result")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized());
@@ -52,7 +52,7 @@ class AdminMatchResultControllerTest {
                 1L, 2, 1, OffsetDateTime.now().minusHours(1), null, null);
 
         // when & then
-        mockMvc.perform(post("/admin/matches/1/result")
+        mockMvc.perform(post("/api/admin/matches/1/result")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -71,7 +71,7 @@ class AdminMatchResultControllerTest {
                 1L, 2, 1, OffsetDateTime.now().minusHours(1), null, null);
 
         // when & then
-        mockMvc.perform(post("/admin/matches/1/result")
+        mockMvc.perform(post("/api/admin/matches/1/result")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

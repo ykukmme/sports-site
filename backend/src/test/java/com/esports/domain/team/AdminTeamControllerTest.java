@@ -29,7 +29,7 @@ class AdminTeamControllerTest {
 
     @Test
     void createWithoutAuthReturns401() throws Exception {
-        mockMvc.perform(post("/admin/teams")
+        mockMvc.perform(post("/api/admin/teams")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized());
@@ -45,7 +45,7 @@ class AdminTeamControllerTest {
         TeamRequest request = new TeamRequest("T1", "T1", "KR", null, null, 1L, null, null);
 
         // when & then
-        mockMvc.perform(post("/admin/teams")
+        mockMvc.perform(post("/api/admin/teams")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -59,7 +59,7 @@ class AdminTeamControllerTest {
         doNothing().when(teamCommandService).delete(1L);
 
         // when & then
-        mockMvc.perform(delete("/admin/teams/1").with(csrf()))
+        mockMvc.perform(delete("/api/admin/teams/1").with(csrf()))
                 .andExpect(status().isNoContent());
     }
 }

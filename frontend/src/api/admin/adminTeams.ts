@@ -15,7 +15,7 @@ export async function adminCreateTeam(data: TeamFormValues): Promise<TeamRespons
     primaryColor: data.primaryColor || null,
     secondaryColor: data.secondaryColor || null,
   }
-  const res = await apiClient.post<ApiResponse<TeamResponse>>('/admin/teams', payload)
+  const res = await apiClient.post<ApiResponse<TeamResponse>>('/api/admin/teams', payload)
   if (!res.data.data) throw new Error('팀 등록에 실패했습니다.')
   return res.data.data
 }
@@ -33,12 +33,12 @@ export async function adminUpdateTeam(
     primaryColor: data.primaryColor || null,
     secondaryColor: data.secondaryColor || null,
   }
-  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/admin/teams/${id}`, payload)
+  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/api/admin/teams/${id}`, payload)
   if (!res.data.data) throw new Error('팀 수정에 실패했습니다.')
   return res.data.data
 }
 
 // 팀 삭제 (204 No Content)
 export async function adminDeleteTeam(id: number): Promise<void> {
-  await apiClient.delete(`/admin/teams/${id}`)
+  await apiClient.delete(`/api/admin/teams/${id}`)
 }

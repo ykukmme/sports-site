@@ -1,5 +1,5 @@
 // 어드민 전용 API 함수
-// 읽기(목록/상세)는 공개 API 재사용, 쓰기(등록/수정/삭제)는 /admin/** 엔드포인트 사용
+// 읽기(목록/상세)는 공개 API 재사용, 쓰기(등록/수정/삭제)는 /api/admin/** 엔드포인트 사용
 import apiClient from './client'
 import type { ApiResponse, PageResponse } from '../types/api'
 import type { MatchResponse, TeamResponse, PlayerResponse, MatchStatus, GameResponse } from '../types/domain'

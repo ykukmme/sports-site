@@ -15,7 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 // Spring Security 설정
-// Hard Rule #7: /admin/** 전체는 JWT 인증 필수 (/admin/auth/login 제외)
+// Hard Rule #7: /api/admin/** 전체는 JWT 인증 필수 (/api/admin/auth/login 제외)
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {

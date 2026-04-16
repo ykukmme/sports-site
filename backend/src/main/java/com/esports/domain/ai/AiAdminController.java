@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-// 어드민 AI 사용량 조회 API — JWT 인증 필수 (SecurityConfig에서 /admin/** 보호)
+// 어드민 AI 사용량 조회 API — JWT 인증 필수 (SecurityConfig에서 /api/admin/** 보호)
 @RestController
 @RequestMapping("/api/admin/ai")
 public class AiAdminController {

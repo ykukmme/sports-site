@@ -31,7 +31,7 @@ export async function adminFetchMatch(id: number): Promise<MatchResponse> {
 
 // 경기 등록
 export async function adminCreateMatch(data: MatchCreateFormValues): Promise<MatchResponse> {
-  const res = await apiClient.post<ApiResponse<MatchResponse>>('/admin/matches', data)
+  const res = await apiClient.post<ApiResponse<MatchResponse>>('/api/admin/matches', data)
   if (!res.data.data) throw new Error('경기 등록에 실패했습니다.')
   return res.data.data
 }
@@ -41,14 +41,14 @@ export async function adminUpdateMatch(
   id: number,
   data: MatchUpdateFormValues,
 ): Promise<MatchResponse> {
-  const res = await apiClient.put<ApiResponse<MatchResponse>>(`/admin/matches/${id}`, data)
+  const res = await apiClient.put<ApiResponse<MatchResponse>>(`/api/admin/matches/${id}`, data)
   if (!res.data.data) throw new Error('경기 수정에 실패했습니다.')
   return res.data.data
 }
 
 // 경기 삭제 (204 No Content)
 export async function adminDeleteMatch(id: number): Promise<void> {
-  await apiClient.delete(`/admin/matches/${id}`)
+  await apiClient.delete(`/api/admin/matches/${id}`)
 }
 
 // 경기 결과 등록
@@ -57,7 +57,7 @@ export async function adminCreateMatchResult(
   data: MatchResultFormValues,
 ): Promise<MatchResultResponse> {
   const res = await apiClient.post<ApiResponse<MatchResultResponse>>(
-    `/admin/matches/${matchId}/result`,
+    `/api/admin/matches/${matchId}/result`,
     data,
   )
   if (!res.data.data) throw new Error('결과 등록에 실패했습니다.')
@@ -70,7 +70,7 @@ export async function adminUpdateMatchResult(
   data: MatchResultFormValues,
 ): Promise<MatchResultResponse> {
   const res = await apiClient.put<ApiResponse<MatchResultResponse>>(
-    `/admin/matches/${matchId}/result`,
+    `/api/admin/matches/${matchId}/result`,
     data,
   )
   if (!res.data.data) throw new Error('결과 수정에 실패했습니다.')

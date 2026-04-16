@@ -16,14 +16,14 @@ public class AdminPlayerController {
         this.playerCommandService = playerCommandService;
     }
 
-    // POST /admin/players — 선수 등록
+    // POST /api/admin/players — 선수 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PlayerResponse> create(@Valid @RequestBody PlayerRequest request) {
         return ApiResponse.ok(playerCommandService.create(request));
     }
 
-    // PUT /admin/players/{id} — 선수 수정
+    // PUT /api/admin/players/{id} — 선수 수정
     @PutMapping("/{id}")
     public ApiResponse<PlayerResponse> update(
             @PathVariable Long id,
@@ -31,7 +31,7 @@ public class AdminPlayerController {
         return ApiResponse.ok(playerCommandService.update(id, request));
     }
 
-    // DELETE /admin/players/{id} — 선수 삭제
+    // DELETE /api/admin/players/{id} — 선수 삭제
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

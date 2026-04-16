@@ -29,7 +29,7 @@ class AdminPlayerControllerTest {
 
     @Test
     void createWithoutAuthReturns401() throws Exception {
-        mockMvc.perform(post("/admin/players")
+        mockMvc.perform(post("/api/admin/players")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized());
@@ -45,7 +45,7 @@ class AdminPlayerControllerTest {
         PlayerRequest request = new PlayerRequest("Faker", "이상혁", "Mid", "KR", null, 1L, null);
 
         // when & then
-        mockMvc.perform(post("/admin/players")
+        mockMvc.perform(post("/api/admin/players")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -59,7 +59,7 @@ class AdminPlayerControllerTest {
         doNothing().when(playerCommandService).delete(1L);
 
         // when & then
-        mockMvc.perform(delete("/admin/players/1").with(csrf()))
+        mockMvc.perform(delete("/api/admin/players/1").with(csrf()))
                 .andExpect(status().isNoContent());
     }
 }

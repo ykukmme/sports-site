@@ -14,7 +14,7 @@ export async function adminCreatePlayer(data: PlayerFormValues): Promise<PlayerR
     profileImageUrl: data.profileImageUrl || null,
     teamId: data.teamId ?? null,
   }
-  const res = await apiClient.post<ApiResponse<PlayerResponse>>('/admin/players', payload)
+  const res = await apiClient.post<ApiResponse<PlayerResponse>>('/api/admin/players', payload)
   if (!res.data.data) throw new Error('선수 등록에 실패했습니다.')
   return res.data.data
 }
@@ -32,12 +32,12 @@ export async function adminUpdatePlayer(
     profileImageUrl: data.profileImageUrl || null,
     teamId: data.teamId ?? null,
   }
-  const res = await apiClient.put<ApiResponse<PlayerResponse>>(`/admin/players/${id}`, payload)
+  const res = await apiClient.put<ApiResponse<PlayerResponse>>(`/api/admin/players/${id}`, payload)
   if (!res.data.data) throw new Error('선수 수정에 실패했습니다.')
   return res.data.data
 }
 
 // 선수 삭제 (204 No Content)
 export async function adminDeletePlayer(id: number): Promise<void> {
-  await apiClient.delete(`/admin/players/${id}`)
+  await apiClient.delete(`/api/admin/players/${id}`)
 }

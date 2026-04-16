@@ -1,4 +1,4 @@
-// 어드민 인증 상태 훅 — /admin/auth/me ping으로 인증 여부 확인
+// 어드민 인증 상태 훅 — /api/admin/auth/me ping으로 인증 여부 확인
 // HttpOnly 쿠키는 JS에서 직접 읽기 불가하므로 서버 ping이 유일한 인증 확인 방법
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'

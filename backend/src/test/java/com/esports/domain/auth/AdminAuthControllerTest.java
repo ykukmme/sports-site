@@ -33,7 +33,7 @@ class AdminAuthControllerTest {
         LoginRequest request = new LoginRequest("testadmin", "testpassword");
 
         // when & then: 토큰은 응답 바디가 아닌 httpOnly 쿠키로 전달됨
-        mockMvc.perform(post("/admin/auth/login")
+        mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -52,7 +52,7 @@ class AdminAuthControllerTest {
         LoginRequest request = new LoginRequest("testadmin", "wrongpassword");
 
         // when & then
-        mockMvc.perform(post("/admin/auth/login")
+        mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
@@ -64,7 +64,7 @@ class AdminAuthControllerTest {
     void getMeWithValidTokenReturns200() throws Exception {
         // given: 로그인 후 발급된 쿠키로 /me 호출
         LoginRequest loginRequest = new LoginRequest("testadmin", "testpassword");
-        String setCookie = mockMvc.perform(post("/admin/auth/login")
+        String setCookie = mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andReturn().getResponse().getHeader("Set-Cookie");
@@ -75,7 +75,7 @@ class AdminAuthControllerTest {
 
         // when & then: 유효한 쿠키로 /me 요청 → 200
         // MockMvc에서 Cookie 헤더 직접 설정은 request.getCookies()에 반영 안 됨 — .cookie() API 사용
-        mockMvc.perform(get("/admin/auth/me")
+        mockMvc.perform(get("/api/admin/auth/me")
                         .cookie(new Cookie("adminToken", tokenValue)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
@@ -84,7 +84,7 @@ class AdminAuthControllerTest {
     @Test
     void getMeWithoutTokenReturns401() throws Exception {
         // when & then: 쿠키 없이 /me 요청 → 401
-        mockMvc.perform(get("/admin/auth/me"))
+        mockMvc.perform(get("/api/admin/auth/me"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -94,7 +94,7 @@ class AdminAuthControllerTest {
         LoginRequest request = new LoginRequest("", "testpassword");
 
         // when & then
-        mockMvc.perform(post("/admin/auth/login")
+        mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())

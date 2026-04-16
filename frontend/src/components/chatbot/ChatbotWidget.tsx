@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { fetchChatbotStatus, askChatbot } from '../../api/ai'
 
 interface Message {
@@ -9,6 +10,8 @@ interface Message {
 // 팬 챗봇 위젯 — 우하단 고정 버튼으로 열고 닫기
 // AI_ENABLED=0이면 위젯 자체를 렌더링하지 않음
 export function ChatbotWidget() {
+  const location = useLocation()
+  const isAdminPage = location.pathname.startsWith('/admin')
   const [available, setAvailable] = useState(false)
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -18,8 +21,13 @@ export function ChatbotWidget() {
 
   // 챗봇 활성화 여부 확인
   useEffect(() => {
+    if (isAdminPage) {
+      setAvailable(false)
+      setOpen(false)
+      return
+    }
     fetchChatbotStatus().then(setAvailable)
-  }, [])
+  }, [isAdminPage])
 
   // 메시지 추가 시 스크롤 하단으로
   useEffect(() => {
@@ -27,7 +35,7 @@ export function ChatbotWidget() {
   }, [messages])
 
   // AI 비활성화 시 위젯 미표시
-  if (!available) return null
+  if (isAdminPage || !available) return null
 
   const handleSend = async () => {
     const question = input.trim()

@@ -32,8 +32,8 @@ class AdminMatchControllerTest {
 
     @Test
     void createWithoutAuthReturns401() throws Exception {
-        // 인증 없이 /admin/** 접근 시 401 반환 (Hard Rule #7)
-        mockMvc.perform(post("/admin/matches")
+        // 인증 없이 /api/admin/** 접근 시 401 반환 (Hard Rule #7)
+        mockMvc.perform(post("/api/admin/matches")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized());
@@ -51,7 +51,7 @@ class AdminMatchControllerTest {
                 OffsetDateTime.now().plusDays(1));
 
         // when & then
-        mockMvc.perform(post("/admin/matches")
+        mockMvc.perform(post("/api/admin/matches")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -68,7 +68,7 @@ class AdminMatchControllerTest {
         MatchUpdateRequest request = new MatchUpdateRequest("LCK Updated", null, null, null);
 
         // when & then
-        mockMvc.perform(put("/admin/matches/1")
+        mockMvc.perform(put("/api/admin/matches/1")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -82,7 +82,7 @@ class AdminMatchControllerTest {
         doNothing().when(matchCommandService).delete(1L);
 
         // when & then
-        mockMvc.perform(delete("/admin/matches/1").with(csrf()))
+        mockMvc.perform(delete("/api/admin/matches/1").with(csrf()))
                 .andExpect(status().isNoContent());
     }
 }
