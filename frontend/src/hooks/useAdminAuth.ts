@@ -26,7 +26,7 @@ export function useAdminAuth() {
     onSuccess: async () => {
       // 쿠키 발급 후 즉시 인증 상태 재확인 — 완료 후 이동 (race condition 방지)
       await queryClient.refetchQueries({ queryKey: AUTH_QUERY_KEY })
-      navigate('/admin/matches', { replace: true })
+      window.location.href = '/admin/matches'
     },
   })
 
