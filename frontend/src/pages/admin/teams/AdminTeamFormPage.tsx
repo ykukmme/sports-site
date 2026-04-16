@@ -8,7 +8,6 @@ import { teamFormSchema } from '../../../types/adminForms'
 import type { TeamFormValues } from '../../../types/adminForms'
 import { useAdminTeam, useAdminCreateTeam, useAdminUpdateTeam } from '../../../hooks/useAdminTeams'
 import { fetchGamesForAdmin } from '../../../api/admin'
-import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { ApiError } from '../../../api/client'
 
@@ -90,19 +89,19 @@ export function AdminTeamFormPage() {
 
       <form noValidate onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
         <Field label="팀명 *" error={errors.name?.message}>
-          <Input {...register('name')} placeholder="팀명" />
+          <TextInput {...register('name')} placeholder="팀명" />
         </Field>
 
         <Field label="약칭" error={errors.shortName?.message}>
-          <Input {...register('shortName')} placeholder="예: T1, GEN" />
+          <TextInput {...register('shortName')} placeholder="예: T1, GEN" />
         </Field>
 
         <Field label="지역" error={errors.region?.message}>
-          <Input {...register('region')} placeholder="예: 한국, 중국" />
+          <TextInput {...register('region')} placeholder="예: 한국, 중국" />
         </Field>
 
         <Field label="로고 URL" error={errors.logoUrl?.message}>
-          <Input {...register('logoUrl')} type="url" placeholder="https://..." />
+          <TextInput {...register('logoUrl')} type="url" placeholder="https://..." />
         </Field>
 
         <Field label="종목 *" error={errors.gameId?.message}>
@@ -126,7 +125,7 @@ export function AdminTeamFormPage() {
               onChange={(e) => setValue('primaryColor', e.target.value)}
               className="h-8 w-10 cursor-pointer rounded border border-input p-0.5"
             />
-            <Input
+            <TextInput
               {...register('primaryColor')}
               placeholder="#RRGGBB"
               className="font-mono"
@@ -143,7 +142,7 @@ export function AdminTeamFormPage() {
               onChange={(e) => setValue('secondaryColor', e.target.value)}
               className="h-8 w-10 cursor-pointer rounded border border-input p-0.5"
             />
-            <Input
+            <TextInput
               {...register('secondaryColor')}
               placeholder="#RRGGBB"
               className="font-mono"
@@ -164,6 +163,15 @@ export function AdminTeamFormPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+function TextInput({ className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={`h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm ${className}`}
+      {...props}
+    />
   )
 }
 
