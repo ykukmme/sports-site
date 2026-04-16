@@ -8,7 +8,7 @@ services:
   # Spring Boot 백엔드
   - type: web
     name: sports-site-backend
-    runtime: docker
+    env: docker
     repo: https://github.com/ykukmme/sports-site
     rootDir: backend
     dockerfilePath: ./Dockerfile
@@ -41,7 +41,7 @@ services:
         generateValue: true
       - key: JWT_EXPIRATION_MS
         value: "86400000"
-      # 어드민 자격증명 — 대시보드에서 수동 입력 필요 (sync: false)
+      # 어드민 자격증명 — 대시보드에서 수동 입력 필요
       - key: ADMIN_USERNAME
         sync: false
       - key: ADMIN_PASSWORD
@@ -57,7 +57,7 @@ services:
   # React + nginx 프론트엔드
   - type: web
     name: sports-site-frontend
-    runtime: docker
+    env: docker
     repo: https://github.com/ykukmme/sports-site
     rootDir: frontend
     dockerfilePath: ./Dockerfile
