@@ -1,0 +1,28 @@
+# 테스트 환경 설정 — DB 없이 실행 가능하도록 H2 인메모리 사용
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    # 테스트 시 Flyway 비활성화 — JPA ddl-auto로 스키마 생성
+    enabled: false
+
+# 테스트용 JWT 설정 (최소 32자)
+jwt:
+  secret: "test-secret-key-minimum-32-chars!!"
+  expiration-ms: 3600000
+
+# 테스트용 어드민 자격증명
+admin:
+  username: "testadmin"
+  password: "testpassword"

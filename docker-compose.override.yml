@@ -1,0 +1,7 @@
+# 개발 환경 전용 오버라이드 — docker compose up 시 자동으로 병합됨
+# 운영 배포 시 이 파일을 사용하지 말 것 (docker compose -f docker-compose.yml up)
+services:
+  backend:
+    # 개발 시 백엔드 API 직접 접근용 포트 노출 (Postman, 테스트 등)
+    ports:
+      - "8080:8080"

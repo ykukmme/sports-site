@@ -1,0 +1,200 @@
+// 경기 등록/수정 폼 페이지 — id 파라미터 유무로 모드 구분
+import { useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
+import { matchCreateSchema, matchUpdateSchema } from '../../../types/adminForms'
+import type { MatchCreateFormValues, MatchUpdateFormValues } from '../../../types/adminForms'
+import { useAdminMatch, useAdminCreateMatch, useAdminUpdateMatch } from '../../../hooks/useAdminMatches'
+import { fetchGamesForAdmin, fetchAdminTeams } from '../../../api/admin'
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
+import { ApiError } from '../../../api/client'
+
+// datetime-local 포맷 변환 (ISO → YYYY-MM-DDTHH:mm)
+function toDateTimeLocal(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 16)
+}
+
+export function AdminMatchFormPage() {
+  const navigate = useNavigate()
+  const { id } = useParams<{ id?: string }>()
+  const isEditMode = !!id
+  const matchId = isEditMode ? Number(id) : 0
+
+  // 수정 모드: 기존 경기 정보 로드
+  const { data: existingMatch } = useAdminMatch(matchId)
+
+  // 종목/팀 목록 — 등록 폼 셀렉트용
+  const { data: games = [] } = useQuery({
+    queryKey: ['admin', 'games'],
+    queryFn: fetchGamesForAdmin,
+    staleTime: Infinity,
+  })
+  const { data: teams = [] } = useQuery({
+    queryKey: ['admin', 'teams'],
+    queryFn: fetchAdminTeams,
+    staleTime: 60_000,
+  })
+
+  const createMutation = useAdminCreateMatch()
+  const updateMutation = useAdminUpdateMatch()
+  const isPending = createMutation.isPending || updateMutation.isPending
+  const mutationError = createMutation.error || updateMutation.error
+
+  // 등록 폼 (수정 폼과 분리)
+  const createForm = useForm<MatchCreateFormValues>({
+    resolver: zodResolver(matchCreateSchema),
+  })
+  const updateForm = useForm<MatchUpdateFormValues>({
+    resolver: zodResolver(matchUpdateSchema),
+  })
+
+  // 수정 모드: 기존 값으로 폼 초기화
+  useEffect(() => {
+    if (isEditMode && existingMatch) {
+      updateForm.reset({
+        tournamentName: existingMatch.tournamentName,
+        stage: existingMatch.stage ?? '',
+        scheduledAt: toDateTimeLocal(existingMatch.scheduledAt),
+        status: existingMatch.status,
+      })
+    }
+  }, [existingMatch, isEditMode, updateForm])
+
+  function handleCreateSubmit(data: MatchCreateFormValues) {
+    createMutation.mutate(data, {
+      onSuccess: () => navigate('/admin/matches'),
+    })
+  }
+
+  function handleUpdateSubmit(data: MatchUpdateFormValues) {
+    updateMutation.mutate(
+      { id: matchId, data },
+      { onSuccess: () => navigate('/admin/matches') },
+    )
+  }
+
+  const errorMessage =
+    mutationError instanceof ApiError ? mutationError.message : mutationError?.message
+
+  return (
+    <div className="mx-auto max-w-xl">
+      <h1 className="mb-6 text-xl font-bold text-gray-900">
+        {isEditMode ? '경기 수정' : '경기 등록'}
+      </h1>
+
+      {isEditMode ? (
+        /* 수정 폼 */
+        <form onSubmit={updateForm.handleSubmit(handleUpdateSubmit)} className="flex flex-col gap-4">
+          <Field label="대회명" error={updateForm.formState.errors.tournamentName?.message}>
+            <Input {...updateForm.register('tournamentName')} placeholder="대회명" />
+          </Field>
+          <Field label="단계" error={updateForm.formState.errors.stage?.message}>
+            <Input {...updateForm.register('stage')} placeholder="예: 4강, 결승" />
+          </Field>
+          <Field label="예정 시각" error={updateForm.formState.errors.scheduledAt?.message}>
+            <Input {...updateForm.register('scheduledAt')} type="datetime-local" />
+          </Field>
+          <Field label="상태" error={updateForm.formState.errors.status?.message}>
+            <select
+              {...updateForm.register('status')}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="SCHEDULED">예정</option>
+              <option value="ONGOING">진행 중</option>
+              <option value="COMPLETED">완료</option>
+              <option value="CANCELLED">취소</option>
+            </select>
+          </Field>
+
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+          <FormActions onCancel={() => navigate('/admin/matches')} isPending={isPending} />
+        </form>
+      ) : (
+        /* 등록 폼 */
+        <form onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="flex flex-col gap-4">
+          <Field label="종목" error={createForm.formState.errors.gameId?.message}>
+            <select
+              {...createForm.register('gameId', { valueAsNumber: true })}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="">종목 선택</option>
+              {games.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="팀 A" error={createForm.formState.errors.teamAId?.message}>
+            <select
+              {...createForm.register('teamAId', { valueAsNumber: true })}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="">팀 A 선택</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="팀 B" error={createForm.formState.errors.teamBId?.message}>
+            <select
+              {...createForm.register('teamBId', { valueAsNumber: true })}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="">팀 B 선택</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="대회명" error={createForm.formState.errors.tournamentName?.message}>
+            <Input {...createForm.register('tournamentName')} placeholder="대회명" />
+          </Field>
+          <Field label="단계" error={createForm.formState.errors.stage?.message}>
+            <Input {...createForm.register('stage')} placeholder="예: 4강, 결승" />
+          </Field>
+          <Field label="예정 시각" error={createForm.formState.errors.scheduledAt?.message}>
+            <Input {...createForm.register('scheduledAt')} type="datetime-local" />
+          </Field>
+
+          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+          <FormActions onCancel={() => navigate('/admin/matches')} isPending={isPending} />
+        </form>
+      )}
+    </div>
+  )
+}
+
+// 폼 필드 래퍼 — 레이블 + 오류 메시지 통합
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string
+  error?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-gray-700">{label}</label>
+      {children}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+// 폼 하단 액션 버튼
+function FormActions({ onCancel, isPending }: { onCancel: () => void; isPending: boolean }) {
+  return (
+    <div className="flex justify-end gap-2 pt-2">
+      <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+        취소
+      </Button>
+      <Button type="submit" disabled={isPending}>
+        {isPending ? '저장 중...' : '저장'}
+      </Button>
+    </div>
+  )
+}

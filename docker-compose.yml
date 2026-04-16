@@ -1,0 +1,66 @@
+services:
+  # PostgreSQL 17 데이터베이스
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-esports_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # 포트는 내부 네트워크 전용 — 외부 노출 없음 (보안)
+    networks:
+      - esports-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-esports_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Spring Boot 백엔드
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    # 백엔드 포트는 내부 네트워크 전용 — 운영 환경에서 직접 노출 금지
+    # 개발 환경에서 직접 접근이 필요하면 docker-compose.override.yml에 포트 설정
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - esports-net
+    restart: unless-stopped
+
+  # React + Vite 프론트엔드
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Docker Compose 내부 네트워크에서 backend 서비스로 프록시
+      BACKEND_INTERNAL_URL: http://backend:8080
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - esports-net
+    restart: unless-stopped
+
+networks:
+  esports-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -1,0 +1,33 @@
+# === Environment ===
+.env
+.env.local
+.env.*.local
+
+# === Java / Spring Boot ===
+.gradle/
+build/
+out/
+*.class
+*.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+.idea/
+*.iml
+local.properties
+HELP.md
+
+# === Frontend (React / Node) ===
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/out/
+frontend/.vite/
+*.log
+npm-debug.log*
+
+# === Docker ===
+.docker/
+
+# === OS ===
+.DS_Store
+Thumbs.db

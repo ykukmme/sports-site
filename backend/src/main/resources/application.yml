@@ -1,0 +1,45 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    # Hard Rule: no hardcoded secrets — 모든 DB 접속 정보는 환경변수
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:esports_db}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # 스키마 변경은 Flyway가 담당 — validate 모드 유지
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+# JWT 설정 (Hard Rule: no hardcoded secrets)
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+# 어드민 자격증명 (Hard Rule: no hardcoded secrets)
+admin:
+  username: ${ADMIN_USERNAME}
+  password: ${ADMIN_PASSWORD}
+
+# 쿠키 보안 설정 — HTTPS 운영 환경에서 true (COOKIE_SECURE=true)
+cookie:
+  secure: ${COOKIE_SECURE:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

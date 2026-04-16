@@ -1,0 +1,52 @@
+plugins {
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.5'
+    id 'java'
+}
+
+group = 'com.esports'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 웹 MVC
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // JPA (Hard Rule: no raw SQL)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Spring Security (어드민 JWT 인증)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Bean Validation (Hard Rule: input validation)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Actuator (헬스체크, 메트릭)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // PostgreSQL JDBC 드라이버
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Flyway DB 마이그레이션 (Spring Boot 3.2.x → Flyway 9.x, PostgreSQL 지원 내장)
+    implementation 'org.flywaydb:flyway-core'
+
+    // JWT (jjwt 0.12.x)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // 테스트
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    // 테스트용 인메모리 DB (H2 — PostgreSQL 모드)
+    testRuntimeOnly 'com.h2database:h2'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
