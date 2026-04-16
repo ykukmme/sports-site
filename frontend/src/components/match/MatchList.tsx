@@ -17,7 +17,7 @@ export function MatchList({ matches, isLoading, error }: MatchListProps) {
   if (!matches || matches.length === 0) return <EmptyState message="경기 정보가 없습니다." />
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {matches.map((match) => (
         <MatchCard key={match.id} match={match} />
       ))}

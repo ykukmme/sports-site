@@ -14,7 +14,7 @@ export function TeamCard({ team }: TeamCardProps) {
 
   return (
     <Link to={`/teams/${team.id}`}>
-      <Card className="shadow-[0_2px_4px_0_rgba(0,0,0,0.1)] hover:shadow-[0_12px_28px_0_rgba(0,0,0,0.2),_0_2px_4px_0_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300 cursor-pointer h-full">
+      <Card className="shadow-card-subtle hover:shadow-card hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300 cursor-pointer h-full">
         <CardContent className="p-4 flex flex-col items-center gap-2">
           {/* 팀 로고 */}
           {team.logoUrl ? (

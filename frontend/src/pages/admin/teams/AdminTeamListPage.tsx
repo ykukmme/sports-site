@@ -27,19 +27,19 @@ export function AdminTeamListPage() {
     })
   }
 
-  if (isLoading) return <div className="text-sm text-gray-500">불러오는 중...</div>
-  if (isError) return <div className="text-sm text-red-500">팀 목록을 불러오지 못했습니다.</div>
+  if (isLoading) return <div className="text-sm text-muted-foreground">불러오는 중...</div>
+  if (isError) return <div className="text-sm text-destructive">팀 목록을 불러오지 못했습니다.</div>
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">팀 관리</h1>
+        <h1 className="text-xl font-bold text-foreground">팀 관리</h1>
         <Button size="sm" onClick={() => navigate('/admin/teams/new')}>
           팀 등록
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -53,7 +53,7 @@ export function AdminTeamListPage() {
           <TableBody>
             {teams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-gray-400">
+                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 팀이 없습니다.
                 </TableCell>
               </TableRow>
@@ -61,8 +61,8 @@ export function AdminTeamListPage() {
               teams.map((team) => (
                 <TableRow key={team.id}>
                   <TableCell className="font-medium">{team.name}</TableCell>
-                  <TableCell className="text-gray-500">{team.shortName ?? '-'}</TableCell>
-                  <TableCell className="text-gray-500">{team.region ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{team.shortName ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{team.region ?? '-'}</TableCell>
                   <TableCell>
                     {/* 팀 테마 색상 스워치 */}
                     {team.primaryColor ? (
@@ -71,10 +71,10 @@ export function AdminTeamListPage() {
                           className="size-5 rounded-full border"
                           style={{ backgroundColor: team.primaryColor }}
                         />
-                        <span className="text-xs text-gray-500">{team.primaryColor}</span>
+                        <span className="text-xs text-muted-foreground">{team.primaryColor}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400">미설정</span>
+                      <span className="text-xs text-muted-foreground">미설정</span>
                     )}
                   </TableCell>
                   <TableCell>

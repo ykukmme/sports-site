@@ -30,10 +30,10 @@ export function AdminMatchListPage() {
   }
 
   if (isLoading) {
-    return <div className="text-sm text-gray-500">불러오는 중...</div>
+    return <div className="text-sm text-muted-foreground">불러오는 중...</div>
   }
   if (isError) {
-    return <div className="text-sm text-red-500">경기 목록을 불러오지 못했습니다.</div>
+    return <div className="text-sm text-destructive">경기 목록을 불러오지 못했습니다.</div>
   }
 
   const matches = data?.content ?? []
@@ -42,14 +42,14 @@ export function AdminMatchListPage() {
     <div className="flex flex-col gap-4">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">경기 관리</h1>
+        <h1 className="text-xl font-bold text-foreground">경기 관리</h1>
         <Button size="sm" onClick={() => navigate('/admin/matches/new')}>
           경기 등록
         </Button>
       </div>
 
       {/* 경기 목록 테이블 */}
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -64,7 +64,7 @@ export function AdminMatchListPage() {
           <TableBody>
             {matches.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-gray-400">
+                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 경기가 없습니다.
                 </TableCell>
               </TableRow>
@@ -74,12 +74,12 @@ export function AdminMatchListPage() {
                   <TableCell>
                     <div className="font-medium">{match.tournamentName}</div>
                     {match.stage && (
-                      <div className="text-xs text-gray-400">{match.stage}</div>
+                      <div className="text-xs text-muted-foreground">{match.stage}</div>
                     )}
                   </TableCell>
                   <TableCell>{match.teamA.name}</TableCell>
                   <TableCell>{match.teamB.name}</TableCell>
-                  <TableCell className="text-sm text-gray-600">
+                  <TableCell className="text-sm text-muted-foreground">
                     {new Date(match.scheduledAt).toLocaleString('ko-KR')}
                   </TableCell>
                   <TableCell>
@@ -130,7 +130,7 @@ export function AdminMatchListPage() {
         >
           이전
         </Button>
-        <span className="flex items-center text-sm text-gray-600">
+        <span className="flex items-center text-sm text-muted-foreground">
           {(data?.number ?? 0) + 1} / {data?.totalPages ?? 1}
         </span>
         <Button

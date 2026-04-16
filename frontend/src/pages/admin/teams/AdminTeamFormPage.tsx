@@ -78,7 +78,7 @@ export function AdminTeamFormPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-xl font-bold text-gray-900">
+      <h1 className="mb-6 text-xl font-bold text-foreground">
         {isEditMode ? '팀 수정' : '팀 등록'}
       </h1>
 
@@ -146,7 +146,7 @@ export function AdminTeamFormPage() {
           </div>
         </Field>
 
-        {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => navigate('/admin/teams')} disabled={isPending}>
@@ -171,10 +171,10 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-foreground">{label}</label>
       {children}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

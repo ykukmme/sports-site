@@ -44,11 +44,17 @@
     /* 카드 그림자 토큰 — DESIGN.md 기준 */
     --shadow-card: 0 12px 28px 0 rgba(0,0,0,0.2), 0 2px 4px 0 rgba(0,0,0,0.1);
     --shadow-card-subtle: 0 2px 4px 0 rgba(0,0,0,0.1);
+    /* 성공 색상 토큰 */
+    --color-success: var(--success);
 }
 
 :root {
     /* 기본 배경/전경 */
     --background: #FFFFFF;
+    /* 헤더 반투명 배경 — 다크 모드에서 자동 전환 */
+    --header-bg: rgba(241, 244, 247, 0.8);
+    /* 성공 색상 — Store Success (DESIGN.md) */
+    --success: #31A24C;
     --foreground: #1C2B33;
     /* 카드 */
     --card: #FFFFFF;
@@ -91,6 +97,8 @@
 /* 다크 모드 — Near Black 계열 */
 .dark {
     --background: #1C1E21;
+    --header-bg: rgba(28, 30, 33, 0.85);
+    --success: #3DBF5F;
     --foreground: #FFFFFF;
     --card: #252729;
     --card-foreground: #FFFFFF;

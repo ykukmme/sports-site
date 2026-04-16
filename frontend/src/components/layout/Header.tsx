@@ -28,7 +28,7 @@ export function Header() {
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border [background:rgba(241,244,247,0.8)] dark:[background:rgba(28,30,33,0.85)] backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border [background:var(--header-bg)] backdrop-blur-md">
       <div className="container mx-auto flex items-center justify-between h-14 px-4">
         {/* 로고 */}
         <NavLink to="/" className="font-semibold text-base tracking-tight">
@@ -49,7 +49,7 @@ export function Header() {
         </nav>
 
         {/* 우측 컨트롤 영역 */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* 응원팀 인디케이터 — 활성화 시 표시 */}
           {activeTeam && (
             <button
@@ -60,7 +60,7 @@ export function Header() {
             >
               <span
                 className="w-2 h-2 rounded-full inline-block mr-1.5 shrink-0"
-                style={{ backgroundColor: activeTeam.primaryColor ?? '#0064E0' }}
+                style={{ backgroundColor: activeTeam.primaryColor ?? 'var(--primary)' }}
               />
               {activeTeam.name}
             </button>
@@ -98,7 +98,7 @@ export function Header() {
 
               {/* 드로어 네비게이션 — 세로 배열 */}
               {/* 드로어 네비게이션 — 세로 배열, 터치 타겟 확보 */}
-              <nav className="flex flex-col px-2 py-3 gap-1">
+              <nav className="flex flex-col px-2 py-3 gap-2">
                 <NavLink
                   to="/matches/upcoming"
                   className={({ isActive }) =>
@@ -143,7 +143,7 @@ export function Header() {
                   >
                     <span
                       className="w-2 h-2 rounded-full inline-block mr-1.5 shrink-0"
-                      style={{ backgroundColor: activeTeam.primaryColor ?? '#0064E0' }}
+                      style={{ backgroundColor: activeTeam.primaryColor ?? 'var(--primary)' }}
                     />
                     {activeTeam.name}
                   </button>

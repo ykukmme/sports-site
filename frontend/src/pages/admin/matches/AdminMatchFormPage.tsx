@@ -81,7 +81,7 @@ export function AdminMatchFormPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-xl font-bold text-gray-900">
+      <h1 className="mb-6 text-xl font-bold text-foreground">
         {isEditMode ? '경기 수정' : '경기 등록'}
       </h1>
 
@@ -109,7 +109,7 @@ export function AdminMatchFormPage() {
             </select>
           </Field>
 
-          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+          {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
           <FormActions onCancel={() => navigate('/admin/matches')} isPending={isPending} />
         </form>
       ) : (
@@ -158,7 +158,7 @@ export function AdminMatchFormPage() {
             <Input {...createForm.register('scheduledAt')} type="datetime-local" />
           </Field>
 
-          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+          {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
           <FormActions onCancel={() => navigate('/admin/matches')} isPending={isPending} />
         </form>
       )}
@@ -177,10 +177,10 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-foreground">{label}</label>
       {children}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

@@ -7,8 +7,8 @@ interface MatchStatusBadgeProps {
 
 const statusConfig: Record<MatchStatus, { label: string; className: string }> = {
   SCHEDULED: { label: '예정', className: 'bg-muted text-muted-foreground' },
-  ONGOING:   { label: 'LIVE', className: 'bg-[#E41E3F] text-white animate-pulse' },
-  COMPLETED: { label: '종료', className: 'bg-[#31A24C]/15 text-[#31A24C]' },
+  ONGOING:   { label: 'LIVE', className: 'bg-destructive text-destructive-foreground animate-pulse' },
+  COMPLETED: { label: '종료', className: 'bg-[color:var(--success)]/15 text-[color:var(--success)]' },
   CANCELLED: { label: '취소', className: 'bg-muted text-muted-foreground line-through' },
 }
 

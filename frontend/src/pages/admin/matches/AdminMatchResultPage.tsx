@@ -56,7 +56,7 @@ export function AdminMatchResultPage() {
   }
 
   if (isLoading) {
-    return <div className="text-sm text-gray-500">불러오는 중...</div>
+    return <div className="text-sm text-muted-foreground">불러오는 중...</div>
   }
 
   const errorMessage =
@@ -72,18 +72,18 @@ export function AdminMatchResultPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-2 text-xl font-bold text-gray-900">
+      <h1 className="mb-2 text-xl font-bold text-foreground">
         경기 결과 {hasResult ? '수정' : '입력'}
       </h1>
       {match && (
-        <p className="mb-6 text-sm text-gray-500">
+        <p className="mb-6 text-sm text-muted-foreground">
           {match.teamA.name} vs {match.teamB.name} — {match.tournamentName}
         </p>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">승리 팀</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground">승리 팀</label>
           <select
             {...register('winnerTeamId', { valueAsNumber: true })}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
@@ -95,13 +95,13 @@ export function AdminMatchResultPage() {
             ))}
           </select>
           {errors.winnerTeamId && (
-            <p className="text-xs text-red-600">{errors.winnerTeamId.message}</p>
+            <p className="text-xs text-destructive">{errors.winnerTeamId.message}</p>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">
               {match?.teamA.name ?? '팀 A'} 점수
             </label>
             <Input
@@ -111,11 +111,11 @@ export function AdminMatchResultPage() {
               placeholder="0"
             />
             {errors.scoreTeamA && (
-              <p className="text-xs text-red-600">{errors.scoreTeamA.message}</p>
+              <p className="text-xs text-destructive">{errors.scoreTeamA.message}</p>
             )}
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">
               {match?.teamB.name ?? '팀 B'} 점수
             </label>
             <Input
@@ -125,29 +125,29 @@ export function AdminMatchResultPage() {
               placeholder="0"
             />
             {errors.scoreTeamB && (
-              <p className="text-xs text-red-600">{errors.scoreTeamB.message}</p>
+              <p className="text-xs text-destructive">{errors.scoreTeamB.message}</p>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">경기 시각</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground">경기 시각</label>
           <Input {...register('playedAt')} type="datetime-local" />
           {errors.playedAt && (
-            <p className="text-xs text-red-600">{errors.playedAt.message}</p>
+            <p className="text-xs text-destructive">{errors.playedAt.message}</p>
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">VOD URL (선택)</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground">VOD URL (선택)</label>
           <Input {...register('vodUrl')} type="url" placeholder="https://..." />
           {errors.vodUrl && (
-            <p className="text-xs text-red-600">{errors.vodUrl.message}</p>
+            <p className="text-xs text-destructive">{errors.vodUrl.message}</p>
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">비고 (선택)</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground">비고 (선택)</label>
           <textarea
             {...register('notes')}
             rows={3}
@@ -155,11 +155,11 @@ export function AdminMatchResultPage() {
             placeholder="경기 관련 메모"
           />
           {errors.notes && (
-            <p className="text-xs text-red-600">{errors.notes.message}</p>
+            <p className="text-xs text-destructive">{errors.notes.message}</p>
           )}
         </div>
 
-        {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={() => navigate('/admin/matches')} disabled={isPending}>

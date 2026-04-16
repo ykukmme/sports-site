@@ -37,19 +37,19 @@ export function AdminPlayerListPage() {
     })
   }
 
-  if (isLoading) return <div className="text-sm text-gray-500">불러오는 중...</div>
-  if (isError) return <div className="text-sm text-red-500">선수 목록을 불러오지 못했습니다.</div>
+  if (isLoading) return <div className="text-sm text-muted-foreground">불러오는 중...</div>
+  if (isError) return <div className="text-sm text-destructive">선수 목록을 불러오지 못했습니다.</div>
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">선수 관리</h1>
+        <h1 className="text-xl font-bold text-foreground">선수 관리</h1>
         <Button size="sm" onClick={() => navigate('/admin/players/new')}>
           선수 등록
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -64,7 +64,7 @@ export function AdminPlayerListPage() {
           <TableBody>
             {players.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-gray-400">
+                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 선수가 없습니다.
                 </TableCell>
               </TableRow>
@@ -72,10 +72,10 @@ export function AdminPlayerListPage() {
               players.map((player) => (
                 <TableRow key={player.id}>
                   <TableCell className="font-medium">{player.inGameName}</TableCell>
-                  <TableCell className="text-gray-500">{player.realName ?? '-'}</TableCell>
-                  <TableCell className="text-gray-500">{player.role ?? '-'}</TableCell>
-                  <TableCell className="text-gray-500">{player.nationality ?? '-'}</TableCell>
-                  <TableCell className="text-gray-500">{player.teamName}</TableCell>
+                  <TableCell className="text-muted-foreground">{player.realName ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{player.role ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{player.nationality ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{player.teamName}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
                       <Button
