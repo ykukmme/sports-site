@@ -24,7 +24,20 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # 공개 API 프록시 — rate limiting 적용
+    # 어드민 로그인 — 엄격한 rate limiting (브루트포스 방어, 백엔드 잠금과 이중 방어)
+    # 정확한 경로 매칭(=)이 prefix 매칭보다 우선 적용됨
+    location = /api/admin/auth/login {
+        limit_req zone=admin_zone burst=5 nodelay;
+        proxy_pass ${BACKEND_INTERNAL_URL};
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+    }
+
+    # 공개 API 및 어드민 API 프록시 — 일반 rate limiting
+    # 어드민 API는 JWT 인증으로 보호되므로 로그인 외에는 일반 limit 적용
     location /api/ {
         limit_req zone=api_zone burst=20 nodelay;
         proxy_pass ${BACKEND_INTERNAL_URL};
@@ -33,17 +46,6 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         # HTTPS 백엔드 프록시 시 SNI 지원 (Fly.io 공개 URL 사용 시 필요)
-        proxy_ssl_server_name on;
-    }
-
-    # 어드민 API 프록시 — /api/admin/** 만 백엔드로 (엄격한 rate limiting)
-    location /api/admin/ {
-        limit_req zone=admin_zone burst=5 nodelay;
-        proxy_pass ${BACKEND_INTERNAL_URL};
-        proxy_set_header Host $proxy_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_ssl_server_name on;
     }
 

@@ -20,11 +20,8 @@ export default defineConfig({
     proxy: {
       // 백엔드 URL — Docker 내부에서는 'http://backend:8080', 로컬 개발에서는 'http://localhost:8080'
       // 환경변수 VITE_BACKEND_URL로 제어 (기본값: localhost:8080)
+      // 어드민 API는 /api/admin/** 으로 이전됨 — /admin 프록시 불필요
       '/api': {
-        target: process.env.VITE_BACKEND_URL ?? 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/admin': {
         target: process.env.VITE_BACKEND_URL ?? 'http://localhost:8080',
         changeOrigin: true,
       },
