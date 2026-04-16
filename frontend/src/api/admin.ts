@@ -107,7 +107,7 @@ export async function createAdminTeam(data: TeamFormValues): Promise<TeamRespons
 }
 
 export async function updateAdminTeam(id: number, data: TeamFormValues): Promise<TeamResponse> {
-  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/api/admin/teams/${id}`, emptyToUndefined(data))
+  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/api/admin/teams/${id}`, data)
   return res.data.data!
 }
 

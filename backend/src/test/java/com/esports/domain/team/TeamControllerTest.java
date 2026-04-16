@@ -35,8 +35,8 @@ class TeamControllerTest {
     void listReturns200() throws Exception {
         // given
         when(teamQueryService.findAll(null)).thenReturn(List.of(
-                new TeamResponse(1L, "T1", "T1", "KR", null, 1L, null, null, null),
-                new TeamResponse(2L, "Gen.G", "GEN", "KR", null, 1L, null, null, null)
+                new TeamResponse(1L, "T1", "T1", "KR", null, null, null, null, null, null, 1L, null, null, null),
+                new TeamResponse(2L, "Gen.G", "GEN", "KR", null, null, null, null, null, null, 1L, null, null, null)
         ));
 
         // when & then
@@ -49,7 +49,8 @@ class TeamControllerTest {
     void getByIdReturns200WithPlayers() throws Exception {
         // given: 소속 선수 포함 팀 상세
         PlayerResponse player = new PlayerResponse(1L, "Faker", "이상혁", "Mid", "KR", null, 1L);
-        TeamResponse response = new TeamResponse(1L, "T1", "T1", "KR", null, 1L, null, null, List.of(player));
+        TeamResponse response = new TeamResponse(
+                1L, "T1", "T1", "KR", null, null, null, null, null, null, 1L, null, null, List.of(player));
         when(teamQueryService.findById(1L)).thenReturn(response);
 
         // when & then

@@ -36,7 +36,8 @@ class TeamCommandServiceTest {
         when(saved.getGame()).thenReturn(game);
         when(teamRepository.save(any(Team.class))).thenReturn(saved);
 
-        TeamRequest request = new TeamRequest("T1", "T1", "KR", null, null, 1L, null, null);
+        TeamRequest request = new TeamRequest(
+                "T1", "T1", "KR", null, null, null, null, null, null, null, 1L, null, null);
 
         // when
         TeamResponse result = teamCommandService.create(request);
@@ -56,7 +57,8 @@ class TeamCommandServiceTest {
         when(team.getGame()).thenReturn(game);
         when(teamRepository.findById(1L)).thenReturn(Optional.of(team));
 
-        TeamUpdateRequest request = new TeamUpdateRequest("T1 Esports", null, null, null, null, 1L, null, null);
+        TeamUpdateRequest request = new TeamUpdateRequest(
+                "T1 Esports", null, null, null, null, null, null, null, null, null, 1L, null, null);
 
         // when
         teamCommandService.update(1L, request);

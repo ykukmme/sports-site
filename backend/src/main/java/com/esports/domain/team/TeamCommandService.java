@@ -38,6 +38,11 @@ public class TeamCommandService {
         Team team = new Team(request.name(), request.shortName(), game);
         team.setRegion(request.region());
         team.setLogoUrl(request.logoUrl());
+        team.setInstagramUrl(request.instagramUrl());
+        team.setXUrl(request.xUrl());
+        team.setYoutubeUrl(request.youtubeUrl());
+        team.setLivePlatform(request.livePlatform());
+        team.setLiveUrl(request.liveUrl());
         team.setExternalId(request.externalId());
         team.setPrimaryColor(request.primaryColor());
         team.setSecondaryColor(request.secondaryColor());
@@ -55,6 +60,11 @@ public class TeamCommandService {
         if (request.shortName() != null) team.setShortName(request.shortName());
         if (request.region() != null) team.setRegion(request.region());
         if (request.logoUrl() != null) team.setLogoUrl(request.logoUrl());
+        if (request.instagramUrl() != null) team.setInstagramUrl(request.instagramUrl());
+        if (request.xUrl() != null) team.setXUrl(request.xUrl());
+        if (request.youtubeUrl() != null) team.setYoutubeUrl(request.youtubeUrl());
+        if (request.livePlatform() != null) team.setLivePlatform(request.livePlatform());
+        if (request.liveUrl() != null) team.setLiveUrl(request.liveUrl());
         if (request.externalId() != null) team.setExternalId(request.externalId());
         if (request.primaryColor() != null) team.setPrimaryColor(request.primaryColor());
         if (request.secondaryColor() != null) team.setSecondaryColor(request.secondaryColor());

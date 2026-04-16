@@ -4,29 +4,38 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
-// 팀 등록 요청 DTO — Hard Rule: input validation (@Valid 적용 필수)
-// 수정 요청은 TeamUpdateRequest 사용
 public record TeamRequest(
-        @NotBlank(message = "팀명은 필수입니다.")
+        @NotBlank(message = "Team name is required.")
         String name,
 
         String shortName,
         String region,
 
-        // https 스킴만 허용 (XSS/SSRF 방지)
-        @Pattern(regexp = "^(https://.*)?$", message = "로고 URL은 https:// 로 시작해야 합니다.")
+        @Pattern(regexp = "^(https://.*)?$", message = "Logo URL must start with https://.")
         String logoUrl,
 
-        // PandaScore 등 외부 데이터 연동 시 사용하는 식별자 (선택)
+        @Pattern(regexp = "^(https://.*)?$", message = "Instagram URL must start with https://.")
+        String instagramUrl,
+
+        @Pattern(regexp = "^(https://.*)?$", message = "X URL must start with https://.")
+        String xUrl,
+
+        @Pattern(regexp = "^(https://.*)?$", message = "YouTube URL must start with https://.")
+        String youtubeUrl,
+
+        String livePlatform,
+
+        @Pattern(regexp = "^(https://.*)?$", message = "Live URL must start with https://.")
+        String liveUrl,
+
         String externalId,
 
-        @NotNull(message = "종목 ID는 필수입니다.")
+        @NotNull(message = "Game ID is required.")
         Long gameId,
 
-        // 팬 테마용 팀 색상 — #RRGGBB 형식 또는 null
-        @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "색상 코드는 #RRGGBB 형식이어야 합니다.")
+        @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "Color must use #RRGGBB format.")
         String primaryColor,
 
-        @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "색상 코드는 #RRGGBB 형식이어야 합니다.")
+        @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "Color must use #RRGGBB format.")
         String secondaryColor
 ) {}

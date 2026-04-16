@@ -47,6 +47,11 @@ export const teamFormSchema = z.object({
   shortName: z.string().optional(),
   region: z.string().optional(),
   logoUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
+  instagramUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
+  xUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
+  youtubeUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
+  livePlatform: z.string().optional(),
+  liveUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
   gameId: z.number({ message: '종목을 선택해주세요.' }).int().positive(),
   primaryColor: z
     .string()

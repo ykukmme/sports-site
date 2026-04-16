@@ -61,6 +61,11 @@ export interface TeamResponse {
   shortName: string
   region: string
   logoUrl: string | null
+  instagramUrl: string | null
+  xUrl: string | null
+  youtubeUrl: string | null
+  livePlatform: string | null
+  liveUrl: string | null
   gameId: number
   // 팬 테마용 팀 색상 — 어드민에서 미설정 시 null
   primaryColor: string | null

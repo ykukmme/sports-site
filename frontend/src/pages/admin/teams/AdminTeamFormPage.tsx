@@ -40,7 +40,15 @@ export function AdminTeamFormPage() {
     formState: { errors },
   } = useForm<TeamFormValues>({
     resolver: zodResolver(teamFormSchema),
-    defaultValues: { primaryColor: '', secondaryColor: '' },
+    defaultValues: {
+      primaryColor: '',
+      secondaryColor: '',
+      instagramUrl: '',
+      xUrl: '',
+      youtubeUrl: '',
+      livePlatform: '',
+      liveUrl: '',
+    },
   })
 
   // 수정 모드: 기존 팀 정보로 초기화
@@ -51,6 +59,11 @@ export function AdminTeamFormPage() {
         shortName: existingTeam.shortName ?? '',
         region: existingTeam.region ?? '',
         logoUrl: existingTeam.logoUrl ?? '',
+        instagramUrl: existingTeam.instagramUrl ?? '',
+        xUrl: existingTeam.xUrl ?? '',
+        youtubeUrl: existingTeam.youtubeUrl ?? '',
+        livePlatform: existingTeam.livePlatform ?? '',
+        liveUrl: existingTeam.liveUrl ?? '',
         gameId: existingTeam.gameId,
         primaryColor: existingTeam.primaryColor ?? '',
         secondaryColor: existingTeam.secondaryColor ?? '',
@@ -103,6 +116,37 @@ export function AdminTeamFormPage() {
 
         <Field label="로고 URL" error={errors.logoUrl?.message}>
           <TextInput {...register('logoUrl')} type="url" placeholder="https://..." />
+        </Field>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Instagram URL" error={errors.instagramUrl?.message}>
+            <TextInput {...register('instagramUrl')} type="url" placeholder="https://instagram.com/..." />
+          </Field>
+
+          <Field label="X URL" error={errors.xUrl?.message}>
+            <TextInput {...register('xUrl')} type="url" placeholder="https://x.com/..." />
+          </Field>
+
+          <Field label="YouTube URL" error={errors.youtubeUrl?.message}>
+            <TextInput {...register('youtubeUrl')} type="url" placeholder="https://youtube.com/..." />
+          </Field>
+
+          <Field label="생방송 플랫폼" error={errors.livePlatform?.message}>
+            <select
+              {...register('livePlatform')}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="">선택 안 함</option>
+              <option value="CHZZK">치지직</option>
+              <option value="SOOP">SOOP</option>
+              <option value="TWITCH">Twitch</option>
+              <option value="YOUTUBE">YouTube Live</option>
+            </select>
+          </Field>
+        </div>
+
+        <Field label="생방송 URL" error={errors.liveUrl?.message}>
+          <TextInput {...register('liveUrl')} type="url" placeholder="https://..." />
         </Field>
 
         <Field label="종목 *" error={errors.gameId?.message}>

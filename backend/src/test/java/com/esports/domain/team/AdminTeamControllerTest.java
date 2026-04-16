@@ -43,7 +43,8 @@ class AdminTeamControllerTest {
         TeamResponse response = mock(TeamResponse.class);
         when(teamCommandService.create(any(TeamRequest.class))).thenReturn(response);
 
-        TeamRequest request = new TeamRequest("T1", "T1", "KR", null, null, 1L, null, null);
+        TeamRequest request = new TeamRequest(
+                "T1", "T1", "KR", null, null, null, null, null, null, null, 1L, null, null);
 
         // when & then
         mockMvc.perform(post("/api/admin/teams")
@@ -61,7 +62,7 @@ class AdminTeamControllerTest {
         when(teamCommandService.update(eq(1L), any(TeamUpdateRequest.class))).thenReturn(response);
 
         TeamUpdateRequest request = new TeamUpdateRequest(
-                "T1 Esports", "T1", "KR", null, null, 1L, "#0064E0", "#1C2B33");
+                "T1 Esports", "T1", "KR", null, null, null, null, null, null, null, 1L, "#0064E0", "#1C2B33");
 
         // when & then
         mockMvc.perform(put("/api/admin/teams/1")

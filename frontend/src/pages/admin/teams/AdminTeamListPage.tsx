@@ -43,9 +43,11 @@ export function AdminTeamListPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>로고</TableHead>
               <TableHead>팀명</TableHead>
               <TableHead>약칭</TableHead>
               <TableHead>지역</TableHead>
+              <TableHead>SNS</TableHead>
               <TableHead>팀 색상</TableHead>
               <TableHead className="text-right">액션</TableHead>
             </TableRow>
@@ -53,16 +55,41 @@ export function AdminTeamListPage() {
           <TableBody>
             {teams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 팀이 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
               teams.map((team) => (
                 <TableRow key={team.id}>
+                  <TableCell>
+                    {team.logoUrl ? (
+                      <img
+                        src={team.logoUrl}
+                        alt={`${team.name} logo`}
+                        className="size-10 rounded-md border object-contain"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex size-10 items-center justify-center rounded-md border bg-muted text-xs font-semibold text-muted-foreground">
+                        {team.shortName ?? team.name.slice(0, 2)}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{team.name}</TableCell>
                   <TableCell className="text-muted-foreground">{team.shortName ?? '-'}</TableCell>
                   <TableCell className="text-muted-foreground">{team.region ?? '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1 text-xs">
+                      {team.instagramUrl && <SocialBadge label="IG" />}
+                      {team.xUrl && <SocialBadge label="X" />}
+                      {team.youtubeUrl && <SocialBadge label="YT" />}
+                      {team.liveUrl && <SocialBadge label={team.livePlatform || 'LIVE'} />}
+                      {!team.instagramUrl && !team.xUrl && !team.youtubeUrl && !team.liveUrl && (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {/* 팀 테마 색상 스워치 */}
                     {team.primaryColor ? (
@@ -111,5 +138,13 @@ export function AdminTeamListPage() {
         isLoading={deleteMutation.isPending}
       />
     </div>
+  )
+}
+
+function SocialBadge({ label }: { label: string }) {
+  return (
+    <span className="rounded border px-1.5 py-0.5 text-muted-foreground">
+      {label}
+    </span>
   )
 }

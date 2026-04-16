@@ -25,6 +25,21 @@ public class Team {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "instagram_url")
+    private String instagramUrl;
+
+    @Column(name = "x_url")
+    private String xUrl;
+
+    @Column(name = "youtube_url")
+    private String youtubeUrl;
+
+    @Column(name = "live_platform", length = 50)
+    private String livePlatform;
+
+    @Column(name = "live_url")
+    private String liveUrl;
+
     // PandaScore 등 외부 데이터 동기화 시 사용하는 외부 식별자
     @Column(name = "external_id", unique = true, length = 100)
     private String externalId;
@@ -73,6 +88,11 @@ public class Team {
     public String getShortName() { return shortName; }
     public String getRegion() { return region; }
     public String getLogoUrl() { return logoUrl; }
+    public String getInstagramUrl() { return instagramUrl; }
+    public String getXUrl() { return xUrl; }
+    public String getYoutubeUrl() { return youtubeUrl; }
+    public String getLivePlatform() { return livePlatform; }
+    public String getLiveUrl() { return liveUrl; }
     public String getExternalId() { return externalId; }
     public Game getGame() { return game; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
@@ -85,6 +105,11 @@ public class Team {
     public void setShortName(String shortName) { this.shortName = shortName; }
     public void setRegion(String region) { this.region = region; }
     public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
+    public void setInstagramUrl(String instagramUrl) { this.instagramUrl = instagramUrl; }
+    public void setXUrl(String xUrl) { this.xUrl = xUrl; }
+    public void setYoutubeUrl(String youtubeUrl) { this.youtubeUrl = youtubeUrl; }
+    public void setLivePlatform(String livePlatform) { this.livePlatform = livePlatform; }
+    public void setLiveUrl(String liveUrl) { this.liveUrl = liveUrl; }
     public void setExternalId(String externalId) { this.externalId = externalId; }
     public void setGame(Game game) { this.game = game; }
     public void setPrimaryColor(String primaryColor) { this.primaryColor = primaryColor; }
