@@ -14,7 +14,7 @@ import java.util.Map;
 @Component
 public class ClaudeApiClient {
 
-    private static final String GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1/models";
+    private static final String GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
     private static final int MAX_OUTPUT_TOKENS = 1024;
 
     private final AiProperties aiProperties;
