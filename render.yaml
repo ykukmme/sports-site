@@ -1,0 +1,68 @@
+databases:
+  # Render 관리형 PostgreSQL — 무료 플랜
+  - name: sports-site-db
+    databaseName: esports_db
+    plan: free
+
+services:
+  # Spring Boot 백엔드
+  - type: web
+    name: sports-site-backend
+    runtime: docker
+    repo: https://github.com/ykukmme/sports-site
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      # PostgreSQL 연결 — Render DB에서 자동 주입
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: sports-site-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: sports-site-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: sports-site-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: sports-site-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: sports-site-db
+          property: password
+      # JWT — Render가 랜덤값 자동 생성
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MS
+        value: "86400000"
+      # 어드민 자격증명 — 대시보드에서 수동 입력 필요 (sync: false)
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # 쿠키 Secure 플래그 — HTTPS 환경이므로 true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: AI_ENABLED
+        value: "0"
+      - key: LOG_LEVEL
+        value: "INFO"
+
+  # React + nginx 프론트엔드
+  - type: web
+    name: sports-site-frontend
+    runtime: docker
+    repo: https://github.com/ykukmme/sports-site
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      # nginx proxy_pass 대상 — Render 내부 네트워크로 백엔드 연결
+      - key: BACKEND_INTERNAL_URL
+        value: "http://sports-site-backend:8080"
