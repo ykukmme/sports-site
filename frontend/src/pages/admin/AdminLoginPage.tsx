@@ -1,33 +1,32 @@
 // 어드민 로그인 페이지
-import { useEffect, useState } from 'react'
-import { useAdminAuth } from '../../hooks/useAdminAuth'
+import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { ApiError } from '../../api/client'
+import { loginAdmin } from '../../api/admin'
 
 export function AdminLoginPage() {
-  const { login, isLoggingIn, isAuthenticated } = useAdminAuth()
+  const queryClient = useQueryClient()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (isAuthenticated) {
+  const loginMutation = useMutation({
+    mutationFn: () => loginAdmin(username, password),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['admin', 'auth'] })
       window.location.href = '/admin/matches'
-    }
-  }, [isAuthenticated])
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : '로그인에 실패했습니다.')
+    },
+  })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    login(
-      { username, password },
-      {
-        onError: (err) => {
-          setError(err instanceof ApiError ? err.message : '로그인에 실패했습니다.')
-        },
-      },
-    )
+    loginMutation.mutate()
   }
 
   return (
@@ -71,8 +70,8 @@ export function AdminLoginPage() {
             <p className="text-sm text-destructive">{error}</p>
           )}
 
-          <Button type="submit" disabled={isLoggingIn} className="mt-2">
-            {isLoggingIn ? '로그인 중...' : '로그인'}
+          <Button type="submit" disabled={loginMutation.isPending} className="mt-2">
+            {loginMutation.isPending ? '로그인 중...' : '로그인'}
           </Button>
         </form>
       </div>
