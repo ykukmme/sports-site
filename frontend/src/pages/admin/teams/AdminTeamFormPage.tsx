@@ -1,4 +1,5 @@
 // 팀 등록/수정 폼 페이지
+import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -166,14 +167,18 @@ export function AdminTeamFormPage() {
   )
 }
 
-function TextInput({ className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className = '', ...props }, ref) => {
   return (
     <input
+      ref={ref}
       className={`h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm ${className}`}
       {...props}
     />
   )
-}
+})
+
+TextInput.displayName = 'TextInput'
 
 function Field({
   label,
