@@ -14,7 +14,7 @@ import java.util.Map;
 @Component
 public class ClaudeApiClient {
 
-    private static final String GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+    private static final String GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1/models";
     private static final int MAX_OUTPUT_TOKENS = 1024;
 
     private final AiProperties aiProperties;
@@ -31,13 +31,11 @@ public class ClaudeApiClient {
         String model = aiProperties.getClaudeModel(); // "gemini-1.5-flash"
         String url = GEMINI_API_BASE + "/" + model + ":generateContent?key=" + aiProperties.getGeminiApiKey();
 
-        // Gemini 요청 형식 — system instruction + user message
+        // Gemini v1 요청 — system prompt를 user 메시지 앞에 합쳐서 전달 (v1은 system_instruction 미지원)
+        String combinedMessage = systemPrompt + "\n\n" + userMessage;
         Map<String, Object> requestBody = Map.of(
-                "system_instruction", Map.of(
-                        "parts", List.of(Map.of("text", systemPrompt))
-                ),
                 "contents", List.of(
-                        Map.of("role", "user", "parts", List.of(Map.of("text", userMessage)))
+                        Map.of("role", "user", "parts", List.of(Map.of("text", combinedMessage)))
                 ),
                 "generationConfig", Map.of("maxOutputTokens", MAX_OUTPUT_TOKENS)
         );
