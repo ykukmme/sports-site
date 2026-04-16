@@ -12,17 +12,21 @@ public class AiProperties {
     // 일일 비용 한도 (USD) — 초과 시 자동 비활성화 (Hard Rule #9)
     private double dailyCostLimitUsd = 1.00;
 
-    // Claude API 설정
-    private String claudeApiKey;
-    private String claudeModel = "claude-3-haiku-20240307";
-    private double claudeInputCostPer1kTokens = 0.00025;
-    private double claudeOutputCostPer1kTokens = 0.00125;
+    // AI API 설정 — Gemini 기본값 (provider-agnostic)
+    private String geminiApiKey;
+    private String claudeApiKey; // 추후 Claude 전환 시 사용
+    private String claudeModel = "gemini-1.5-flash";
+    private double claudeInputCostPer1kTokens = 0.0;   // Gemini 무료 티어
+    private double claudeOutputCostPer1kTokens = 0.0;  // Gemini 무료 티어
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
     public double getDailyCostLimitUsd() { return dailyCostLimitUsd; }
     public void setDailyCostLimitUsd(double dailyCostLimitUsd) { this.dailyCostLimitUsd = dailyCostLimitUsd; }
+
+    public String getGeminiApiKey() { return geminiApiKey; }
+    public void setGeminiApiKey(String geminiApiKey) { this.geminiApiKey = geminiApiKey; }
 
     public String getClaudeApiKey() { return claudeApiKey; }
     public void setClaudeApiKey(String claudeApiKey) { this.claudeApiKey = claudeApiKey; }
