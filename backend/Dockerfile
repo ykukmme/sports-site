@@ -7,6 +7,8 @@ WORKDIR /app
 # 의존성 캐시 최적화 — build.gradle 변경 시에만 재다운로드
 COPY gradle/ gradle/
 COPY gradlew settings.gradle build.gradle ./
+# gradlew 실행 권한 부여 (Windows에서 클론 시 권한 비트 유실 방지)
+RUN chmod +x gradlew
 RUN ./gradlew dependencies --no-daemon -q 2>/dev/null || true
 
 # 소스 복사 후 빌드 (테스트 제외 — 통합 테스트는 CI에서 별도 실행)
