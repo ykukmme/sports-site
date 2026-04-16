@@ -12,6 +12,7 @@ import com.esports.domain.team.TeamRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,7 +20,6 @@ import java.util.stream.Collectors;
 // Hard Rule #4: DB 데이터에만 기반, 예측/추측 금지
 // Hard Rule #9: AI_ENABLED 확인 + 비용 한도 확인 필수
 @Service
-@Transactional(readOnly = true)
 public class ChatbotService {
 
     // AI 비활성화 또는 비용 한도 초과 시 반환 메시지
@@ -44,11 +44,13 @@ public class ChatbotService {
     }
 
     // AI 활성화 여부 반환 (프론트엔드 위젯 표시 여부 결정)
+    @Transactional(readOnly = true)
     public boolean isAvailable() {
         return costGuard.canProceed();
     }
 
-    // 챗봇 질문 처리
+    // 챗봇 질문 처리 — AI 사용량 기록(쓰기)이 포함되므로 readOnly 아님
+    @Transactional
     public String ask(ChatbotRequest request) {
         if (!costGuard.canProceed()) {
             return UNAVAILABLE_MSG;
