@@ -78,4 +78,23 @@ class AdminMatchResultControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("RESULT_ALREADY_EXISTS"));
     }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateReturns200() throws Exception {
+        // given
+        MatchResultResponse response = mock(MatchResultResponse.class);
+        when(matchResultCommandService.update(eq(1L), any(MatchResultRequest.class)))
+                .thenReturn(response);
+
+        MatchResultRequest request = new MatchResultRequest(
+                1L, 3, 2, OffsetDateTime.now().minusHours(1), "https://example.com/vod", "수정된 결과");
+
+        // when & then
+        mockMvc.perform(put("/api/admin/matches/1/result")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
 }

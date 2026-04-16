@@ -9,6 +9,7 @@
 - **Phase 1~5 완료** + **Phase 4 AI 완료** + **디자인 정비 완료**
 - EC2 배포 중 (http://15.165.115.72)
 - **어드민 API 경로 정리 완료** — 테스트/프론트 보조 API까지 `/api/admin/**` 기준으로 통일
+- **어드민 로그인 해결 완료** — `/admin/login` 로그인 후 `/admin/matches` 대시보드 진입 확인
 - **검증 완료** — backend `./gradlew.bat test`, frontend `npm.cmd run build` 통과
 
 ---
@@ -50,6 +51,20 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
   - `./gradlew.bat test` 성공
   - `npm.cmd run build` 성공
 
+### 최종 로그인 해결 (2026-04-16)
+- 증상:
+  - 최신 번들이 배포되어도 `/admin/matches` 직접 접근 시 `/admin/login`으로 되돌아감
+  - Network 탭에서 `/api/admin/auth/me` 요청만 보이고 로그인 흐름이 불안정했음
+- 원인:
+  - 로그인 페이지, 보호 라우트, 어드민 레이아웃이 같은 `useAdminAuth()` 흐름을 공유하면서 React Query 캐시/리다이렉트 상태가 꼬임
+- 최종 수정:
+  - `AdminLoginPage`는 `/me`를 호출하지 않고 로그인 버튼 클릭 시 `POST /api/admin/auth/login`만 실행
+  - `AdminRoute`는 React Query/axios 인터셉터 대신 `fetch('/api/admin/auth/me', { credentials: 'include' })`로 단순 인증 확인
+  - `AdminLayout`은 `useAdminAuth()`를 제거하고 로그아웃 mutation만 직접 실행
+- 운영 확인:
+  - 최신 번들 `index-Bat-_p9C.js` 배포 확인
+  - `/admin/matches` 대시보드 진입 성공 확인
+
 ### 이전 세션 발견 및 수정된 문제들
 
 1. **nginx rate limit 초과 (503)** — `/api/admin/` 전체가 `admin_zone(10r/m)`이라 `/api/admin/auth/me` (페이지 로드마다 호출)가 rate limit 소진
@@ -64,29 +79,10 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
    - **수정**: `/admin` 프록시 제거
    - 커밋: 동일 커밋에 포함
 
-### 브라우저에서 추가 확인할 점
-- 로그인 버튼 클릭 시 **Network 탭에 `/api/admin/auth/login` 요청이 전혀 안 생김**
-- 버튼 disabled=false 확인 (활성화 상태)
-- `button.click()` 콘솔 실행해도 요청 없음
-- `document.querySelector('#username')` → **null 반환** ← 핵심 단서!
-  - 현재 운영 번들에는 input id와 submit handler가 포함되어 있어, 브라우저 캐시/다른 탭/런타임 에러 여부 확인 필요
-
-### 브라우저 콘솔 확인 스니펫
-```javascript
-// 콘솔에서 실행해서 실제 input 요소 확인
-document.querySelectorAll('input')
-
-// React가 AdminLoginPage를 렌더링 중인지 확인
-document.querySelector('form')?.innerHTML
-
-// 현재 URL 경로 확인
-window.location.pathname
-```
-
-**가능한 원인 가설:**
-1. 브라우저가 이전 번들/HTML을 캐시하고 있음
-2. 실제 확인한 탭이 `/admin/login`이 아니거나 다른 프레임/문맥의 콘솔을 보고 있음
-3. React 런타임 에러로 렌더링이 중단됨
+### 현재 로그인 상태
+- `/admin/login` → 로그인 성공 후 `/admin/matches` 이동 가능
+- `/admin/matches` 직접 접근 시 대시보드 진입 가능
+- Network 기준 최신 번들: `index-Bat-_p9C.js`
 
 ---
 
@@ -106,7 +102,7 @@ window.location.pathname
 
 ---
 
-## 다음 단계 (로그인 해결 후)
+## 다음 단계
 1. **어드민에서 종목/팀/선수/경기 데이터 등록**
 2. **PandaScore 연동**
 3. **경기 상세 페이지**

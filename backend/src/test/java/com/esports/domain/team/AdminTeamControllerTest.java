@@ -13,6 +13,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -50,6 +51,24 @@ class AdminTeamControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateReturns200() throws Exception {
+        // given
+        TeamResponse response = mock(TeamResponse.class);
+        when(teamCommandService.update(eq(1L), any(TeamUpdateRequest.class))).thenReturn(response);
+
+        TeamUpdateRequest request = new TeamUpdateRequest(
+                "T1 Esports", "T1", "KR", null, null, 1L, "#0064E0", "#1C2B33");
+
+        // when & then
+        mockMvc.perform(put("/api/admin/teams/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 
     @Test
