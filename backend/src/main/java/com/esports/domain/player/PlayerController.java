@@ -1,9 +1,13 @@
 package com.esports.domain.player;
 
 import com.esports.common.ApiResponse;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-// 선수 공개 API
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/players")
 public class PlayerController {
@@ -14,7 +18,11 @@ public class PlayerController {
         this.playerQueryService = playerQueryService;
     }
 
-    // GET /api/v1/players/{id} — 선수 상세
+    @GetMapping
+    public ApiResponse<List<PlayerResponse>> list() {
+        return ApiResponse.ok(playerQueryService.findAll());
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<PlayerResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(playerQueryService.findById(id));

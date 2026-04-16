@@ -1,8 +1,7 @@
-// 선수 관리 목록 페이지 — 팀 상세 API에서 선수 목록 수집
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminTeamList } from '../../../hooks/useAdminTeams'
-import { useAdminDeletePlayer } from '../../../hooks/useAdminPlayers'
+import { useAdminDeletePlayer, useAdminPlayerList } from '../../../hooks/useAdminPlayers'
 import { AdminConfirmDialog } from '../../../components/admin/AdminConfirmDialog'
 import { Button } from '../../../components/ui/button'
 import {
@@ -18,17 +17,26 @@ export function AdminPlayerListPage() {
   const navigate = useNavigate()
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
 
-  // 팀 목록에서 선수 목록 수집 (팀 상세 API — players 포함)
-  const { data: teams = [], isLoading, isError } = useAdminTeamList()
+  const {
+    data: players = [],
+    isLoading: isPlayersLoading,
+    isError: isPlayersError,
+  } = useAdminPlayerList()
+  const {
+    data: teams = [],
+    isLoading: isTeamsLoading,
+    isError: isTeamsError,
+  } = useAdminTeamList()
   const deleteMutation = useAdminDeletePlayer()
 
-  // 각 팀에서 선수 목록 추출 + 팀명 추가
-  const players = teams.flatMap((team) =>
-    (team.players ?? []).map((player) => ({
-      ...player,
-      teamName: team.name,
-    })),
-  )
+  const teamNameById = new Map(teams.map((team) => [team.id, team.name]))
+  const rows = players.map((player) => ({
+    ...player,
+    teamName: player.teamId ? (teamNameById.get(player.teamId) ?? '-') : '미소속',
+  }))
+
+  const isLoading = isPlayersLoading || isTeamsLoading
+  const isError = isPlayersError || isTeamsError
 
   function handleDeleteConfirm() {
     if (deleteTargetId == null) return
@@ -54,7 +62,7 @@ export function AdminPlayerListPage() {
           <TableHeader>
             <TableRow>
               <TableHead>닉네임</TableHead>
-              <TableHead>실명</TableHead>
+              <TableHead>본명</TableHead>
               <TableHead>역할</TableHead>
               <TableHead>국적</TableHead>
               <TableHead>팀</TableHead>
@@ -62,14 +70,14 @@ export function AdminPlayerListPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {players.length === 0 ? (
+            {rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 선수가 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              players.map((player) => (
+              rows.map((player) => (
                 <TableRow key={player.id}>
                   <TableCell className="font-medium">{player.inGameName}</TableCell>
                   <TableCell className="text-muted-foreground">{player.realName ?? '-'}</TableCell>

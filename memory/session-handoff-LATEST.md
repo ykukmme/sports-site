@@ -10,6 +10,7 @@
 - EC2 배포 중 (http://15.165.115.72)
 - **어드민 API 경로 정리 완료** — 테스트/프론트 보조 API까지 `/api/admin/**` 기준으로 통일
 - **어드민 로그인 해결 완료** — `/admin/login` 로그인 후 `/admin/matches` 대시보드 진입 확인
+- **어드민 팀 등록 디버깅 중** — `Input` ref 전달 누락 원인 확인, 수정 후 배포 필요
 - **검증 완료** — backend `./gradlew.bat test`, frontend `npm.cmd run build` 통과
 
 ---
@@ -86,6 +87,47 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 ---
 
+## 어드민 CRUD 점검 및 현재 이슈
+
+### CRUD 자동 점검
+- 백엔드 어드민 컨트롤러 테스트 보강:
+  - `AdminTeamControllerTest`: 팀 수정 `PUT /api/admin/teams/{id}` 추가
+  - `AdminPlayerControllerTest`: 선수 수정 `PUT /api/admin/players/{id}` 추가
+  - `AdminMatchResultControllerTest`: 경기 결과 수정 `PUT /api/admin/matches/{matchId}/result` 추가
+- 검증:
+  - backend `./gradlew.bat test` 성공
+  - frontend `npm.cmd run build` 성공
+
+### 기본 종목 seed
+- 문제: 팀/경기 등록 폼에서 종목 선택지가 비어 있었음
+- 수정: `backend/src/main/resources/db/migration/V5__seed_default_games.sql` 추가
+- 기본 종목:
+  - League of Legends / LoL
+  - Valorant / VAL
+  - Overwatch 2 / OW2
+- 운영 `/api/v1/games`에서 위 3개 종목 조회 확인
+
+### 팀 등록 `Invalid input` 원인 및 수정
+- 증상:
+  - 팀명 `Dplus Kia` 입력 후 저장 시 팀명 아래 `Invalid input`
+  - Network 탭에 `POST /api/admin/teams` 요청이 생기지 않음
+- 원인:
+  - `react-hook-form`의 `register()`는 input `ref`로 값을 수집하는데, 공통 `Input` 컴포넌트가 `React.forwardRef`를 사용하지 않아 값이 폼 상태에 등록되지 않았음
+  - 화면에는 값이 보여도 Zod 검증에는 `name`이 비어 있는 값처럼 전달됨
+- 수정:
+  - `frontend/src/components/ui/input.tsx`에 `React.forwardRef` 적용
+  - `frontend/src/pages/admin/teams/AdminTeamFormPage.tsx`의 `TextInput`에도 `forwardRef` 적용
+  - 팀 폼에 `noValidate` 및 검증 실패 안내 메시지 추가
+  - 팀 생성/수정 API 전송 시 빈 문자열을 `undefined`로 정리
+- 검증:
+  - `npx.cmd tsc --noEmit` 성공
+  - `npm.cmd run build` 성공
+- 배포 필요:
+  - 최신 로컬 빌드 번들: `index-BomgPnE3.js`
+  - 운영 Network 탭에서 이 번들이 보이면 최신 수정 반영 상태
+
+---
+
 ## 이번 세션 완료 작업 (이전 세션 포함)
 
 ### AI 챗봇 활성화
@@ -103,12 +145,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ---
 
 ## 다음 단계
-1. **어드민에서 종목/팀/선수/경기 데이터 등록**
-2. **PandaScore 연동**
-3. **경기 상세 페이지**
-4. **ChatbotWidget 어드민 제외**
-5. **어드민 AI 사용량 대시보드 UI**
-6. **HTTPS** — 도메인 구매 후 Certbot
+1. **Input ref 수정 커밋/배포**
+2. **팀 등록 재테스트** — Network에 `POST /api/admin/teams` 요청이 생기는지 확인
+3. **어드민에서 팀/선수/경기 데이터 등록**
+4. **PandaScore 연동**
+5. **경기 상세 페이지**
+6. **어드민 AI 사용량 대시보드 UI**
+7. **HTTPS** — 도메인 구매 후 Certbot
 
 ---
 
