@@ -1,0 +1,7 @@
+# 운영 환경 오버라이드 — docker-compose.yml과 함께 사용
+# 실행: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+services:
+  frontend:
+    # 운영 환경에서는 80 포트로 직접 서빙 (개발용 3000 대신)
+    ports:
+      - "80:80"
