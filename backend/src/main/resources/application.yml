@@ -50,7 +50,7 @@ ai:
   daily-cost-limit-usd: ${AI_DAILY_COST_LIMIT_USD:1.00}
   gemini-api-key: ${GEMINI_API_KEY:}
   claude-api-key: ${CLAUDE_API_KEY:}
-  claude-model: ${AI_MODEL:gemini-1.5-flash}
+  claude-model: ${AI_MODEL:gemini-2.0-flash}
   claude-input-cost-per-1k-tokens: 0.0
   claude-output-cost-per-1k-tokens: 0.0
 
