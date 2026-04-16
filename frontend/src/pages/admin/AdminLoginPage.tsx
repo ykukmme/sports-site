@@ -1,15 +1,21 @@
 // 어드민 로그인 페이지
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAdminAuth } from '../../hooks/useAdminAuth'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
 import { ApiError } from '../../api/client'
 
 export function AdminLoginPage() {
-  const { login, isLoggingIn } = useAdminAuth()
+  const { login, isLoggingIn, isAuthenticated } = useAdminAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      window.location.href = '/admin/matches'
+    }
+  }, [isAuthenticated])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

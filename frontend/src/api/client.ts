@@ -37,7 +37,8 @@ apiClient.interceptors.response.use(
     // 팬 사이트 공개 API는 어드민 인증과 무관하므로 리다이렉트 제외
     if (status === 401) {
       const url = error.config?.url ?? ''
-      if (url.startsWith('/api/admin')) {
+      const isLoginPage = window.location.pathname === '/admin/login'
+      if (url.startsWith('/api/admin') && !isLoginPage) {
         window.location.href = '/admin/login'
       }
       return Promise.reject(new ApiError(401, 'UNAUTHORIZED', '인증이 필요합니다.'))
