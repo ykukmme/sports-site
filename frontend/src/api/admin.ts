@@ -30,7 +30,10 @@ export async function logoutAdmin(): Promise<void> {
 
 // 인증 상태 확인 — 유효 쿠키 있으면 200, 없으면 401 (ApiError 발생)
 export async function checkAdminAuth(): Promise<void> {
-  await apiClient.get('/api/admin/auth/me')
+  const res = await apiClient.get<ApiResponse<null>>('/api/admin/auth/me')
+  if (res.data?.success !== true) {
+    throw new Error('어드민 인증 확인 응답이 올바르지 않습니다.')
+  }
 }
 
 // ──────────────────────────── 종목 ────────────────────────────

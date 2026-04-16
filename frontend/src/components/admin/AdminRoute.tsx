@@ -4,10 +4,10 @@ import { useAdminAuth } from '../../hooks/useAdminAuth'
 import { Loader2 } from 'lucide-react'
 
 export function AdminRoute() {
-  const { isLoading, isError } = useAdminAuth()
+  const { isLoading, isFetching, isError } = useAdminAuth()
 
   // 인증 상태 확인 중 — 로딩 스피너 표시
-  if (isLoading) {
+  if (isLoading || isFetching) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="size-8 animate-spin text-gray-400" />

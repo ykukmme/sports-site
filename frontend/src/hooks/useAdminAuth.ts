@@ -42,6 +42,7 @@ export function useAdminAuth() {
 
   return {
     isLoading: authQuery.isLoading,
+    isFetching: authQuery.isFetching,
     isError: authQuery.isError,
     isAuthenticated: authQuery.isSuccess,
     login: loginMutation.mutate,
