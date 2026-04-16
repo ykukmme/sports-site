@@ -23,9 +23,9 @@ export function useAdminAuth() {
   const loginMutation = useMutation({
     mutationFn: ({ username, password }: { username: string; password: string }) =>
       loginAdmin(username, password),
-    onSuccess: () => {
-      // 인증 상태 갱신 후 어드민 홈으로 이동
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY })
+    onSuccess: async () => {
+      // 쿠키 발급 후 즉시 인증 상태 재확인 — 완료 후 이동 (race condition 방지)
+      await queryClient.refetchQueries({ queryKey: AUTH_QUERY_KEY })
       navigate('/admin/matches', { replace: true })
     },
   })
