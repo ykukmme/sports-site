@@ -7,78 +7,101 @@
 ## 현재 상태
 
 - **Phase 3 완료** (어드민 UI 전체 구현)
-- 백엔드 테스트 통과 (BUILD SUCCESSFUL, 67 tests)
-- 프론트엔드 TypeScript 오류 없음, 빌드 성공
-- 다음 단계: Phase 5 배포 또는 Phase 4 AI
+- **Phase 5 완료** (AWS EC2 배포)
+- **Phase 4 설계 완료** (AI 기능 — 승인 대기 중)
+- 다음 단계: Phase 4 AI 기능 구현 (설계 승인 후 시작)
 
 ---
 
-## 완료된 작업 (이번 세션)
+## 운영 환경
 
-### Phase 3 — 어드민 UI 전체
+| 항목 | 값 |
+|------|-----|
+| 서버 | AWS EC2 t2.micro (ap-northeast-2, 서울) |
+| IP | **15.165.115.72** (Elastic IP 고정) |
+| 팬 사이트 | http://15.165.115.72 |
+| 어드민 | http://15.165.115.72/admin |
+| SSH | `ssh -i sports-site-key.pem ec2-user@15.165.115.72` |
+| 키 파일 | `%USERPROFILE%\Downloads\sports-site-key.pem` |
+| 배포 방식 | Docker Compose (docker-compose.yml + docker-compose.prod.yml) |
+| 배포 경로 | EC2 `~/sports-site/` |
 
-#### 신규 파일 (프론트엔드)
+### EC2 배포 업데이트 명령어
+```bash
+cd ~/sports-site
+git pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
 
-| 파일 | 설명 |
-|------|------|
-| `frontend/src/api/admin.ts` | 어드민 전용 API 함수 (auth/matches/teams/players) |
-| `frontend/src/hooks/useAdminAuth.ts` | 인증 상태 훅 (login/logout) |
-| `frontend/src/hooks/useAdminMatches.ts` | 경기 CRUD + 결과 훅 |
-| `frontend/src/hooks/useAdminTeams.ts` | 팀 CRUD 훅 |
-| `frontend/src/hooks/useAdminPlayers.ts` | 선수 CRUD 훅 |
-| `frontend/src/components/admin/AdminRoute.tsx` | 인증 가드 (ProtectedRoute) |
-| `frontend/src/components/admin/AdminConfirmDialog.tsx` | 삭제 확인 다이얼로그 |
-| `frontend/src/components/admin/AdminStatusBadge.tsx` | 경기 상태 뱃지 |
-| `frontend/src/components/admin/AdminSidebar.tsx` | 어드민 사이드바 |
-| `frontend/src/components/admin/AdminTopBar.tsx` | 어드민 상단바 + 로그아웃 |
-| `frontend/src/components/admin/AdminLayout.tsx` | 어드민 전체 레이아웃 |
-| `frontend/src/pages/admin/AdminLoginPage.tsx` | 로그인 페이지 |
-| `frontend/src/pages/admin/matches/AdminMatchListPage.tsx` | 경기 목록 |
-| `frontend/src/pages/admin/matches/AdminMatchFormPage.tsx` | 경기 등록/수정 |
-| `frontend/src/pages/admin/matches/AdminMatchResultPage.tsx` | 결과 입력/수정 |
-| `frontend/src/pages/admin/teams/AdminTeamListPage.tsx` | 팀 목록 |
-| `frontend/src/pages/admin/teams/AdminTeamFormPage.tsx` | 팀 등록/수정 (컬러 피커) |
-| `frontend/src/pages/admin/players/AdminPlayerListPage.tsx` | 선수 목록 |
-| `frontend/src/pages/admin/players/AdminPlayerFormPage.tsx` | 선수 등록/수정 |
+---
 
-#### 수정된 파일
+## Phase 4 AI 설계 (승인 대기)
 
-| 파일 | 변경 내용 |
-|------|---------|
-| `frontend/src/App.tsx` | 어드민 라우팅 추가 (`/admin/**`) |
-| `frontend/postcss.config.js` | Tailwind v4 충돌 수정 (`tailwindcss` 제거) |
-| `backend/src/test/java/.../AdminAuthControllerTest.java` | MockMvc 쿠키 테스트 수정 (`.header("Cookie")` → `.cookie()`) |
+### 핵심 구조
+- PandaScore API Pull 방식 (5분/10분/1일 간격 폴링)
+- AI 하이라이트 요약: 경기 COMPLETED 시 큐 삽입 → 2분마다 처리 → Claude API
+- 팬 챗봇: POST /api/chatbot/ask, 세션 비저장, IP당 분당 5회 Rate Limit
+- 일일 비용 한도: AI_DAILY_COST_LIMIT_USD=1.00
 
-#### shadcn 추가 설치
+### 신규 환경변수 (추가 예정)
+```
+AI_ENABLED=0
+AI_DAILY_COST_LIMIT_USD=1.00
+CLAUDE_API_KEY=
+CLAUDE_MODEL=claude-3-haiku-20240307
+CLAUDE_INPUT_COST_PER_1K_TOKENS=0.00025
+CLAUDE_OUTPUT_COST_PER_1K_TOKENS=0.00125
+PANDASCORE_API_KEY=
+```
 
-`npx shadcn@latest add input label select dialog badge table`
+### DB 마이그레이션 (추가 예정)
+- `V3__pandascore_sync_log.sql`
+- `V4__ai_feature_tables.sql` (match_summary_queue, match_ai_summaries, ai_usage_log)
+
+### 신규 API 엔드포인트 (추가 예정)
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/matches/{id}/summary` | 하이라이트 요약 조회 |
+| GET | `/api/chatbot/status` | AI 활성화 여부 |
+| POST | `/api/chatbot/ask` | 챗봇 질문 |
+| GET | `/admin/ai/usage` | 비용 현황 어드민 조회 |
 
 ---
 
 ## 이전 세션 완료 작업 요약
 
-### Phase 1 — 백엔드 전체
+### Phase 5 — 배포 (이번 세션)
+- git 초기화, GitHub 저장소 연결 (https://github.com/ykukmme/sports-site.git)
+- Railway/Render/Fly.io 시도 후 AWS EC2로 전환
+- Docker CE 설치 (CentOS 9 repo), buildx/compose 플러그인 설정
+- docker-compose.prod.yml 추가 (포트 80 오버라이드)
+- gradle-wrapper.jar 누락 수정 (gitignore *.jar 예외 처리)
+- Elastic IP 할당 (15.165.115.72)
+
+#### 배포 과정에서 수정된 파일
+| 파일 | 변경 내용 |
+|------|---------|
+| `backend/railway.toml` | 신규 (Railway용, 참고용 보관) |
+| `frontend/railway.toml` | 신규 (Railway용, 참고용 보관) |
+| `frontend/nginx.conf.template` | 신규 — envsubst 기반 proxy_pass 환경변수화 |
+| `frontend/Dockerfile` | CMD를 envsubst 방식으로 변경 |
+| `backend/src/main/resources/application.yml` | cookie.secure 환경변수화 |
+| `AdminAuthController.java` | login/logout 쿠키 .secure(cookieSecure)로 통일 |
+| `.env.example` | COOKIE_SECURE, BACKEND_INTERNAL_URL 추가 |
+| `docker-compose.yml` | frontend에 BACKEND_INTERNAL_URL 환경변수 추가 |
+| `docker-compose.prod.yml` | 신규 — 운영 포트 80 오버라이드 |
+| `backend/Dockerfile` | chmod +x gradlew 추가 |
+| `render.yaml` | 신규 (Render용, 참고용 보관) |
+| `backend/fly.toml` | 신규 (Fly.io용, 참고용 보관) |
+| `frontend/fly.toml` | 신규 (Fly.io용, 참고용 보관) |
+
+### Phase 3 — 어드민 UI (이전 세션)
+- 어드민 로그인/경기/팀/선수 CRUD 전체 구현
+- shadcn: input label select dialog badge table 추가 설치
+
+### Phase 1 & 2 — 백엔드 + 팬 사이트 (이전 세션)
 - Spring Boot REST API, PostgreSQL/JPA, Flyway 마이그레이션
-- 팀/선수/경기/매치 CRUD, 어드민 인증 (httpOnly 쿠키)
-- 팀 색상 컬럼 (`V2__add_team_colors.sql`)
-
-### Phase 2 — 팬 사이트 UI (전체 완료)
-- Tailwind v4 + shadcn/ui v4 설정
-- 도메인 타입, API 레이어, React Query 훅
-- 전체 페이지 (홈, 일정, 결과, 팀, 팀 상세, 선수 상세)
-- DESIGN.md 리스타일링, 다크 모드, 팀 테마, 모바일 헤더
-
----
-
-## 다음에 할 작업
-
-### Phase 5 — 배포
-- Railway 초기 배포
-- HTTPS 전환 → `AdminAuthController`의 `.secure(false)` → `.secure(true)` 변경
-- AWS ECS + RDS 전환
-
-### Phase 4 — AI (나중에)
-- PandaScore API 연동 → AI 하이라이트 요약 → 팬 챗봇
+- 팬 사이트 전체 페이지, 다크 모드, 팀 테마
 
 ---
 
@@ -88,30 +111,23 @@
 - Backend: Spring Boot 3.2.5 (Java 17) + PostgreSQL + Flyway
 - Frontend: React (Vite + TypeScript) + shadcn/ui v4 + Tailwind v4
 - 디자인 시스템: DESIGN.md (Meta Store 기반)
-- 배포: Docker Compose → Railway → AWS ECS
+- 배포: AWS EC2 t2.micro + Docker Compose
 
 **빌드/실행**
 ```bash
 cd backend && ./gradlew test --no-daemon       # 백엔드 테스트
 cd backend && ./gradlew bootRun               # 백엔드 단독 실행
 cd frontend && npm run dev                    # 프론트엔드 (localhost:5173)
-cd frontend && npm run build                  # 프론트엔드 빌드
-docker compose up -d                          # 전체 실행 (BE=8080, FE=3000)
-docker compose down                           # 종료
-docker compose build                          # 이미지 재빌드
+docker compose up -d                          # 전체 실행 개발 (FE=3000)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d  # 운영 (FE=80)
 ```
-
-**포트**
-- 백엔드: 8080 (override.yml로만 노출)
-- 프론트엔드: 3000 → nginx 80 → SPA / 개발: 5173
-- DB: 외부 노출 없음
 
 **인증 구조**
 - 로그인: `POST /admin/auth/login` → `Set-Cookie: adminToken; HttpOnly; SameSite=Strict`
 - 인증 확인: `GET /admin/auth/me` → 200 (유효) / 401 (미인증)
 - 로그아웃: `POST /admin/auth/logout` → 쿠키 만료
 - 프론트: `axios withCredentials: true`
-- [TODO] HTTPS 전환 시 쿠키 `Secure` 플래그 활성화
+- COOKIE_SECURE=true (운영 설정됨, HTTPS 전환 시 자동 활성화)
 
 ---
 
@@ -127,27 +143,25 @@ docker compose build                          # 이미지 재빌드
 | `frontend/src/api/admin.ts` | 어드민 전용 API 함수 |
 | `frontend/src/types/domain.ts` | 도메인 타입 (백엔드 record 기반) |
 | `frontend/src/types/adminForms.ts` | 어드민 폼 zod 스키마 |
-| `frontend/src/types/api.ts` | ApiResponse, PageResponse |
 | `frontend/src/context/ThemeContext.tsx` | 다크 모드 Context |
 | `frontend/src/context/TeamThemeContext.tsx` | 팀 테마 Context |
-| `frontend/src/components/layout/Header.tsx` | 헤더 (모바일 반응형 포함) |
 | `frontend/src/components/admin/` | 어드민 공통 컴포넌트 |
 | `frontend/src/pages/admin/` | 어드민 페이지 |
 | `frontend/src/App.tsx` | 라우팅 + Provider 트리 (팬 + 어드민) |
 | `frontend/DESIGN.md` | Meta Store 디자인 시스템 레퍼런스 |
-| `docker-compose.yml` | 운영 기준 compose |
-| `docker-compose.override.yml` | 개발 전용 오버라이드 |
+| `docker-compose.yml` | 개발 기준 compose |
+| `docker-compose.prod.yml` | 운영 포트 오버라이드 (80:80) |
 
 ---
 
 ## 알려진 제약/주의사항
 
-- **팀 테마 활성화 조건**: 어드민에서 팀의 `primaryColor` (#RRGGBB)를 입력해야 팬 사이트에서 "응원팀으로 설정" 버튼이 표시됨
-- **쿠키 Secure 플래그 비활성** — 운영 HTTPS 전환 시 `AdminAuthController`의 `.secure(false)` → `.secure(true)` 변경 필요
-- **브루트포스 방어 인메모리** — 서버 재시작 시 초기화, 다중 인스턴스 미지원
+- **HTTPS 미적용** — 도메인 구매 후 Certbot으로 Let's Encrypt 적용 예정
+- **HTTP 운영 중** — COOKIE_SECURE=true 설정됨, HTTPS 전환 즉시 쿠키 보안 자동 활성화
+- **t2.micro 메모리 제약** — 1GB RAM, swap 2GB 설정됨. Phase 4 AI는 순차 처리(병렬 금지)
+- **브루트포스 방어 인메모리** — 서버 재시작 시 초기화, 단일 인스턴스 전제
+- **팀 테마 활성화 조건** — 어드민에서 팀 primaryColor (#RRGGBB) 입력 필요
 - **Tailwind v4 주의** — shadcn 컴포넌트 추가 시 `npx shadcn@latest add <컴포넌트>` 사용
-- **shadcn Select (`@base-ui/react`)** — react-hook-form과 연동 시 네이티브 `<select>`를 사용할 것 (Controller 복잡도 높음)
-- **postcss.config.js** — `tailwindcss` 항목 제거됨 (`@tailwindcss/vite`가 처리)
 
 ## 활성 오류/버그
 

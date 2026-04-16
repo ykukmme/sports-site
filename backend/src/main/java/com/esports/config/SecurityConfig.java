@@ -46,6 +46,9 @@ public class SecurityConfig {
                     // 공개 API — 인증 없이 허용
                     .requestMatchers("/api/v1/**").permitAll()
 
+                    // 챗봇 API — 인증 없이 허용 (Rate Limit은 인터셉터에서 처리)
+                    .requestMatchers("/api/v1/chatbot/**").permitAll()
+
                     // 헬스체크 — Docker/AWS 헬스체크 허용
                     .requestMatchers("/actuator/health").permitAll()
 

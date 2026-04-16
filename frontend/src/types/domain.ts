@@ -1,6 +1,19 @@
 // 백엔드 API 응답 도메인 타입 정의
 // 백엔드 Java record와 1:1 대응
 
+// AI 하이라이트 요약 응답 DTO
+export interface AiSummaryResponse {
+  matchId: number
+  summaryText: string
+  modelVersion: string
+  generatedAt: string
+}
+
+// 챗봇 응답 DTO
+export interface ChatbotResponse {
+  answer: string
+}
+
 // 종목 응답 DTO
 export interface GameResponse {
   id: number

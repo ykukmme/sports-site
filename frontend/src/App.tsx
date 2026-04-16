@@ -21,6 +21,8 @@ import { AdminTeamListPage } from './pages/admin/teams/AdminTeamListPage'
 import { AdminTeamFormPage } from './pages/admin/teams/AdminTeamFormPage'
 import { AdminPlayerListPage } from './pages/admin/players/AdminPlayerListPage'
 import { AdminPlayerFormPage } from './pages/admin/players/AdminPlayerFormPage'
+// AI 챗봇 위젯 — AI_ENABLED=0이면 렌더링하지 않음
+import { ChatbotWidget } from './components/chatbot/ChatbotWidget'
 
 // React Query 클라이언트 — 전역 기본 staleTime 60초
 const queryClient = new QueryClient({
@@ -69,6 +71,8 @@ function App() {
             </Route>
           </Route>
         </Routes>
+        {/* 챗봇 위젯 — 전역 고정 (어드민 제외 팬 사이트 전체에 표시) */}
+        <ChatbotWidget />
       </BrowserRouter>
       </TeamThemeProvider>
       </ThemeProvider>

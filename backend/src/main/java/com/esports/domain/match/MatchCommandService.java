@@ -1,11 +1,13 @@
 package com.esports.domain.match;
 
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.ai.SummaryService;
 import com.esports.domain.game.Game;
 import com.esports.domain.game.GameRepository;
 import com.esports.domain.matchresult.MatchResultRepository;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,15 +21,19 @@ public class MatchCommandService {
     private final GameRepository gameRepository;
     private final TeamRepository teamRepository;
     private final MatchResultRepository matchResultRepository;
+    // @Lazy: SummaryService가 MatchResultRepository를 공유하므로 순환 의존 방지
+    private final SummaryService summaryService;
 
     public MatchCommandService(MatchRepository matchRepository,
                                GameRepository gameRepository,
                                TeamRepository teamRepository,
-                               MatchResultRepository matchResultRepository) {
+                               MatchResultRepository matchResultRepository,
+                               @Lazy SummaryService summaryService) {
         this.matchRepository = matchRepository;
         this.gameRepository = gameRepository;
         this.teamRepository = teamRepository;
         this.matchResultRepository = matchResultRepository;
+        this.summaryService = summaryService;
     }
 
     // 경기 등록
@@ -71,6 +77,11 @@ public class MatchCommandService {
                         HttpStatus.BAD_REQUEST);
             }
             match.setStatus(request.status());
+
+            // COMPLETED 전환 시 AI 하이라이트 요약 큐에 삽입
+            if (request.status() == MatchStatus.COMPLETED) {
+                summaryService.enqueue(match);
+            }
         }
 
         return MatchResponse.from(match);
