@@ -20,17 +20,17 @@ function toIso(dateTimeLocal: string): string {
 
 // 어드민 로그인 — 성공 시 httpOnly 쿠키 발급
 export async function loginAdmin(username: string, password: string): Promise<void> {
-  await apiClient.post('/admin/auth/login', { username, password })
+  await apiClient.post('/api/admin/auth/login', { username, password })
 }
 
 // 어드민 로그아웃 — 쿠키 만료
 export async function logoutAdmin(): Promise<void> {
-  await apiClient.post('/admin/auth/logout')
+  await apiClient.post('/api/admin/auth/logout')
 }
 
 // 인증 상태 확인 — 유효 쿠키 있으면 200, 없으면 401 (ApiError 발생)
 export async function checkAdminAuth(): Promise<void> {
-  await apiClient.get('/admin/auth/me')
+  await apiClient.get('/api/admin/auth/me')
 }
 
 // ──────────────────────────── 종목 ────────────────────────────
@@ -63,7 +63,7 @@ export async function fetchAdminMatch(id: number): Promise<MatchResponse> {
 // 경기 등록
 export async function createAdminMatch(data: MatchCreateFormValues): Promise<MatchResponse> {
   const body = { ...data, scheduledAt: toIso(data.scheduledAt) }
-  const res = await apiClient.post<ApiResponse<MatchResponse>>('/admin/matches', body)
+  const res = await apiClient.post<ApiResponse<MatchResponse>>('/api/admin/matches', body)
   return res.data.data!
 }
 
@@ -73,13 +73,13 @@ export async function updateAdminMatch(id: number, data: MatchUpdateFormValues):
     ...data,
     scheduledAt: data.scheduledAt ? toIso(data.scheduledAt) : undefined,
   }
-  const res = await apiClient.put<ApiResponse<MatchResponse>>(`/admin/matches/${id}`, body)
+  const res = await apiClient.put<ApiResponse<MatchResponse>>(`/api/admin/matches/${id}`, body)
   return res.data.data!
 }
 
 // 경기 삭제
 export async function deleteAdminMatch(id: number): Promise<void> {
-  await apiClient.delete(`/admin/matches/${id}`)
+  await apiClient.delete(`/api/admin/matches/${id}`)
 }
 
 // ──────────────────────────── 경기 결과 ────────────────────────────
@@ -87,13 +87,13 @@ export async function deleteAdminMatch(id: number): Promise<void> {
 // 경기 결과 등록
 export async function createMatchResult(matchId: number, data: MatchResultFormValues): Promise<void> {
   const body = { ...data, playedAt: toIso(data.playedAt) }
-  await apiClient.post(`/admin/matches/${matchId}/result`, body)
+  await apiClient.post(`/api/admin/matches/${matchId}/result`, body)
 }
 
 // 경기 결과 수정
 export async function updateMatchResult(matchId: number, data: MatchResultFormValues): Promise<void> {
   const body = { ...data, playedAt: toIso(data.playedAt) }
-  await apiClient.put(`/admin/matches/${matchId}/result`, body)
+  await apiClient.put(`/api/admin/matches/${matchId}/result`, body)
 }
 
 // ──────────────────────────── 팀 ────────────────────────────
@@ -112,19 +112,19 @@ export async function fetchAdminTeam(id: number): Promise<TeamResponse> {
 
 // 팀 등록
 export async function createAdminTeam(data: TeamFormValues): Promise<TeamResponse> {
-  const res = await apiClient.post<ApiResponse<TeamResponse>>('/admin/teams', data)
+  const res = await apiClient.post<ApiResponse<TeamResponse>>('/api/admin/teams', data)
   return res.data.data!
 }
 
 // 팀 수정
 export async function updateAdminTeam(id: number, data: TeamFormValues): Promise<TeamResponse> {
-  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/admin/teams/${id}`, data)
+  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/api/admin/teams/${id}`, data)
   return res.data.data!
 }
 
 // 팀 삭제
 export async function deleteAdminTeam(id: number): Promise<void> {
-  await apiClient.delete(`/admin/teams/${id}`)
+  await apiClient.delete(`/api/admin/teams/${id}`)
 }
 
 // ──────────────────────────── 선수 ────────────────────────────
@@ -137,7 +137,7 @@ export async function fetchAdminPlayer(id: number): Promise<PlayerResponse> {
 
 // 선수 등록
 export async function createAdminPlayer(data: PlayerFormValues): Promise<PlayerResponse> {
-  const res = await apiClient.post<ApiResponse<PlayerResponse>>('/admin/players', data)
+  const res = await apiClient.post<ApiResponse<PlayerResponse>>('/api/admin/players', data)
   return res.data.data!
 }
 
@@ -148,11 +148,11 @@ export async function updateAdminPlayer(id: number, data: PlayerFormValues): Pro
     ...data,
     clearTeam: data.teamId === null || data.teamId === undefined ? true : undefined,
   }
-  const res = await apiClient.put<ApiResponse<PlayerResponse>>(`/admin/players/${id}`, body)
+  const res = await apiClient.put<ApiResponse<PlayerResponse>>(`/api/admin/players/${id}`, body)
   return res.data.data!
 }
 
 // 선수 삭제
 export async function deleteAdminPlayer(id: number): Promise<void> {
-  await apiClient.delete(`/admin/players/${id}`)
+  await apiClient.delete(`/api/admin/players/${id}`)
 }

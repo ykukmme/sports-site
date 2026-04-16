@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 // 경기 어드민 API — Hard Rule #7: JWT 인증 필수 (/admin/** SecurityConfig에서 보호)
 @RestController
-@RequestMapping("/admin/matches")
+@RequestMapping("/api/admin/matches")
 public class AdminMatchController {
 
     private final MatchCommandService matchCommandService;

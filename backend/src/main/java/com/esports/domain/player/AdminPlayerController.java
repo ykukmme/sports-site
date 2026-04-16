@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 // 선수 어드민 API — Hard Rule #7: JWT 인증 필수
 @RestController
-@RequestMapping("/admin/players")
+@RequestMapping("/api/admin/players")
 public class AdminPlayerController {
 
     private final PlayerCommandService playerCommandService;

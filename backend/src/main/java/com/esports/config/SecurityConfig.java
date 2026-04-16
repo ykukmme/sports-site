@@ -40,8 +40,8 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
                     // 어드민 로그인/로그아웃은 인증 없이 허용
-                    .requestMatchers(HttpMethod.POST, "/admin/auth/login").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/admin/auth/logout").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/admin/auth/logout").permitAll()
 
                     // 공개 API — 인증 없이 허용
                     .requestMatchers("/api/v1/**").permitAll()
@@ -53,8 +53,7 @@ public class SecurityConfig {
                     .requestMatchers("/actuator/health").permitAll()
 
                     // 어드민 API 전체 — ROLE_ADMIN 필수 (Hard Rule #7)
-                    // JwtAuthenticationFilter에서 ROLE_ADMIN GrantedAuthority를 설정함
-                    .requestMatchers("/admin/**").hasRole("ADMIN")
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                     // 그 외 모든 경로 — 접근 불가
                     .anyRequest().denyAll()

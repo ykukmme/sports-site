@@ -10,7 +10,7 @@ import java.util.Map;
 
 // 어드민 AI 사용량 조회 API — JWT 인증 필수 (SecurityConfig에서 /admin/** 보호)
 @RestController
-@RequestMapping("/admin/ai")
+@RequestMapping("/api/admin/ai")
 public class AiAdminController {
 
     private final AiUsageLogRepository usageLogRepository;

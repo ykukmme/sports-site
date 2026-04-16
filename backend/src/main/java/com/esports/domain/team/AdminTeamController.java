@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 // 팀 어드민 API — Hard Rule #7: JWT 인증 필수
 @RestController
-@RequestMapping("/admin/teams")
+@RequestMapping("/api/admin/teams")
 public class AdminTeamController {
 
     private final TeamCommandService teamCommandService;
