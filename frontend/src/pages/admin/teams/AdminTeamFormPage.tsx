@@ -1,5 +1,5 @@
 // 팀 등록/수정 폼 페이지
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -17,6 +17,7 @@ export function AdminTeamFormPage() {
   const { id } = useParams<{ id?: string }>()
   const isEditMode = !!id
   const teamId = isEditMode ? Number(id) : 0
+  const [formError, setFormError] = useState('')
 
   const { data: existingTeam } = useAdminTeam(teamId)
   const { data: games = [] } = useQuery({
@@ -58,6 +59,7 @@ export function AdminTeamFormPage() {
   }, [existingTeam, isEditMode, reset])
 
   function onSubmit(data: TeamFormValues) {
+    setFormError('')
     if (isEditMode) {
       updateMutation.mutate(
         { id: teamId, data },
@@ -70,11 +72,15 @@ export function AdminTeamFormPage() {
     }
   }
 
+  function onInvalid() {
+    setFormError('입력값을 다시 확인해주세요.')
+  }
+
   const primaryColor = watch('primaryColor')
   const secondaryColor = watch('secondaryColor')
 
   const errorMessage =
-    mutationError instanceof ApiError ? mutationError.message : mutationError?.message
+    formError || (mutationError instanceof ApiError ? mutationError.message : mutationError?.message)
 
   return (
     <div className="mx-auto max-w-xl">
@@ -82,7 +88,7 @@ export function AdminTeamFormPage() {
         {isEditMode ? '팀 수정' : '팀 등록'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <form noValidate onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
         <Field label="팀명 *" error={errors.name?.message}>
           <Input {...register('name')} placeholder="팀명" />
         </Field>

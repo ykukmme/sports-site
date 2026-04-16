@@ -16,6 +16,12 @@ function toIso(dateTimeLocal: string): string {
   return new Date(dateTimeLocal).toISOString()
 }
 
+function emptyToUndefined<T extends Record<string, unknown>>(data: T): T {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [key, value === '' ? undefined : value]),
+  ) as T
+}
+
 // ──────────────────────────── 인증 ────────────────────────────
 
 // 어드민 로그인 — 성공 시 httpOnly 쿠키 발급
@@ -115,13 +121,13 @@ export async function fetchAdminTeam(id: number): Promise<TeamResponse> {
 
 // 팀 등록
 export async function createAdminTeam(data: TeamFormValues): Promise<TeamResponse> {
-  const res = await apiClient.post<ApiResponse<TeamResponse>>('/api/admin/teams', data)
+  const res = await apiClient.post<ApiResponse<TeamResponse>>('/api/admin/teams', emptyToUndefined(data))
   return res.data.data!
 }
 
 // 팀 수정
 export async function updateAdminTeam(id: number, data: TeamFormValues): Promise<TeamResponse> {
-  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/api/admin/teams/${id}`, data)
+  const res = await apiClient.put<ApiResponse<TeamResponse>>(`/api/admin/teams/${id}`, emptyToUndefined(data))
   return res.data.data!
 }
 
