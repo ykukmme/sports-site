@@ -161,7 +161,7 @@ export function AdminTeamListPage() {
 
 function SocialBadge({ label }: { label: string }) {
   return (
-    <span className="rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">
+    <span className="whitespace-nowrap rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">
       {label}
     </span>
   )

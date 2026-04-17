@@ -26,6 +26,7 @@ export function Header() {
   }
 
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor
+  const themeLabel = theme === 'light' ? '라이트' : theme === 'dark' ? '다크' : '시스템'
 
   return (
     <header className="sticky top-0 z-50 border-b border-border [background:var(--header-bg)] backdrop-blur-md">
@@ -71,8 +72,8 @@ export function Header() {
           <button
             onClick={handleThemeToggle}
             className="rounded-md border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-primary"
-            title={`현재: ${theme} 모드`}
-            aria-label={`현재: ${theme} 모드`}
+            title={`현재: ${themeLabel} 모드`}
+            aria-label={`현재: ${themeLabel} 모드`}
           >
             <ThemeIcon size={16} />
           </button>
@@ -154,7 +155,7 @@ export function Header() {
                 <button
                   onClick={handleThemeToggle}
                   className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md"
-                  aria-label={`현재: ${theme} 모드`}
+                  aria-label={`현재: ${themeLabel} 모드`}
                 >
                   <ThemeIcon size={14} />
                   <span>{theme === 'light' ? '라이트 모드' : theme === 'dark' ? '다크 모드' : '시스템 모드'}</span>

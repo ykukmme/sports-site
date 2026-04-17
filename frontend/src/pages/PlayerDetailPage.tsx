@@ -9,10 +9,10 @@ export function PlayerDetailPage() {
   const playerId = id ? parseInt(id, 10) : NaN
   const { data: player, isLoading, error } = usePlayerDetail(isNaN(playerId) ? 0 : playerId)
 
-  if (!id || isNaN(playerId)) return <ErrorMessage message="올바르지 않은 선수 ID입니다." />
+  if (!id || isNaN(playerId)) return <ErrorMessage message="올바르지 않은 로스터 ID입니다." />
   if (isLoading) return <LoadingSpinner />
   if (error) return <ErrorMessage message={error.message} />
-  if (!player) return <EmptyState message="선수 정보를 찾을 수 없습니다." />
+  if (!player) return <EmptyState message="로스터 정보를 찾을 수 없습니다." />
 
   return (
     <div className="max-w-lg">

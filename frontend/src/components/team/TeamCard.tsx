@@ -47,7 +47,7 @@ export function TeamCard({ team }: TeamCardProps) {
                 href={link.href}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                className="whitespace-nowrap rounded border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
                 aria-label={`${team.name} ${link.label}`}
               >
                 {link.label}

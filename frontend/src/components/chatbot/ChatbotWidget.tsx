@@ -66,10 +66,10 @@ export function ChatbotWidget() {
       {/* 챗봇 열기 버튼 */}
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card text-xl text-primary shadow-card transition-colors hover:bg-primary/10"
-        aria-label="챗봇 열기"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card text-xs font-semibold text-primary shadow-card transition-colors hover:bg-primary/10"
+        aria-label={open ? '챗봇 닫기' : '챗봇 열기'}
       >
-        {open ? '✕' : '💬'}
+        {open ? '닫기' : 'AI'}
       </button>
 
       {/* 챗봇 패널 */}

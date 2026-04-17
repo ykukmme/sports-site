@@ -48,7 +48,7 @@ export function TeamDetailPage() {
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                  className="whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 >
                   {link.label}
                 </a>
@@ -58,9 +58,9 @@ export function TeamDetailPage() {
         </div>
       </div>
 
-      <h2 className="mb-3 text-2xl font-semibold leading-tight">선수 명단</h2>
+      <h2 className="mb-3 text-2xl font-semibold leading-tight">로스터</h2>
       {!team.players || team.players.length === 0 ? (
-        <EmptyState message="등록된 선수가 없습니다." />
+        <EmptyState message="등록된 로스터가 없습니다." />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
@@ -86,9 +86,9 @@ export function TeamDetailPage() {
 
 function getTeamSocialLinks(team: TeamResponse) {
   return [
-    team.instagramUrl ? { label: 'Instagram', href: team.instagramUrl } : null,
+    team.instagramUrl ? { label: 'IG', href: team.instagramUrl } : null,
     team.xUrl ? { label: 'X', href: team.xUrl } : null,
-    team.youtubeUrl ? { label: 'YouTube', href: team.youtubeUrl } : null,
-    team.liveUrl ? { label: team.livePlatform || 'Live', href: team.liveUrl } : null,
+    team.youtubeUrl ? { label: 'YT', href: team.youtubeUrl } : null,
+    team.liveUrl ? { label: team.livePlatform || 'LIVE', href: team.liveUrl } : null,
   ].filter((link): link is { label: string; href: string } => Boolean(link))
 }
