@@ -77,12 +77,17 @@ export function AdminTeamListPage() {
                 <TableRow key={team.id}>
                   <TableCell>
                     {team.logoUrl ? (
-                      <img
-                        src={team.logoUrl}
-                        alt={`${team.name} logo`}
-                        className="asset-plate size-10 object-contain p-1"
-                        loading="lazy"
-                      />
+                      <div className="asset-plate size-12 p-1.5">
+                        <img
+                          src={team.logoUrl}
+                          alt={`${team.name} logo`}
+                          className="h-full w-full object-contain"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.parentElement?.classList.add('hidden')
+                          }}
+                        />
+                      </div>
                     ) : (
                       <div className="flex size-10 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-muted-foreground">
                         {team.shortName ?? team.name.slice(0, 2)}

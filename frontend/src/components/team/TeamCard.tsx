@@ -17,16 +17,18 @@ export function TeamCard({ team }: TeamCardProps) {
       <CardContent className="flex h-full flex-col items-center gap-2 p-4">
         <Link to={`/teams/${team.id}`} className="flex flex-1 flex-col items-center gap-2 text-center">
           {team.logoUrl ? (
-            <img
-              src={team.logoUrl}
-              alt={`${team.name} 로고`}
-              className="asset-plate h-14 w-14 object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
+            <div className="asset-plate h-20 w-20">
+              <img
+                src={team.logoUrl}
+                alt={`${team.name} 로고`}
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.parentElement?.classList.add('hidden')
+                }}
+              />
+            </div>
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-muted text-lg font-bold text-muted-foreground">
+            <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-border bg-muted text-lg font-bold text-muted-foreground">
               {(team.shortName ?? team.name).charAt(0)}
             </div>
           )}

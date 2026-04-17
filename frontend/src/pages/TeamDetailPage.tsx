@@ -22,16 +22,18 @@ export function TeamDetailPage() {
     <div>
       <div className="mb-8 flex items-center gap-4">
         {team.logoUrl ? (
-          <img
-            src={team.logoUrl}
-            alt={`${team.name} 로고`}
-            className="asset-plate h-16 w-16 object-contain"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
+          <div className="asset-plate h-20 w-20">
+            <img
+              src={team.logoUrl}
+              alt={`${team.name} 로고`}
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                e.currentTarget.parentElement?.classList.add('hidden')
+              }}
+            />
+          </div>
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-xl font-bold text-muted-foreground">
+          <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-border bg-muted text-xl font-bold text-muted-foreground">
             {(team.shortName ?? team.name).charAt(0)}
           </div>
         )}

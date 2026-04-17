@@ -150,7 +150,9 @@ export function AdminTeamFormPage() {
             </div>
             {logoUrl && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <img src={logoUrl} alt="팀 로고 미리보기" className="asset-plate size-12 object-contain p-1" />
+                <div className="asset-plate size-12 p-1.5">
+                  <img src={logoUrl} alt="팀 로고 미리보기" className="h-full w-full object-contain" />
+                </div>
                 <span>팀을 저장하면 이 로고가 연결됩니다.</span>
               </div>
             )}

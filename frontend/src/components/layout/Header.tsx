@@ -32,7 +32,7 @@ export function Header() {
       <div className="container mx-auto flex items-center justify-between h-14 px-4">
         {/* 로고 */}
         <NavLink to="/" className="flex items-center gap-2 font-heading text-base font-semibold text-foreground">
-          <span className="size-2 rounded-full bg-primary shadow-[0_0_8px_#00d992]" aria-hidden="true" />
+          <span className="brand-signal" aria-hidden="true" />
           <span>E-sports</span>
         </NavLink>
 

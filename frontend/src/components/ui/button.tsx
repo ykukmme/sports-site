@@ -8,13 +8,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-card text-[#2fd6a1] hover:bg-black/20 hover:text-primary",
+        default: "border-transparent bg-primary text-primary-foreground hover:opacity-90",
         outline:
-          "border-border bg-transparent text-foreground hover:bg-black/20 hover:text-primary aria-expanded:bg-muted aria-expanded:text-primary",
+          "border-border bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-primary",
         secondary:
           "border-border bg-secondary text-secondary-foreground hover:border-primary/70 hover:text-primary aria-expanded:bg-secondary aria-expanded:text-primary",
         ghost:
-          "text-foreground hover:bg-black/20 hover:text-primary aria-expanded:bg-muted aria-expanded:text-primary",
+          "text-foreground hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-primary",
         destructive:
           "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
