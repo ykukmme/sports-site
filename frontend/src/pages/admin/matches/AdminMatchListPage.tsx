@@ -1,4 +1,3 @@
-// 경기 관리 목록 페이지
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminMatchList, useAdminDeleteMatch } from '../../../hooks/useAdminMatches'
@@ -13,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
+import { ApiError } from '../../../api/client'
 
 export function AdminMatchListPage() {
   const navigate = useNavigate()
@@ -29,6 +29,19 @@ export function AdminMatchListPage() {
     })
   }
 
+  function openDeleteDialog(id: number) {
+    deleteMutation.reset()
+    setDeleteTargetId(id)
+  }
+
+  function closeDeleteDialog() {
+    deleteMutation.reset()
+    setDeleteTargetId(null)
+  }
+
+  const deleteErrorMessage =
+    deleteMutation.error instanceof ApiError ? deleteMutation.error.message : deleteMutation.error?.message
+
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
   }
@@ -40,7 +53,6 @@ export function AdminMatchListPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground">경기 관리</h1>
         <Button size="sm" onClick={() => navigate('/admin/matches/new')}>
@@ -48,7 +60,6 @@ export function AdminMatchListPage() {
         </Button>
       </div>
 
-      {/* 경기 목록 테이블 */}
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
@@ -94,7 +105,6 @@ export function AdminMatchListPage() {
                       >
                         수정
                       </Button>
-                      {/* 결과 입력 — SCHEDULED/ONGOING 경기에만 표시 */}
                       {match.status !== 'CANCELLED' && (
                         <Button
                           variant="outline"
@@ -107,7 +117,7 @@ export function AdminMatchListPage() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => setDeleteTargetId(match.id)}
+                        onClick={() => openDeleteDialog(match.id)}
                       >
                         삭제
                       </Button>
@@ -120,7 +130,6 @@ export function AdminMatchListPage() {
         </Table>
       </div>
 
-      {/* 페이지네이션 */}
       <div className="flex justify-end gap-2">
         <Button
           variant="outline"
@@ -143,14 +152,14 @@ export function AdminMatchListPage() {
         </Button>
       </div>
 
-      {/* 삭제 확인 다이얼로그 */}
       <AdminConfirmDialog
         open={deleteTargetId != null}
         title="경기 삭제"
         description="이 경기를 삭제하면 되돌릴 수 없습니다. 계속하시겠습니까?"
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTargetId(null)}
+        onCancel={closeDeleteDialog}
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteErrorMessage}
       />
     </div>
   )

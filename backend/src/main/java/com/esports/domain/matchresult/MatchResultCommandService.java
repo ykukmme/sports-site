@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 경기 결과 등록/수정 서비스 — 쓰기 전용
 @Service
 @Transactional
 public class MatchResultCommandService {
@@ -27,12 +26,10 @@ public class MatchResultCommandService {
         this.teamRepository = teamRepository;
     }
 
-    // 경기 결과 등록 — 동일 경기에 결과 중복 등록 시 409
     public MatchResultResponse create(Long matchId, MatchResultRequest request) {
-        // 결과 중복 검증 (DB UNIQUE 제약 전 애플리케이션 레벨 방어)
         if (matchResultRepository.findByMatchId(matchId).isPresent()) {
             throw new BusinessException(
-                    "RESULT_ALREADY_EXISTS", "해당 경기에 결과가 이미 등록되어 있습니다.", HttpStatus.CONFLICT);
+                    "RESULT_ALREADY_EXISTS", "해당 경기의 결과가 이미 등록되어 있습니다.", HttpStatus.CONFLICT);
         }
 
         Match match = matchRepository.findById(matchId)
@@ -43,7 +40,6 @@ public class MatchResultCommandService {
                 .orElseThrow(() -> new BusinessException(
                         "TEAM_NOT_FOUND", "승리 팀을 찾을 수 없습니다. id=" + request.winnerTeamId(), HttpStatus.NOT_FOUND));
 
-        // MatchResult 생성자에서 winnerTeam 참가 여부 검증 수행
         MatchResult result = new MatchResult(
                 match, winnerTeam,
                 request.scoreTeamA(), request.scoreTeamB(),
@@ -55,13 +51,11 @@ public class MatchResultCommandService {
         return MatchResultResponse.from(matchResultRepository.save(result));
     }
 
-    // 경기 결과 수정 — 없으면 404
     public MatchResultResponse update(Long matchId, MatchResultRequest request) {
         MatchResult result = matchResultRepository.findByMatchId(matchId)
                 .orElseThrow(() -> new BusinessException(
                         "RESULT_NOT_FOUND", "경기 결과를 찾을 수 없습니다. matchId=" + matchId, HttpStatus.NOT_FOUND));
 
-        // 승리 팀 변경 시 참가 여부 재검증
         Team winnerTeam = teamRepository.findById(request.winnerTeamId())
                 .orElseThrow(() -> new BusinessException(
                         "TEAM_NOT_FOUND", "승리 팀을 찾을 수 없습니다. id=" + request.winnerTeamId(), HttpStatus.NOT_FOUND));

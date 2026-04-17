@@ -1,5 +1,4 @@
-// 경기 등록/수정 폼 페이지 — id 파라미터 유무로 모드 구분
-import { useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -12,7 +11,6 @@ import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { ApiError } from '../../../api/client'
 
-// datetime-local 포맷 변환 (ISO → YYYY-MM-DDTHH:mm)
 function toDateTimeLocal(iso: string): string {
   return new Date(iso).toISOString().slice(0, 16)
 }
@@ -22,11 +20,10 @@ export function AdminMatchFormPage() {
   const { id } = useParams<{ id?: string }>()
   const isEditMode = !!id
   const matchId = isEditMode ? Number(id) : 0
+  const [formError, setFormError] = useState('')
 
-  // 수정 모드: 기존 경기 정보 로드
   const { data: existingMatch } = useAdminMatch(matchId)
 
-  // 종목/팀 목록 — 등록 폼 셀렉트용
   const { data: games = [] } = useQuery({
     queryKey: ['admin', 'games'],
     queryFn: fetchGamesForAdmin,
@@ -43,7 +40,6 @@ export function AdminMatchFormPage() {
   const isPending = createMutation.isPending || updateMutation.isPending
   const mutationError = createMutation.error || updateMutation.error
 
-  // 등록 폼 (수정 폼과 분리)
   const createForm = useForm<MatchCreateFormValues>({
     resolver: zodResolver(matchCreateSchema),
   })
@@ -51,7 +47,6 @@ export function AdminMatchFormPage() {
     resolver: zodResolver(matchUpdateSchema),
   })
 
-  // 수정 모드: 기존 값으로 폼 초기화
   useEffect(() => {
     if (isEditMode && existingMatch) {
       updateForm.reset({
@@ -64,20 +59,26 @@ export function AdminMatchFormPage() {
   }, [existingMatch, isEditMode, updateForm])
 
   function handleCreateSubmit(data: MatchCreateFormValues) {
+    setFormError('')
     createMutation.mutate(data, {
       onSuccess: () => navigate('/admin/matches'),
     })
   }
 
   function handleUpdateSubmit(data: MatchUpdateFormValues) {
+    setFormError('')
     updateMutation.mutate(
       { id: matchId, data },
       { onSuccess: () => navigate('/admin/matches') },
     )
   }
 
+  function onInvalid() {
+    setFormError('입력값을 다시 확인해주세요.')
+  }
+
   const errorMessage =
-    mutationError instanceof ApiError ? mutationError.message : mutationError?.message
+    formError || (mutationError instanceof ApiError ? mutationError.message : mutationError?.message)
 
   return (
     <div className="mx-auto max-w-xl">
@@ -86,8 +87,11 @@ export function AdminMatchFormPage() {
       </h1>
 
       {isEditMode ? (
-        /* 수정 폼 */
-        <form onSubmit={updateForm.handleSubmit(handleUpdateSubmit)} className="flex flex-col gap-4">
+        <form
+          noValidate
+          onSubmit={updateForm.handleSubmit(handleUpdateSubmit, onInvalid)}
+          className="flex flex-col gap-4"
+        >
           <Field label="대회명" error={updateForm.formState.errors.tournamentName?.message}>
             <Input {...updateForm.register('tournamentName')} placeholder="대회명" />
           </Field>
@@ -113,11 +117,14 @@ export function AdminMatchFormPage() {
           <FormActions onCancel={() => navigate('/admin/matches')} isPending={isPending} />
         </form>
       ) : (
-        /* 등록 폼 */
-        <form onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="flex flex-col gap-4">
-          <Field label="종목" error={createForm.formState.errors.gameId?.message}>
+        <form
+          noValidate
+          onSubmit={createForm.handleSubmit(handleCreateSubmit, onInvalid)}
+          className="flex flex-col gap-4"
+        >
+          <Field label="종목 *" error={createForm.formState.errors.gameId?.message}>
             <select
-              {...createForm.register('gameId', { valueAsNumber: true })}
+              {...createForm.register('gameId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
             >
               <option value="">종목 선택</option>
@@ -126,9 +133,9 @@ export function AdminMatchFormPage() {
               ))}
             </select>
           </Field>
-          <Field label="팀 A" error={createForm.formState.errors.teamAId?.message}>
+          <Field label="팀 A *" error={createForm.formState.errors.teamAId?.message}>
             <select
-              {...createForm.register('teamAId', { valueAsNumber: true })}
+              {...createForm.register('teamAId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
             >
               <option value="">팀 A 선택</option>
@@ -137,9 +144,9 @@ export function AdminMatchFormPage() {
               ))}
             </select>
           </Field>
-          <Field label="팀 B" error={createForm.formState.errors.teamBId?.message}>
+          <Field label="팀 B *" error={createForm.formState.errors.teamBId?.message}>
             <select
-              {...createForm.register('teamBId', { valueAsNumber: true })}
+              {...createForm.register('teamBId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
             >
               <option value="">팀 B 선택</option>
@@ -148,13 +155,13 @@ export function AdminMatchFormPage() {
               ))}
             </select>
           </Field>
-          <Field label="대회명" error={createForm.formState.errors.tournamentName?.message}>
+          <Field label="대회명 *" error={createForm.formState.errors.tournamentName?.message}>
             <Input {...createForm.register('tournamentName')} placeholder="대회명" />
           </Field>
           <Field label="단계" error={createForm.formState.errors.stage?.message}>
             <Input {...createForm.register('stage')} placeholder="예: 4강, 결승" />
           </Field>
-          <Field label="예정 시각" error={createForm.formState.errors.scheduledAt?.message}>
+          <Field label="예정 시각 *" error={createForm.formState.errors.scheduledAt?.message}>
             <Input {...createForm.register('scheduledAt')} type="datetime-local" />
           </Field>
 
@@ -166,7 +173,6 @@ export function AdminMatchFormPage() {
   )
 }
 
-// 폼 필드 래퍼 — 레이블 + 오류 메시지 통합
 function Field({
   label,
   error,
@@ -174,7 +180,7 @@ function Field({
 }: {
   label: string
   error?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -185,7 +191,6 @@ function Field({
   )
 }
 
-// 폼 하단 액션 버튼
 function FormActions({ onCancel, isPending }: { onCancel: () => void; isPending: boolean }) {
   return (
     <div className="flex justify-end gap-2 pt-2">

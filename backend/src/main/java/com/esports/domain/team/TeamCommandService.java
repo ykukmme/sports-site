@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 팀 등록/수정/삭제 서비스 — 쓰기 전용
 @Service
 @Transactional
 public class TeamCommandService {
@@ -29,7 +28,6 @@ public class TeamCommandService {
         this.matchRepository = matchRepository;
     }
 
-    // 팀 등록
     public TeamResponse create(TeamRequest request) {
         Game game = gameRepository.findById(request.gameId())
                 .orElseThrow(() -> new BusinessException(
@@ -50,7 +48,6 @@ public class TeamCommandService {
         return TeamResponse.from(teamRepository.save(team));
     }
 
-    // 팀 수정 — null 필드는 기존 값 유지 (TeamUpdateRequest 사용)
     public TeamResponse update(Long id, TeamUpdateRequest request) {
         Team team = teamRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(
@@ -69,7 +66,6 @@ public class TeamCommandService {
         if (request.primaryColor() != null) team.setPrimaryColor(request.primaryColor());
         if (request.secondaryColor() != null) team.setSecondaryColor(request.secondaryColor());
 
-        // 종목 변경 시에만 적용 — null이면 기존 종목 유지
         if (request.gameId() != null) {
             Game game = gameRepository.findById(request.gameId())
                     .orElseThrow(() -> new BusinessException(
@@ -80,20 +76,16 @@ public class TeamCommandService {
         return TeamResponse.from(team);
     }
 
-    // 팀 삭제 — 선수/경기에 참조 중인 팀은 삭제 불가
-    // findById + delete(entity)로 Race Condition 방지
     public void delete(Long id) {
         Team team = teamRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(
                         "TEAM_NOT_FOUND", "팀을 찾을 수 없습니다. id=" + id, HttpStatus.NOT_FOUND));
 
-        // 소속 선수가 있으면 삭제 거부 (DB FK 에러가 500으로 노출되는 것을 방지)
         if (playerRepository.existsByTeamId(id)) {
             throw new BusinessException(
                     "TEAM_IN_USE", "소속 선수가 있는 팀은 삭제할 수 없습니다.", HttpStatus.CONFLICT);
         }
 
-        // 경기에 참가한 팀이면 삭제 거부 (teamA 또는 teamB로 등록된 경기 존재 시)
         if (matchRepository.existsByTeamAIdOrTeamBId(id, id)) {
             throw new BusinessException(
                     "TEAM_IN_USE", "경기에 참가한 팀은 삭제할 수 없습니다.", HttpStatus.CONFLICT);

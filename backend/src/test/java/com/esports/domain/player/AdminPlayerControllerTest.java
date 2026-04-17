@@ -26,6 +26,7 @@ class AdminPlayerControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean PlayerCommandService playerCommandService;
+    @MockBean PlayerImageStorageService playerImageStorageService;
     @MockBean JwtTokenProvider jwtTokenProvider;
 
     @Test
@@ -39,13 +40,11 @@ class AdminPlayerControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void createReturns201() throws Exception {
-        // given
         PlayerResponse response = mock(PlayerResponse.class);
         when(playerCommandService.create(any(PlayerRequest.class))).thenReturn(response);
 
-        PlayerRequest request = new PlayerRequest("Faker", "이상혁", "Mid", "KR", null, 1L, null);
+        PlayerRequest request = new PlayerRequest("Faker", "Lee Sang-hyeok", "MID", "KR", null, 1L, null);
 
-        // when & then
         mockMvc.perform(post("/api/admin/players")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -56,14 +55,12 @@ class AdminPlayerControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void updateReturns200() throws Exception {
-        // given
         PlayerResponse response = mock(PlayerResponse.class);
         when(playerCommandService.update(eq(1L), any(PlayerUpdateRequest.class))).thenReturn(response);
 
         PlayerUpdateRequest request = new PlayerUpdateRequest(
-                "Faker", "이상혁", "Mid", "KR", null, 1L, null, false);
+                "Faker", "Lee Sang-hyeok", "MID", "KR", null, 1L, null, false);
 
-        // when & then
         mockMvc.perform(put("/api/admin/players/1")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,11 +70,22 @@ class AdminPlayerControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void uploadProfileImageReturns200() throws Exception {
+        when(playerImageStorageService.store(any()))
+                .thenReturn(new PlayerImageUploadResponse("/uploads/player-images/player.png"));
+
+        mockMvc.perform(multipart("/api/admin/players/profile-image")
+                        .file("file", "image".getBytes())
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.profileImageUrl").value("/uploads/player-images/player.png"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void deleteReturns204() throws Exception {
-        // given
         doNothing().when(playerCommandService).delete(1L);
 
-        // when & then
         mockMvc.perform(delete("/api/admin/players/1").with(csrf()))
                 .andExpect(status().isNoContent());
     }

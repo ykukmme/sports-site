@@ -4,26 +4,32 @@ import com.esports.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-// 선수 어드민 API — Hard Rule #7: JWT 인증 필수
 @RestController
 @RequestMapping("/api/admin/players")
 public class AdminPlayerController {
 
     private final PlayerCommandService playerCommandService;
+    private final PlayerImageStorageService playerImageStorageService;
 
-    public AdminPlayerController(PlayerCommandService playerCommandService) {
+    public AdminPlayerController(PlayerCommandService playerCommandService,
+                                 PlayerImageStorageService playerImageStorageService) {
         this.playerCommandService = playerCommandService;
+        this.playerImageStorageService = playerImageStorageService;
     }
 
-    // POST /api/admin/players — 선수 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PlayerResponse> create(@Valid @RequestBody PlayerRequest request) {
         return ApiResponse.ok(playerCommandService.create(request));
     }
 
-    // PUT /api/admin/players/{id} — 선수 수정
+    @PostMapping("/profile-image")
+    public ApiResponse<PlayerImageUploadResponse> uploadProfileImage(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.ok(playerImageStorageService.store(file));
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<PlayerResponse> update(
             @PathVariable Long id,
@@ -31,7 +37,6 @@ public class AdminPlayerController {
         return ApiResponse.ok(playerCommandService.update(id, request));
     }
 
-    // DELETE /api/admin/players/{id} — 선수 삭제
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

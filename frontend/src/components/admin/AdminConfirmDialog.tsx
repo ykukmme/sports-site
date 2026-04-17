@@ -1,4 +1,3 @@
-// 삭제 확인 다이얼로그 — 되돌릴 수 없는 작업 전 이중 확인
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,7 @@ interface AdminConfirmDialogProps {
   onConfirm: () => void
   onCancel: () => void
   isLoading?: boolean
+  errorMessage?: string
 }
 
 export function AdminConfirmDialog({
@@ -25,6 +25,7 @@ export function AdminConfirmDialog({
   onConfirm,
   onCancel,
   isLoading = false,
+  errorMessage,
 }: AdminConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel() }}>
@@ -33,6 +34,7 @@ export function AdminConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={isLoading}>
             취소

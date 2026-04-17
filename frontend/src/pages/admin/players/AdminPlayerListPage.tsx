@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
+import { ApiError } from '../../../api/client'
 
 export function AdminPlayerListPage() {
   const navigate = useNavigate()
@@ -37,6 +38,8 @@ export function AdminPlayerListPage() {
 
   const isLoading = isPlayersLoading || isTeamsLoading
   const isError = isPlayersError || isTeamsError
+  const deleteErrorMessage =
+    deleteMutation.error instanceof ApiError ? deleteMutation.error.message : deleteMutation.error?.message
 
   function handleDeleteConfirm() {
     if (deleteTargetId == null) return
@@ -45,15 +48,25 @@ export function AdminPlayerListPage() {
     })
   }
 
+  function openDeleteDialog(id: number) {
+    deleteMutation.reset()
+    setDeleteTargetId(id)
+  }
+
+  function closeDeleteDialog() {
+    deleteMutation.reset()
+    setDeleteTargetId(null)
+  }
+
   if (isLoading) return <div className="text-sm text-muted-foreground">불러오는 중...</div>
-  if (isError) return <div className="text-sm text-destructive">선수 목록을 불러오지 못했습니다.</div>
+  if (isError) return <div className="text-sm text-destructive">로스터 목록을 불러오지 못했습니다.</div>
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">선수 관리</h1>
+        <h1 className="text-xl font-bold text-foreground">로스터 관리</h1>
         <Button size="sm" onClick={() => navigate('/admin/players/new')}>
-          선수 등록
+          로스터 등록
         </Button>
       </div>
 
@@ -61,6 +74,7 @@ export function AdminPlayerListPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>이미지</TableHead>
               <TableHead>닉네임</TableHead>
               <TableHead>본명</TableHead>
               <TableHead>역할</TableHead>
@@ -72,13 +86,27 @@ export function AdminPlayerListPage() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  등록된 선수가 없습니다.
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  등록된 로스터가 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
               rows.map((player) => (
                 <TableRow key={player.id}>
+                  <TableCell>
+                    {player.profileImageUrl ? (
+                      <img
+                        src={player.profileImageUrl}
+                        alt={`${player.inGameName} profile`}
+                        className="size-10 rounded-md border object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex size-10 items-center justify-center rounded-md border bg-muted text-xs font-semibold text-muted-foreground">
+                        {player.inGameName.slice(0, 2)}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{player.inGameName}</TableCell>
                   <TableCell className="text-muted-foreground">{player.realName ?? '-'}</TableCell>
                   <TableCell className="text-muted-foreground">{player.role ?? '-'}</TableCell>
@@ -96,7 +124,7 @@ export function AdminPlayerListPage() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => setDeleteTargetId(player.id)}
+                        onClick={() => openDeleteDialog(player.id)}
                       >
                         삭제
                       </Button>
@@ -111,11 +139,12 @@ export function AdminPlayerListPage() {
 
       <AdminConfirmDialog
         open={deleteTargetId != null}
-        title="선수 삭제"
-        description="이 선수를 삭제하면 되돌릴 수 없습니다. 계속하시겠습니까?"
+        title="로스터 삭제"
+        description="이 로스터를 삭제하면 되돌릴 수 없습니다. 계속하시겠습니까?"
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTargetId(null)}
+        onCancel={closeDeleteDialog}
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteErrorMessage}
       />
     </div>
   )

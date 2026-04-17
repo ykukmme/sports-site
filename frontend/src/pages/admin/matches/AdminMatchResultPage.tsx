@@ -1,17 +1,14 @@
-// 경기 결과 등록/수정 페이지
-import { useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { matchResultSchema } from '../../../types/adminForms'
 import type { MatchResultFormValues } from '../../../types/adminForms'
-import { useAdminMatch } from '../../../hooks/useAdminMatches'
-import { useCreateMatchResult, useUpdateMatchResult } from '../../../hooks/useAdminMatches'
+import { useAdminMatch, useCreateMatchResult, useUpdateMatchResult } from '../../../hooks/useAdminMatches'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { ApiError } from '../../../api/client'
 
-// datetime-local 포맷 변환
 function toDateTimeLocal(iso: string): string {
   return new Date(iso).toISOString().slice(0, 16)
 }
@@ -20,6 +17,7 @@ export function AdminMatchResultPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const matchId = Number(id)
+  const [formError, setFormError] = useState('')
 
   const { data: match, isLoading } = useAdminMatch(matchId)
   const hasResult = !!match?.result
@@ -29,12 +27,16 @@ export function AdminMatchResultPage() {
   const isPending = createMutation.isPending || updateMutation.isPending
   const mutationError = createMutation.error || updateMutation.error
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<MatchResultFormValues>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<MatchResultFormValues>({
     resolver: zodResolver(matchResultSchema),
-    defaultValues: { scoreTeamA: 0, scoreTeamB: 0 },
+    defaultValues: { scoreTeamA: 0, scoreTeamB: 0, vodUrl: '', notes: '' },
   })
 
-  // 기존 결과가 있으면 폼 초기화
   useEffect(() => {
     if (match?.result) {
       reset({
@@ -43,11 +45,13 @@ export function AdminMatchResultPage() {
         scoreTeamB: match.result.scoreTeamB,
         playedAt: toDateTimeLocal(match.result.playedAt),
         vodUrl: match.result.vodUrl ?? '',
+        notes: '',
       })
     }
   }, [match, reset])
 
   function onSubmit(data: MatchResultFormValues) {
+    setFormError('')
     const mutation = hasResult ? updateMutation : createMutation
     mutation.mutate(
       { matchId, data },
@@ -55,14 +59,17 @@ export function AdminMatchResultPage() {
     )
   }
 
+  function onInvalid() {
+    setFormError('입력값을 다시 확인해주세요.')
+  }
+
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
   }
 
   const errorMessage =
-    mutationError instanceof ApiError ? mutationError.message : mutationError?.message
+    formError || (mutationError instanceof ApiError ? mutationError.message : mutationError?.message)
 
-  // 팀 선택지 — 팀 A / 팀 B
   const teamOptions = match
     ? [
         { value: match.teamA.id, label: match.teamA.name },
@@ -77,87 +84,58 @@ export function AdminMatchResultPage() {
       </h1>
       {match && (
         <p className="mb-6 text-sm text-muted-foreground">
-          {match.teamA.name} vs {match.teamB.name} — {match.tournamentName}
+          {match.teamA.name} vs {match.teamB.name} · {match.tournamentName}
         </p>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">승리 팀</label>
+      <form noValidate onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
+        <Field label="승리 팀" error={errors.winnerTeamId?.message}>
           <select
-            {...register('winnerTeamId', { valueAsNumber: true })}
+            {...register('winnerTeamId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            required
           >
             <option value="">승리 팀 선택</option>
             {teamOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          {errors.winnerTeamId && (
-            <p className="text-xs text-destructive">{errors.winnerTeamId.message}</p>
-          )}
-        </div>
+        </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">
-              {match?.teamA.name ?? '팀 A'} 점수
-            </label>
+          <Field label={`${match?.teamA.name ?? '팀 A'} 점수`} error={errors.scoreTeamA?.message}>
             <Input
               {...register('scoreTeamA', { valueAsNumber: true })}
               type="number"
               min={0}
               placeholder="0"
             />
-            {errors.scoreTeamA && (
-              <p className="text-xs text-destructive">{errors.scoreTeamA.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-foreground">
-              {match?.teamB.name ?? '팀 B'} 점수
-            </label>
+          </Field>
+          <Field label={`${match?.teamB.name ?? '팀 B'} 점수`} error={errors.scoreTeamB?.message}>
             <Input
               {...register('scoreTeamB', { valueAsNumber: true })}
               type="number"
               min={0}
               placeholder="0"
             />
-            {errors.scoreTeamB && (
-              <p className="text-xs text-destructive">{errors.scoreTeamB.message}</p>
-            )}
-          </div>
+          </Field>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">경기 시각</label>
+        <Field label="경기 시각" error={errors.playedAt?.message}>
           <Input {...register('playedAt')} type="datetime-local" />
-          {errors.playedAt && (
-            <p className="text-xs text-destructive">{errors.playedAt.message}</p>
-          )}
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">VOD URL (선택)</label>
+        <Field label="VOD URL (선택)" error={errors.vodUrl?.message}>
           <Input {...register('vodUrl')} type="url" placeholder="https://..." />
-          {errors.vodUrl && (
-            <p className="text-xs text-destructive">{errors.vodUrl.message}</p>
-          )}
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">비고 (선택)</label>
+        <Field label="비고 (선택)" error={errors.notes?.message}>
           <textarea
             {...register('notes')}
             rows={3}
             className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             placeholder="경기 관련 메모"
           />
-          {errors.notes && (
-            <p className="text-xs text-destructive">{errors.notes.message}</p>
-          )}
-        </div>
+        </Field>
 
         {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
@@ -170,6 +148,24 @@ export function AdminMatchResultPage() {
           </Button>
         </div>
       </form>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string
+  error?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

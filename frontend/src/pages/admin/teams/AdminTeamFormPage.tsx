@@ -1,6 +1,5 @@
-// 팀 등록/수정 폼 페이지
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,7 +28,7 @@ export function AdminTeamFormPage() {
 
   const createMutation = useAdminCreateTeam()
   const updateMutation = useAdminUpdateTeam()
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending = createMutation.isPending || updateMutation.isPending || isLogoUploading
   const mutationError = createMutation.error || updateMutation.error
 
   const {
@@ -42,17 +41,20 @@ export function AdminTeamFormPage() {
   } = useForm<TeamFormValues>({
     resolver: zodResolver(teamFormSchema),
     defaultValues: {
-      primaryColor: '',
-      secondaryColor: '',
+      name: '',
+      shortName: '',
+      region: '',
+      logoUrl: '',
       instagramUrl: '',
       xUrl: '',
       youtubeUrl: '',
       livePlatform: '',
       liveUrl: '',
+      primaryColor: '',
+      secondaryColor: '',
     },
   })
 
-  // 수정 모드: 기존 팀 정보로 초기화
   useEffect(() => {
     if (isEditMode && existingTeam) {
       reset({
@@ -149,7 +151,7 @@ export function AdminTeamFormPage() {
             {logoUrl && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <img src={logoUrl} alt="팀 로고 미리보기" className="size-12 rounded-md border object-contain" />
-                <span>저장 시 이 로고가 팀에 연결됩니다.</span>
+                <span>팀을 저장하면 이 로고가 연결됩니다.</span>
               </div>
             )}
           </div>
@@ -188,7 +190,7 @@ export function AdminTeamFormPage() {
 
         <Field label="종목 *" error={errors.gameId?.message}>
           <select
-            {...register('gameId', { valueAsNumber: true })}
+            {...register('gameId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
             className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
           >
             <option value="">종목 선택</option>
@@ -198,7 +200,6 @@ export function AdminTeamFormPage() {
           </select>
         </Field>
 
-        {/* 팀 테마 색상 — 컬러 피커 + 텍스트 입력 동기화 */}
         <Field label="팀 색상 (primaryColor)" error={errors.primaryColor?.message}>
           <div className="flex items-center gap-2">
             <input
@@ -250,14 +251,15 @@ export function AdminTeamFormPage() {
 
 const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className = '', ...props }, ref) => {
-  return (
-    <input
-      ref={ref}
-      className={`h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm ${className}`}
-      {...props}
-    />
-  )
-})
+    return (
+      <input
+        ref={ref}
+        className={`h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm ${className}`}
+        {...props}
+      />
+    )
+  },
+)
 
 TextInput.displayName = 'TextInput'
 
@@ -268,7 +270,7 @@ function Field({
 }: {
   label: string
   error?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-2">

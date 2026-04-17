@@ -1,4 +1,3 @@
-// 팀 관리 목록 페이지
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminTeamList, useAdminDeleteTeam } from '../../../hooks/useAdminTeams'
@@ -12,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
+import { ApiError } from '../../../api/client'
 
 export function AdminTeamListPage() {
   const navigate = useNavigate()
@@ -26,6 +26,19 @@ export function AdminTeamListPage() {
       onSuccess: () => setDeleteTargetId(null),
     })
   }
+
+  function openDeleteDialog(id: number) {
+    deleteMutation.reset()
+    setDeleteTargetId(id)
+  }
+
+  function closeDeleteDialog() {
+    deleteMutation.reset()
+    setDeleteTargetId(null)
+  }
+
+  const deleteErrorMessage =
+    deleteMutation.error instanceof ApiError ? deleteMutation.error.message : deleteMutation.error?.message
 
   if (isLoading) return <div className="text-sm text-muted-foreground">불러오는 중...</div>
   if (isError) return <div className="text-sm text-destructive">팀 목록을 불러오지 못했습니다.</div>
@@ -91,7 +104,6 @@ export function AdminTeamListPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {/* 팀 테마 색상 스워치 */}
                     {team.primaryColor ? (
                       <div className="flex items-center gap-2">
                         <div
@@ -116,7 +128,7 @@ export function AdminTeamListPage() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => setDeleteTargetId(team.id)}
+                        onClick={() => openDeleteDialog(team.id)}
                       >
                         삭제
                       </Button>
@@ -134,8 +146,9 @@ export function AdminTeamListPage() {
         title="팀 삭제"
         description="이 팀을 삭제하면 되돌릴 수 없습니다. 계속하시겠습니까?"
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteTargetId(null)}
+        onCancel={closeDeleteDialog}
         isLoading={deleteMutation.isPending}
+        errorMessage={deleteErrorMessage}
       />
     </div>
   )
