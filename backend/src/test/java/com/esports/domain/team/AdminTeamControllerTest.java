@@ -26,6 +26,7 @@ class AdminTeamControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean TeamCommandService teamCommandService;
+    @MockBean TeamLogoStorageService teamLogoStorageService;
     @MockBean JwtTokenProvider jwtTokenProvider;
 
     @Test
@@ -70,6 +71,21 @@ class AdminTeamControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void uploadLogoReturns200() throws Exception {
+        // given
+        when(teamLogoStorageService.store(any()))
+                .thenReturn(new TeamLogoUploadResponse("/uploads/team-logos/logo.png"));
+
+        // when & then
+        mockMvc.perform(multipart("/api/admin/teams/logo")
+                        .file("file", "logo".getBytes())
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.logoUrl").value("/uploads/team-logos/logo.png"));
     }
 
     @Test

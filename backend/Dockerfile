@@ -21,6 +21,7 @@ FROM eclipse-temurin:17-jre-alpine AS runtime
 
 # 보안: root 대신 전용 사용자로 실행
 RUN addgroup -S esports && adduser -S esports -G esports
+RUN mkdir -p /app/uploads && chown -R esports:esports /app/uploads
 USER esports
 
 WORKDIR /app

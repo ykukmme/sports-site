@@ -44,6 +44,9 @@ management:
       exposure:
         include: health,info
 
+app:
+  upload-dir: ${UPLOAD_DIR:uploads}
+
 # AI 기능 설정 (Hard Rule: feature flag default OFF)
 ai:
   enabled: ${AI_ENABLED:false}

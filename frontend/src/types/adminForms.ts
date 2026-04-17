@@ -2,6 +2,13 @@
 // 클라이언트 사이드 검증 (Hard Rule #3 — input validation)
 import { z } from 'zod'
 
+const logoUrlSchema = z
+  .string()
+  .refine(
+    (value) => value === '' || value.startsWith('/uploads/team-logos/') || z.string().url().safeParse(value).success,
+    '올바른 URL을 입력해주세요.',
+  )
+
 // 경기 등록 스키마
 export const matchCreateSchema = z.object({
   gameId: z.number({ message: '종목을 선택해주세요.' }).int().positive(),
@@ -46,7 +53,7 @@ export const teamFormSchema = z.object({
   name: z.string().min(1, '팀명을 입력해주세요.'),
   shortName: z.string().optional(),
   region: z.string().optional(),
-  logoUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
+  logoUrl: logoUrlSchema.optional(),
   instagramUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
   xUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),
   youtubeUrl: z.string().url('올바른 URL을 입력해주세요.').or(z.literal('')).optional(),

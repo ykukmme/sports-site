@@ -4,6 +4,7 @@ import com.esports.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 // 팀 어드민 API — Hard Rule #7: JWT 인증 필수
 @RestController
@@ -11,9 +12,12 @@ import org.springframework.web.bind.annotation.*;
 public class AdminTeamController {
 
     private final TeamCommandService teamCommandService;
+    private final TeamLogoStorageService teamLogoStorageService;
 
-    public AdminTeamController(TeamCommandService teamCommandService) {
+    public AdminTeamController(TeamCommandService teamCommandService,
+                               TeamLogoStorageService teamLogoStorageService) {
         this.teamCommandService = teamCommandService;
+        this.teamLogoStorageService = teamLogoStorageService;
     }
 
     // POST /api/admin/teams — 팀 등록
@@ -21,6 +25,11 @@ public class AdminTeamController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TeamResponse> create(@Valid @RequestBody TeamRequest request) {
         return ApiResponse.ok(teamCommandService.create(request));
+    }
+
+    @PostMapping("/logo")
+    public ApiResponse<TeamLogoUploadResponse> uploadLogo(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.ok(teamLogoStorageService.store(file));
     }
 
     // PUT /api/admin/teams/{id} — 팀 수정 (TeamUpdateRequest — gameId 선택 입력)

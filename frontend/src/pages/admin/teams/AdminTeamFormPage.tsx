@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { teamFormSchema } from '../../../types/adminForms'
 import type { TeamFormValues } from '../../../types/adminForms'
 import { useAdminTeam, useAdminCreateTeam, useAdminUpdateTeam } from '../../../hooks/useAdminTeams'
-import { fetchGamesForAdmin } from '../../../api/admin'
+import { fetchGamesForAdmin, uploadTeamLogo } from '../../../api/admin'
 import { Button } from '../../../components/ui/button'
 import { ApiError } from '../../../api/client'
 
@@ -18,6 +18,7 @@ export function AdminTeamFormPage() {
   const isEditMode = !!id
   const teamId = isEditMode ? Number(id) : 0
   const [formError, setFormError] = useState('')
+  const [isLogoUploading, setIsLogoUploading] = useState(false)
 
   const { data: existingTeam } = useAdminTeam(teamId)
   const { data: games = [] } = useQuery({
@@ -91,6 +92,7 @@ export function AdminTeamFormPage() {
 
   const primaryColor = watch('primaryColor')
   const secondaryColor = watch('secondaryColor')
+  const logoUrl = watch('logoUrl')
 
   const errorMessage =
     formError || (mutationError instanceof ApiError ? mutationError.message : mutationError?.message)
@@ -116,6 +118,41 @@ export function AdminTeamFormPage() {
 
         <Field label="로고 URL" error={errors.logoUrl?.message}>
           <TextInput {...register('logoUrl')} type="url" placeholder="https://..." />
+        </Field>
+
+        <Field label="로고 이미지 업로드">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                disabled={isLogoUploading}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  setFormError('')
+                  setIsLogoUploading(true)
+                  try {
+                    const uploadedLogoUrl = await uploadTeamLogo(file)
+                    setValue('logoUrl', uploadedLogoUrl, { shouldDirty: true, shouldValidate: true })
+                  } catch (error) {
+                    setFormError(error instanceof ApiError ? error.message : '로고 업로드에 실패했습니다.')
+                  } finally {
+                    setIsLogoUploading(false)
+                    event.target.value = ''
+                  }
+                }}
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm file:text-foreground"
+              />
+              {isLogoUploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
+            </div>
+            {logoUrl && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <img src={logoUrl} alt="팀 로고 미리보기" className="size-12 rounded-md border object-contain" />
+                <span>저장 시 이 로고가 팀에 연결됩니다.</span>
+              </div>
+            )}
+          </div>
         </Field>
 
         <div className="grid gap-4 md:grid-cols-2">

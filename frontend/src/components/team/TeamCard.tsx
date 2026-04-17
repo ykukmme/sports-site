@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useTeamTheme } from '../../context/TeamThemeContext'
 import type { TeamResponse } from '../../types/domain'
 
-// 팀 카드 — 팀 목록 그리드에서 사용
 interface TeamCardProps {
   team: TeamResponse
 }
@@ -11,49 +10,76 @@ interface TeamCardProps {
 export function TeamCard({ team }: TeamCardProps) {
   const { activeTeamId, setTeamTheme } = useTeamTheme()
   const isActive = activeTeamId === team.id
+  const socialLinks = getTeamSocialLinks(team)
 
   return (
-    <Link to={`/teams/${team.id}`}>
-      <Card className="shadow-card-subtle hover:shadow-card hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300 cursor-pointer h-full">
-        <CardContent className="p-4 flex flex-col items-center gap-2">
-          {/* 팀 로고 */}
+    <Card className="shadow-card-subtle hover:shadow-card hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300 h-full">
+      <CardContent className="flex h-full flex-col items-center gap-2 p-4">
+        <Link to={`/teams/${team.id}`} className="flex flex-1 flex-col items-center gap-2 text-center">
           {team.logoUrl ? (
             <img
               src={team.logoUrl}
               alt={`${team.name} 로고`}
-              className="w-14 h-14 object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
+              className="h-14 w-14 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
             />
           ) : (
-            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-lg font-bold">
-              {team.shortName.charAt(0)}
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-lg font-bold text-muted-foreground">
+              {(team.shortName ?? team.name).charAt(0)}
             </div>
           )}
 
-          <div className="text-center">
-            <p className="font-semibold text-sm">{team.name}</p>
-            <p className="text-xs text-muted-foreground">{team.region}</p>
+          <div>
+            <p className="text-sm font-semibold">{team.name}</p>
+            <p className="text-xs text-muted-foreground">{team.region ?? '-'}</p>
           </div>
+        </Link>
 
-          {/* 응원팀 설정 버튼 — primaryColor가 설정된 팀에만 표시 */}
-          {team.primaryColor && (
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                isActive ? setTeamTheme(null) : setTeamTheme(team)
-              }}
-              className={`mt-1 w-full text-xs py-1 rounded-md border transition-colors ${
-                isActive
-                  ? 'border-primary bg-primary/10 text-primary font-medium'
-                  : 'border-border hover:bg-muted text-muted-foreground'
-              }`}
-            >
-              {isActive ? '응원 중 ✓' : '응원팀으로 설정'}
-            </button>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
+        {socialLinks.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1">
+            {socialLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                aria-label={`${team.name} ${link.label}`}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {team.primaryColor && (
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              isActive ? setTeamTheme(null) : setTeamTheme(team)
+            }}
+            className={`mt-1 w-full rounded-md border py-1 text-xs transition-colors ${
+              isActive
+                ? 'border-primary bg-primary/10 font-medium text-primary'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {isActive ? '응원 중' : '응원팀으로 설정'}
+          </button>
+        )}
+      </CardContent>
+    </Card>
   )
+}
+
+function getTeamSocialLinks(team: TeamResponse) {
+  return [
+    team.instagramUrl ? { label: 'IG', href: team.instagramUrl } : null,
+    team.xUrl ? { label: 'X', href: team.xUrl } : null,
+    team.youtubeUrl ? { label: 'YT', href: team.youtubeUrl } : null,
+    team.liveUrl ? { label: team.livePlatform || 'LIVE', href: team.liveUrl } : null,
+  ].filter((link): link is { label: string; href: string } => Boolean(link))
 }

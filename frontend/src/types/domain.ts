@@ -58,8 +58,8 @@ export interface MatchResponse {
 export interface TeamResponse {
   id: number
   name: string
-  shortName: string
-  region: string
+  shortName: string | null
+  region: string | null
   logoUrl: string | null
   instagramUrl: string | null
   xUrl: string | null

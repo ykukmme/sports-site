@@ -10,7 +10,7 @@ public record TeamUpdateRequest(
         String shortName,
         String region,
 
-        @Pattern(regexp = "^(https://.*)?$", message = "Logo URL must start with https://.")
+        @Pattern(regexp = "^((https://.*)|(/uploads/team-logos/.*))?$", message = "Logo URL must start with https:// or /uploads/team-logos/.")
         String logoUrl,
 
         @Pattern(regexp = "^(https://.*)?$", message = "Instagram URL must start with https://.")

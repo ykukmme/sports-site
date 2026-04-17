@@ -51,6 +51,7 @@ public class SecurityConfig {
 
                     // 헬스체크 — Docker/AWS 헬스체크 허용
                     .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/uploads/**").permitAll()
 
                     // 어드민 API 전체 — ROLE_ADMIN 필수 (Hard Rule #7)
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")

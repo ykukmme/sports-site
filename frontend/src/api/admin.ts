@@ -115,6 +115,15 @@ export async function deleteAdminTeam(id: number): Promise<void> {
   await apiClient.delete(`/api/admin/teams/${id}`)
 }
 
+export async function uploadTeamLogo(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await apiClient.post<ApiResponse<{ logoUrl: string }>>('/api/admin/teams/logo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data.data!.logoUrl
+}
+
 export async function fetchAdminPlayers(): Promise<PlayerResponse[]> {
   const res = await apiClient.get<ApiResponse<PlayerResponse[]>>('/api/v1/players')
   return res.data.data ?? []
