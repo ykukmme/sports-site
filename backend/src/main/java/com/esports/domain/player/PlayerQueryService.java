@@ -29,6 +29,6 @@ public class PlayerQueryService {
         return playerRepository.findById(id)
                 .map(PlayerResponse::from)
                 .orElseThrow(() -> new BusinessException(
-                        "PLAYER_NOT_FOUND", "Player not found. id=" + id, HttpStatus.NOT_FOUND));
+                        "PLAYER_NOT_FOUND", "로스터를 찾을 수 없습니다. id=" + id, HttpStatus.NOT_FOUND));
     }
 }

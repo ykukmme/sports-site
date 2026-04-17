@@ -39,6 +39,8 @@ export interface TeamSummary {
 
 // 경기 상태 — 백엔드 MatchStatus enum과 동일
 export type MatchStatus = 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
+export type PlayerStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED'
+export type PlayerExternalSource = 'MANUAL' | 'PANDASCORE'
 
 // 경기 응답 DTO
 export interface MatchResponse {
@@ -81,7 +83,15 @@ export interface PlayerResponse {
   realName: string | null
   role: string | null
   nationality: string | null
+  birthDate: string | null
   profileImageUrl: string | null
+  instagramUrl: string | null
+  xUrl: string | null
+  youtubeUrl: string | null
+  status: PlayerStatus
+  externalId: string | null
+  externalSource: PlayerExternalSource
+  lastSyncedAt: string | null
   // 팀 미소속(free agent) 선수의 경우 null
   teamId: number | null
 }

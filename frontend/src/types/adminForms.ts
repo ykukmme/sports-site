@@ -3,6 +3,8 @@ import { z } from 'zod'
 const urlMessage = '올바른 URL을 입력해주세요.'
 const optionalUrl = z.string().url(urlMessage).or(z.literal('')).optional()
 const rosterRoles = ['TOP', 'JGL', 'MID', 'BOT', 'SPT', 'HEAD COACH', 'COACH'] as const
+const playerStatuses = ['ACTIVE', 'INACTIVE', 'RETIRED'] as const
+const playerExternalSources = ['MANUAL', 'PANDASCORE'] as const
 
 const logoUrlSchema = z
   .string()
@@ -84,7 +86,13 @@ export const playerFormSchema = z.object({
   realName: z.string().optional(),
   role: z.enum(rosterRoles, { message: '역할을 선택해주세요.' }).or(z.literal('')).optional(),
   nationality: z.string().optional(),
+  birthDate: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/, '생년월일은 YYYY-MM-DD 형식으로 입력해주세요.').optional(),
   profileImageUrl: profileImageUrlSchema,
+  instagramUrl: optionalUrl,
+  xUrl: optionalUrl,
+  youtubeUrl: optionalUrl,
+  status: z.enum(playerStatuses),
+  externalSource: z.enum(playerExternalSources),
   teamId: z.number().int().positive().nullable().optional(),
 })
 

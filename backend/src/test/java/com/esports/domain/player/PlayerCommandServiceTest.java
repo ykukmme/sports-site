@@ -33,7 +33,7 @@ class PlayerCommandServiceTest {
         when(saved.getTeam()).thenReturn(team);
         when(playerRepository.save(any(Player.class))).thenReturn(saved);
 
-        PlayerRequest request = new PlayerRequest("Faker", "이상혁", "Mid", "KR", null, 1L, null);
+        PlayerRequest request = new PlayerRequest("Faker", "이상혁", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, 1L, null, PlayerExternalSource.MANUAL);
 
         // when
         PlayerResponse result = playerCommandService.create(request);
@@ -49,13 +49,13 @@ class PlayerCommandServiceTest {
         Player player = mock(Player.class);
         when(playerRepository.findById(1L)).thenReturn(Optional.of(player));
 
-        PlayerUpdateRequest request = new PlayerUpdateRequest(null, null, "Support", null, null, null, null, null);
+        PlayerUpdateRequest request = new PlayerUpdateRequest(null, null, "SPT", null, null, null, null, null, null, null, null, null, null, null);
 
         // when
         playerCommandService.update(1L, request);
 
         // then
-        verify(player).setRole("Support");
+        verify(player).setRole("SPT");
     }
 
     @Test
@@ -65,7 +65,7 @@ class PlayerCommandServiceTest {
         when(playerRepository.findById(1L)).thenReturn(Optional.of(player));
 
         // clearTeam=true → 팀 해제
-        PlayerUpdateRequest request = new PlayerUpdateRequest(null, null, null, null, null, null, null, true);
+        PlayerUpdateRequest request = new PlayerUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, true);
 
         // when
         playerCommandService.update(1L, request);

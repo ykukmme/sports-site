@@ -62,14 +62,17 @@ export function TeamDetailPage() {
       {!team.players || team.players.length === 0 ? (
         <EmptyState message="등록된 로스터가 없습니다." />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-muted/50">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">닉네임</th>
                 <th className="px-4 py-3 text-left font-medium">실명</th>
                 <th className="px-4 py-3 text-left font-medium">역할</th>
                 <th className="px-4 py-3 text-left font-medium">국적</th>
+                <th className="px-4 py-3 text-left font-medium">생년월일</th>
+                <th className="px-4 py-3 text-left font-medium">상태</th>
+                <th className="px-4 py-3 text-left font-medium">SNS</th>
               </tr>
             </thead>
             <tbody>

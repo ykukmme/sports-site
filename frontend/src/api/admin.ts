@@ -149,10 +149,10 @@ export async function createAdminPlayer(data: PlayerFormValues): Promise<PlayerR
 }
 
 export async function updateAdminPlayer(id: number, data: PlayerFormValues): Promise<PlayerResponse> {
-  const body = emptyToUndefined({
+  const body = {
     ...data,
     clearTeam: data.teamId === null || data.teamId === undefined ? true : undefined,
-  })
+  }
   const res = await apiClient.put<ApiResponse<PlayerResponse>>(`/api/admin/players/${id}`, body)
   return res.data.data!
 }

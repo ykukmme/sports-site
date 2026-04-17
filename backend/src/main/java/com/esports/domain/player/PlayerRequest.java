@@ -14,10 +14,26 @@ public record PlayerRequest(
 
         String nationality,
 
+        @Pattern(regexp = "^(\\d{4}-\\d{2}-\\d{2})?$", message = "생년월일은 YYYY-MM-DD 형식이어야 합니다.")
+        String birthDate,
+
         @Pattern(regexp = "^((https://.*)|(/uploads/player-images/.*))?$", message = "프로필 이미지 URL은 https:// 또는 /uploads/player-images/로 시작해야 합니다.")
         String profileImageUrl,
 
+        @Pattern(regexp = "^(https://.*)?$", message = "Instagram URL은 https://로 시작해야 합니다.")
+        String instagramUrl,
+
+        @Pattern(regexp = "^(https://.*)?$", message = "X URL은 https://로 시작해야 합니다.")
+        String xUrl,
+
+        @Pattern(regexp = "^(https://.*)?$", message = "YouTube URL은 https://로 시작해야 합니다.")
+        String youtubeUrl,
+
+        PlayerStatus status,
+
         Long teamId,
 
-        String externalId
+        String externalId,
+
+        PlayerExternalSource externalSource
 ) {}

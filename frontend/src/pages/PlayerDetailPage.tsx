@@ -3,6 +3,13 @@ import { usePlayerDetail } from '../hooks/usePlayerDetail'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
+import type { PlayerResponse, PlayerStatus } from '../types/domain'
+
+const STATUS_LABELS: Record<PlayerStatus, string> = {
+  ACTIVE: '활동 중',
+  INACTIVE: '비활동',
+  RETIRED: '은퇴',
+}
 
 export function PlayerDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +20,8 @@ export function PlayerDetailPage() {
   if (isLoading) return <LoadingSpinner />
   if (error) return <ErrorMessage message={error.message} />
   if (!player) return <EmptyState message="로스터 정보를 찾을 수 없습니다." />
+
+  const socialLinks = getPlayerSocialLinks(player)
 
   return (
     <div className="max-w-lg">
@@ -36,6 +45,21 @@ export function PlayerDetailPage() {
           {player.realName && (
             <p className="text-sm text-muted-foreground">{player.realName}</p>
           )}
+          {socialLinks.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {socialLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -48,7 +72,23 @@ export function PlayerDetailPage() {
           <dt className="mb-1 text-xs text-muted-foreground">국적</dt>
           <dd className="text-sm font-medium">{player.nationality ?? '-'}</dd>
         </div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <dt className="mb-1 text-xs text-muted-foreground">생년월일</dt>
+          <dd className="text-sm font-medium">{player.birthDate ?? '-'}</dd>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <dt className="mb-1 text-xs text-muted-foreground">활동 상태</dt>
+          <dd className="text-sm font-medium">{STATUS_LABELS[player.status] ?? player.status}</dd>
+        </div>
       </dl>
     </div>
   )
+}
+
+function getPlayerSocialLinks(player: PlayerResponse) {
+  return [
+    player.instagramUrl ? { label: 'IG', href: player.instagramUrl } : null,
+    player.xUrl ? { label: 'X', href: player.xUrl } : null,
+    player.youtubeUrl ? { label: 'YT', href: player.youtubeUrl } : null,
+  ].filter((link): link is { label: string; href: string } => Boolean(link))
 }

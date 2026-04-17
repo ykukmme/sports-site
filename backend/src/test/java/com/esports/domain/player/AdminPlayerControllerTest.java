@@ -43,7 +43,7 @@ class AdminPlayerControllerTest {
         PlayerResponse response = mock(PlayerResponse.class);
         when(playerCommandService.create(any(PlayerRequest.class))).thenReturn(response);
 
-        PlayerRequest request = new PlayerRequest("Faker", "Lee Sang-hyeok", "MID", "KR", null, 1L, null);
+        PlayerRequest request = new PlayerRequest("Faker", "Lee Sang-hyeok", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, 1L, null, PlayerExternalSource.MANUAL);
 
         mockMvc.perform(post("/api/admin/players")
                         .with(csrf())
@@ -59,7 +59,7 @@ class AdminPlayerControllerTest {
         when(playerCommandService.update(eq(1L), any(PlayerUpdateRequest.class))).thenReturn(response);
 
         PlayerUpdateRequest request = new PlayerUpdateRequest(
-                "Faker", "Lee Sang-hyeok", "MID", "KR", null, 1L, null, false);
+                "Faker", "Lee Sang-hyeok", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, 1L, null, PlayerExternalSource.MANUAL, false);
 
         mockMvc.perform(put("/api/admin/players/1")
                         .with(csrf())

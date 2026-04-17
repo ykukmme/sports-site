@@ -10,12 +10,30 @@ import { uploadPlayerProfileImage } from '../../../api/admin'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
 import { ApiError } from '../../../api/client'
+import type { PlayerExternalSource, PlayerStatus } from '../../../types/domain'
 
 const ROLE_OPTIONS = ['TOP', 'JGL', 'MID', 'BOT', 'SPT', 'HEAD COACH', 'COACH'] as const
 type RosterRole = (typeof ROLE_OPTIONS)[number]
+const STATUS_OPTIONS: { value: PlayerStatus; label: string }[] = [
+  { value: 'ACTIVE', label: '활동 중' },
+  { value: 'INACTIVE', label: '비활동' },
+  { value: 'RETIRED', label: '은퇴' },
+]
+const SOURCE_OPTIONS: { value: PlayerExternalSource; label: string }[] = [
+  { value: 'MANUAL', label: '수동 입력' },
+  { value: 'PANDASCORE', label: 'PandaScore' },
+]
 
 function toRosterRole(value: string | null | undefined): RosterRole | '' {
   return ROLE_OPTIONS.includes(value as RosterRole) ? (value as RosterRole) : ''
+}
+
+function toPlayerStatus(value: string | null | undefined): PlayerStatus {
+  return STATUS_OPTIONS.some((option) => option.value === value) ? (value as PlayerStatus) : 'ACTIVE'
+}
+
+function toExternalSource(value: string | null | undefined): PlayerExternalSource {
+  return SOURCE_OPTIONS.some((option) => option.value === value) ? (value as PlayerExternalSource) : 'MANUAL'
 }
 
 export function AdminPlayerFormPage() {
@@ -48,7 +66,13 @@ export function AdminPlayerFormPage() {
       realName: '',
       role: '',
       nationality: '',
+      birthDate: '',
       profileImageUrl: '',
+      instagramUrl: '',
+      xUrl: '',
+      youtubeUrl: '',
+      status: 'ACTIVE',
+      externalSource: 'MANUAL',
       teamId: null,
     },
   })
@@ -60,7 +84,13 @@ export function AdminPlayerFormPage() {
         realName: existingPlayer.realName ?? '',
         role: toRosterRole(existingPlayer.role),
         nationality: existingPlayer.nationality ?? '',
+        birthDate: existingPlayer.birthDate ?? '',
         profileImageUrl: existingPlayer.profileImageUrl ?? '',
+        instagramUrl: existingPlayer.instagramUrl ?? '',
+        xUrl: existingPlayer.xUrl ?? '',
+        youtubeUrl: existingPlayer.youtubeUrl ?? '',
+        status: toPlayerStatus(existingPlayer.status),
+        externalSource: toExternalSource(existingPlayer.externalSource),
         teamId: existingPlayer.teamId ?? null,
       })
     }
@@ -119,6 +149,38 @@ export function AdminPlayerFormPage() {
           <Input {...register('nationality')} placeholder="예: 한국, 중국" />
         </Field>
 
+        <Field label="생년월일" error={errors.birthDate?.message}>
+          <Input {...register('birthDate')} type="date" />
+        </Field>
+
+        <Field label="활동 상태" error={errors.status?.message}>
+          <select
+            {...register('status')}
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
+          >
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>{status.label}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="데이터 출처" error={errors.externalSource?.message}>
+          <select
+            {...register('externalSource')}
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
+          >
+            {SOURCE_OPTIONS.map((source) => (
+              <option key={source.value} value={source.value}>{source.label}</option>
+            ))}
+          </select>
+        </Field>
+
+        {isEditMode && existingPlayer?.lastSyncedAt && (
+          <div className="rounded-md border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
+            마지막 동기화: {new Date(existingPlayer.lastSyncedAt).toLocaleString('ko-KR')}
+          </div>
+        )}
+
         <Field label="프로필 이미지 URL" error={errors.profileImageUrl?.message}>
           <Input {...register('profileImageUrl')} type="url" placeholder="https://..." />
         </Field>
@@ -157,6 +219,20 @@ export function AdminPlayerFormPage() {
             )}
           </div>
         </Field>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Instagram URL" error={errors.instagramUrl?.message}>
+            <Input {...register('instagramUrl')} type="url" placeholder="https://instagram.com/..." />
+          </Field>
+
+          <Field label="X URL" error={errors.xUrl?.message}>
+            <Input {...register('xUrl')} type="url" placeholder="https://x.com/..." />
+          </Field>
+
+          <Field label="YouTube URL" error={errors.youtubeUrl?.message}>
+            <Input {...register('youtubeUrl')} type="url" placeholder="https://youtube.com/..." />
+          </Field>
+        </div>
 
         <Field label="소속 팀" error={errors.teamId?.message}>
           <select

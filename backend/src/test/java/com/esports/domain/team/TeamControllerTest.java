@@ -3,7 +3,9 @@ package com.esports.domain.team;
 import com.esports.common.exception.BusinessException;
 import com.esports.config.JwtTokenProvider;
 import com.esports.config.SecurityConfig;
+import com.esports.domain.player.PlayerExternalSource;
 import com.esports.domain.player.PlayerResponse;
+import com.esports.domain.player.PlayerStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -48,7 +50,7 @@ class TeamControllerTest {
     @Test
     void getByIdReturns200WithPlayers() throws Exception {
         // given: 소속 선수 포함 팀 상세
-        PlayerResponse player = new PlayerResponse(1L, "Faker", "이상혁", "Mid", "KR", null, 1L);
+        PlayerResponse player = new PlayerResponse(1L, "Faker", "이상혁", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, null, PlayerExternalSource.MANUAL, null, 1L);
         TeamResponse response = new TeamResponse(
                 1L, "T1", "T1", "KR", null, null, null, null, null, null, 1L, null, null, List.of(player));
         when(teamQueryService.findById(1L)).thenReturn(response);

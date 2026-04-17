@@ -33,7 +33,7 @@ class PlayerControllerTest {
 
     @Test
     void listReturns200() throws Exception {
-        PlayerResponse response = new PlayerResponse(1L, "Faker", "Lee Sang-hyeok", "Mid", "KR", null, 1L);
+        PlayerResponse response = new PlayerResponse(1L, "Faker", "Lee Sang-hyeok", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, null, PlayerExternalSource.MANUAL, null, 1L);
         when(playerQueryService.findAll()).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/players"))
@@ -44,7 +44,7 @@ class PlayerControllerTest {
 
     @Test
     void getByIdReturns200() throws Exception {
-        PlayerResponse response = new PlayerResponse(1L, "Faker", "Lee Sang-hyeok", "Mid", "KR", null, 1L);
+        PlayerResponse response = new PlayerResponse(1L, "Faker", "Lee Sang-hyeok", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, null, PlayerExternalSource.MANUAL, null, 1L);
         when(playerQueryService.findById(1L)).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/players/1"))

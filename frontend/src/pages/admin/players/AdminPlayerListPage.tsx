@@ -13,6 +13,17 @@ import {
   TableRow,
 } from '../../../components/ui/table'
 import { ApiError } from '../../../api/client'
+import type { PlayerExternalSource, PlayerResponse, PlayerStatus } from '../../../types/domain'
+
+const STATUS_LABELS: Record<PlayerStatus, string> = {
+  ACTIVE: '활동 중',
+  INACTIVE: '비활동',
+  RETIRED: '은퇴',
+}
+const SOURCE_LABELS: Record<PlayerExternalSource, string> = {
+  MANUAL: '수동',
+  PANDASCORE: 'PandaScore',
+}
 
 export function AdminPlayerListPage() {
   const navigate = useNavigate()
@@ -70,8 +81,8 @@ export function AdminPlayerListPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        <Table>
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <Table className="min-w-[1120px]">
           <TableHeader>
             <TableRow>
               <TableHead>이미지</TableHead>
@@ -79,6 +90,11 @@ export function AdminPlayerListPage() {
               <TableHead>본명</TableHead>
               <TableHead>역할</TableHead>
               <TableHead>국적</TableHead>
+              <TableHead>생년월일</TableHead>
+              <TableHead>SNS</TableHead>
+              <TableHead>상태</TableHead>
+              <TableHead>출처</TableHead>
+              <TableHead>동기화</TableHead>
               <TableHead>팀</TableHead>
               <TableHead className="text-right">액션</TableHead>
             </TableRow>
@@ -86,7 +102,7 @@ export function AdminPlayerListPage() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={12} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 로스터가 없습니다.
                 </TableCell>
               </TableRow>
@@ -111,6 +127,15 @@ export function AdminPlayerListPage() {
                   <TableCell className="text-muted-foreground">{player.realName ?? '-'}</TableCell>
                   <TableCell className="text-muted-foreground">{player.role ?? '-'}</TableCell>
                   <TableCell className="text-muted-foreground">{player.nationality ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(player.birthDate)}</TableCell>
+                  <TableCell>
+                    <SocialBadges player={player} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={player.status} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{SOURCE_LABELS[player.externalSource] ?? player.externalSource}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDateTime(player.lastSyncedAt)}</TableCell>
                   <TableCell className="text-muted-foreground">{player.teamName}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
@@ -147,5 +172,51 @@ export function AdminPlayerListPage() {
         errorMessage={deleteErrorMessage}
       />
     </div>
+  )
+}
+
+function formatDate(value: string | null) {
+  return value || '-'
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString('ko-KR')
+}
+
+function SocialBadges({ player }: { player: PlayerResponse }) {
+  const links = [
+    player.instagramUrl ? 'IG' : null,
+    player.xUrl ? 'X' : null,
+    player.youtubeUrl ? 'YT' : null,
+  ].filter((label): label is string => Boolean(label))
+
+  if (links.length === 0) {
+    return <span className="text-xs text-muted-foreground">-</span>
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1 text-xs">
+      {links.map((label) => (
+        <span key={label} className="whitespace-nowrap rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: PlayerStatus }) {
+  const className =
+    status === 'ACTIVE'
+      ? 'border-primary/40 bg-primary/10 text-primary'
+      : status === 'RETIRED'
+        ? 'border-border bg-muted text-muted-foreground'
+        : 'border-border bg-card text-muted-foreground'
+
+  return (
+    <span className={`whitespace-nowrap rounded-md border px-2 py-0.5 text-xs ${className}`}>
+      {STATUS_LABELS[status] ?? status}
+    </span>
   )
 }

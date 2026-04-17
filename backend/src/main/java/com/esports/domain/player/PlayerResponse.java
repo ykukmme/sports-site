@@ -7,7 +7,15 @@ public record PlayerResponse(
         String realName,
         String role,
         String nationality,
+        String birthDate,
         String profileImageUrl,
+        String instagramUrl,
+        String xUrl,
+        String youtubeUrl,
+        PlayerStatus status,
+        String externalId,
+        PlayerExternalSource externalSource,
+        String lastSyncedAt,
         // 팀 미소속 선수(free agent)의 경우 null
         Long teamId
 ) {
@@ -19,7 +27,15 @@ public record PlayerResponse(
                 player.getRealName(),
                 player.getRole(),
                 player.getNationality(),
+                player.getBirthDate() != null ? player.getBirthDate().toString() : null,
                 player.getProfileImageUrl(),
+                player.getInstagramUrl(),
+                player.getXUrl(),
+                player.getYoutubeUrl(),
+                player.getStatus(),
+                player.getExternalId(),
+                player.getExternalSource(),
+                player.getLastSyncedAt() != null ? player.getLastSyncedAt().toString() : null,
                 player.getTeam() != null ? player.getTeam().getId() : null
         );
     }
