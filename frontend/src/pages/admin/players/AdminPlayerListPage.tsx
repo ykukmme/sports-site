@@ -70,7 +70,7 @@ export function AdminPlayerListPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -98,11 +98,11 @@ export function AdminPlayerListPage() {
                       <img
                         src={player.profileImageUrl}
                         alt={`${player.inGameName} profile`}
-                        className="size-10 rounded-md border object-cover"
+                        className="size-10 rounded-md border border-border object-cover"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex size-10 items-center justify-center rounded-md border bg-muted text-xs font-semibold text-muted-foreground">
+                      <div className="flex size-10 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-muted-foreground">
                         {player.inGameName.slice(0, 2)}
                       </div>
                     )}

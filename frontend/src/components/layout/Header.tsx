@@ -31,8 +31,9 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border [background:var(--header-bg)] backdrop-blur-md">
       <div className="container mx-auto flex items-center justify-between h-14 px-4">
         {/* 로고 */}
-        <NavLink to="/" className="font-semibold text-base tracking-tight">
-          E-sports
+        <NavLink to="/" className="flex items-center gap-2 font-heading text-base font-semibold text-foreground">
+          <span className="size-2 rounded-full bg-primary shadow-[0_0_8px_#00d992]" aria-hidden="true" />
+          <span>E-sports</span>
         </NavLink>
 
         {/* 네비게이션 */}
@@ -69,7 +70,7 @@ export function Header() {
           {/* 다크 모드 토글 */}
           <button
             onClick={handleThemeToggle}
-            className="p-2 rounded-md hover:bg-muted transition-colors"
+            className="rounded-md border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-primary"
             title={`현재: ${theme} 모드`}
             aria-label={`현재: ${theme} 모드`}
           >
@@ -79,17 +80,17 @@ export function Header() {
           {/* 햄버거 버튼 + 모바일 드로어 — md 미만 전용 */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
-              className="md:hidden p-2 rounded-md hover:bg-muted transition-colors"
+              className="md:hidden rounded-md border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-primary"
               aria-label="메뉴 열기"
             >
               <Menu size={16} />
             </SheetTrigger>
-            <SheetContent side="left" className="data-[side=left]:w-64 gap-0 p-0">
+            <SheetContent side="left" className="data-[side=left]:w-64 gap-0 border-border bg-background p-0">
               {/* 드로어 상단 로고 */}
               <div className="flex items-center h-14 px-4 border-b border-border">
                 <NavLink
                   to="/"
-                  className="font-semibold text-base tracking-tight"
+                  className="font-heading text-base font-semibold"
                   onClick={() => setMobileOpen(false)}
                 >
                   E-sports

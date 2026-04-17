@@ -52,7 +52,7 @@ export function AdminTeamListPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -80,11 +80,11 @@ export function AdminTeamListPage() {
                       <img
                         src={team.logoUrl}
                         alt={`${team.name} logo`}
-                        className="size-10 rounded-md border object-contain"
+                        className="asset-plate size-10 object-contain p-1"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex size-10 items-center justify-center rounded-md border bg-muted text-xs font-semibold text-muted-foreground">
+                      <div className="flex size-10 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-muted-foreground">
                         {team.shortName ?? team.name.slice(0, 2)}
                       </div>
                     )}
@@ -107,7 +107,7 @@ export function AdminTeamListPage() {
                     {team.primaryColor ? (
                       <div className="flex items-center gap-2">
                         <div
-                          className="size-5 rounded-full border"
+                          className="size-5 rounded-full border border-border"
                           style={{ backgroundColor: team.primaryColor }}
                         />
                         <span className="text-xs text-muted-foreground">{team.primaryColor}</span>
@@ -156,7 +156,7 @@ export function AdminTeamListPage() {
 
 function SocialBadge({ label }: { label: string }) {
   return (
-    <span className="rounded border px-1.5 py-0.5 text-muted-foreground">
+    <span className="rounded-md border border-border px-1.5 py-0.5 text-muted-foreground">
       {label}
     </span>
   )

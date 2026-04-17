@@ -4,50 +4,49 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
 
-// 선수 상세 페이지
 export function PlayerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const playerId = id ? parseInt(id, 10) : NaN
   const { data: player, isLoading, error } = usePlayerDetail(isNaN(playerId) ? 0 : playerId)
 
-  if (!id || isNaN(playerId)) return <ErrorMessage message="잘못된 선수 ID입니다." />
+  if (!id || isNaN(playerId)) return <ErrorMessage message="올바르지 않은 선수 ID입니다." />
   if (isLoading) return <LoadingSpinner />
   if (error) return <ErrorMessage message={error.message} />
   if (!player) return <EmptyState message="선수 정보를 찾을 수 없습니다." />
 
   return (
     <div className="max-w-lg">
-      {/* 선수 프로필 헤더 */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="mb-8 flex items-center gap-4">
         {player.profileImageUrl ? (
           <img
             src={player.profileImageUrl}
             alt={`${player.inGameName} 프로필`}
-            className="w-20 h-20 rounded-full object-cover"
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
+            className="h-20 w-20 rounded-lg border border-border object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
           />
         ) : (
-          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-2xl font-bold">
+          <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-border bg-muted text-2xl font-bold text-muted-foreground">
             {player.inGameName.charAt(0)}
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-bold">{player.inGameName}</h1>
+          <h1 className="text-4xl font-semibold leading-tight">{player.inGameName}</h1>
           {player.realName && (
-            <p className="text-muted-foreground text-sm">{player.realName}</p>
+            <p className="text-sm text-muted-foreground">{player.realName}</p>
           )}
         </div>
       </div>
 
-      {/* 선수 정보 */}
       <dl className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg bg-muted/30 p-3">
-          <dt className="text-xs text-muted-foreground mb-1">포지션</dt>
-          <dd className="font-medium text-sm">{player.role ?? '-'}</dd>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <dt className="mb-1 text-xs text-muted-foreground">역할</dt>
+          <dd className="text-sm font-medium">{player.role ?? '-'}</dd>
         </div>
-        <div className="rounded-lg bg-muted/30 p-3">
-          <dt className="text-xs text-muted-foreground mb-1">국적</dt>
-          <dd className="font-medium text-sm">{player.nationality ?? '-'}</dd>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <dt className="mb-1 text-xs text-muted-foreground">국적</dt>
+          <dd className="text-sm font-medium">{player.nationality ?? '-'}</dd>
         </div>
       </dl>
     </div>

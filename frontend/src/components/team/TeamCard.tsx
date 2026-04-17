@@ -13,20 +13,20 @@ export function TeamCard({ team }: TeamCardProps) {
   const socialLinks = getTeamSocialLinks(team)
 
   return (
-    <Card className="shadow-card-subtle hover:shadow-card hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300 h-full">
+    <Card className={`h-full transition-colors duration-300 hover:border-primary/70 ${isActive ? 'border-primary shadow-card' : ''}`}>
       <CardContent className="flex h-full flex-col items-center gap-2 p-4">
         <Link to={`/teams/${team.id}`} className="flex flex-1 flex-col items-center gap-2 text-center">
           {team.logoUrl ? (
             <img
               src={team.logoUrl}
               alt={`${team.name} 로고`}
-              className="h-14 w-14 object-contain"
+              className="asset-plate h-14 w-14 object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
               }}
             />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-lg font-bold text-muted-foreground">
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-muted text-lg font-bold text-muted-foreground">
               {(team.shortName ?? team.name).charAt(0)}
             </div>
           )}
@@ -64,7 +64,7 @@ export function TeamCard({ team }: TeamCardProps) {
             className={`mt-1 w-full rounded-md border py-1 text-xs transition-colors ${
               isActive
                 ? 'border-primary bg-primary/10 font-medium text-primary'
-                : 'border-border text-muted-foreground hover:bg-muted'
+                : 'border-border text-muted-foreground hover:border-primary/70 hover:text-primary'
             }`}
           >
             {isActive ? '응원 중' : '응원팀으로 설정'}

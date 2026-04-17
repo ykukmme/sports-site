@@ -66,7 +66,7 @@ export function ChatbotWidget() {
       {/* 챗봇 열기 버튼 */}
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center text-xl hover:opacity-90 transition-opacity"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card text-xl text-primary shadow-card transition-colors hover:bg-primary/10"
         aria-label="챗봇 열기"
       >
         {open ? '✕' : '💬'}
@@ -74,9 +74,9 @@ export function ChatbotWidget() {
 
       {/* 챗봇 패널 */}
       {open && (
-        <div className="fixed bottom-20 right-6 z-50 w-80 h-96 bg-background border border-border rounded-xl shadow-xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-20 right-6 z-50 flex h-96 w-80 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card">
           {/* 헤더 */}
-          <div className="px-4 py-3 bg-primary text-primary-foreground text-sm font-medium">
+          <div className="border-b border-border bg-background px-4 py-3 text-sm font-medium text-primary">
             E-sports 도우미
           </div>
 
@@ -92,15 +92,15 @@ export function ChatbotWidget() {
                 key={i}
                 className={`text-xs px-3 py-2 rounded-lg max-w-[85%] ${
                   msg.role === 'user'
-                    ? 'ml-auto bg-primary text-primary-foreground'
-                    : 'mr-auto bg-muted text-foreground'
+                    ? 'ml-auto border border-primary bg-primary/10 text-primary'
+                    : 'mr-auto border border-border bg-muted text-foreground'
                 }`}
               >
                 {msg.content}
               </div>
             ))}
             {loading && (
-              <div className="mr-auto text-xs px-3 py-2 rounded-lg bg-muted text-muted-foreground">
+              <div className="mr-auto rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
                 답변 생성 중...
               </div>
             )}
@@ -115,13 +115,13 @@ export function ChatbotWidget() {
               onKeyDown={e => e.key === 'Enter' && handleSend()}
               placeholder="질문을 입력하세요..."
               disabled={loading}
-              className="flex-1 text-xs px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               maxLength={500}
             />
             <button
               onClick={handleSend}
               disabled={loading || !input.trim()}
-              className="text-xs px-3 py-2 rounded-md bg-primary text-primary-foreground disabled:opacity-50 hover:opacity-90 transition-opacity"
+              className="rounded-md border border-border bg-card px-3 py-2 text-xs text-primary transition-colors hover:border-primary disabled:opacity-50"
             >
               전송
             </button>

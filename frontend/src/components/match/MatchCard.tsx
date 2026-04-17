@@ -12,7 +12,7 @@ export function MatchCard({ match }: MatchCardProps) {
   const isCompleted = match.status === 'COMPLETED'
 
   return (
-    <Card className="shadow-card-subtle hover:shadow-card hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300">
+    <Card className="transition-colors duration-300 hover:border-primary/70">
       <CardContent className="p-4">
         {/* 상단: 종목 + 상태 */}
         <div className="flex items-center justify-between mb-3">

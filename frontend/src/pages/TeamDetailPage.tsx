@@ -25,18 +25,18 @@ export function TeamDetailPage() {
           <img
             src={team.logoUrl}
             alt={`${team.name} 로고`}
-            className="h-16 w-16 object-contain"
+            className="asset-plate h-16 w-16 object-contain"
             onError={(e) => {
               e.currentTarget.style.display = 'none'
             }}
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-xl font-bold">
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-xl font-bold text-muted-foreground">
             {(team.shortName ?? team.name).charAt(0)}
           </div>
         )}
         <div>
-          <h1 className="text-2xl font-bold">{team.name}</h1>
+          <h1 className="text-4xl font-semibold leading-tight">{team.name}</h1>
           <p className="text-sm text-muted-foreground">{team.region ?? '-'}</p>
           {socialLinks.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -46,7 +46,7 @@ export function TeamDetailPage() {
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 >
                   {link.label}
                 </a>
@@ -56,11 +56,11 @@ export function TeamDetailPage() {
         </div>
       </div>
 
-      <h2 className="mb-3 text-lg font-semibold">선수 명단</h2>
+      <h2 className="mb-3 text-2xl font-semibold leading-tight">선수 명단</h2>
       {!team.players || team.players.length === 0 ? (
         <EmptyState message="등록된 선수가 없습니다." />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>

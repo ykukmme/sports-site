@@ -31,7 +31,7 @@ export function AdminLoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="w-80 rounded-xl bg-card p-8 shadow-card-subtle ring-1 ring-border">
+      <div className="w-80 rounded-lg border border-border bg-card p-8 shadow-card">
         <h1 className="mb-6 text-xl font-bold text-foreground">어드민 로그인</h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

@@ -39,7 +39,7 @@ export function AdminRoute() {
   if (status === 'checking') {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-gray-400" />
+        <Loader2 className="size-8 animate-spin text-primary" />
       </div>
     )
   }

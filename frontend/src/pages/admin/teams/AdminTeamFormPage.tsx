@@ -144,13 +144,13 @@ export function AdminTeamFormPage() {
                     event.target.value = ''
                   }
                 }}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm file:text-foreground"
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-card file:px-3 file:py-1.5 file:text-sm file:text-foreground"
               />
               {isLogoUploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
             </div>
             {logoUrl && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <img src={logoUrl} alt="팀 로고 미리보기" className="size-12 rounded-md border object-contain" />
+                <img src={logoUrl} alt="팀 로고 미리보기" className="asset-plate size-12 object-contain p-1" />
                 <span>팀을 저장하면 이 로고가 연결됩니다.</span>
               </div>
             )}
@@ -173,7 +173,7 @@ export function AdminTeamFormPage() {
           <Field label="생방송 플랫폼" error={errors.livePlatform?.message}>
             <select
               {...register('livePlatform')}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
             >
               <option value="">선택 안 함</option>
               <option value="CHZZK">치지직</option>
@@ -191,7 +191,7 @@ export function AdminTeamFormPage() {
         <Field label="종목 *" error={errors.gameId?.message}>
           <select
             {...register('gameId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
           >
             <option value="">종목 선택</option>
             {games.map((g) => (
@@ -254,7 +254,7 @@ const TextInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<H
     return (
       <input
         ref={ref}
-        className={`h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm ${className}`}
+        className={`h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 py-2 text-base text-foreground transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 md:text-sm ${className}`}
         {...props}
       />
     )

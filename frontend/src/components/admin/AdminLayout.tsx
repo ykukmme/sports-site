@@ -14,7 +14,7 @@ export function AdminLayout() {
   })
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <AdminSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AdminTopBar onLogout={() => logoutMutation.mutate()} />

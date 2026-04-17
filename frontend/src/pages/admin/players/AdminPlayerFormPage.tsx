@@ -106,7 +106,7 @@ export function AdminPlayerFormPage() {
         <Field label="역할" error={errors.role?.message}>
           <select
             {...register('role')}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
           >
             <option value="">역할 선택</option>
             {ROLE_OPTIONS.map((role) => (
@@ -145,13 +145,13 @@ export function AdminPlayerFormPage() {
                     event.target.value = ''
                   }
                 }}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm file:text-foreground"
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-card file:px-3 file:py-1.5 file:text-sm file:text-foreground"
               />
               {isImageUploading && <span className="text-xs text-muted-foreground">업로드 중...</span>}
             </div>
             {profileImageUrl && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <img src={profileImageUrl} alt="프로필 이미지 미리보기" className="size-12 rounded-md border object-cover" />
+                <img src={profileImageUrl} alt="프로필 이미지 미리보기" className="size-12 rounded-md border border-border object-cover" />
                 <span>로스터를 저장하면 이 이미지가 연결됩니다.</span>
               </div>
             )}
@@ -161,7 +161,7 @@ export function AdminPlayerFormPage() {
         <Field label="소속 팀" error={errors.teamId?.message}>
           <select
             {...register('teamId', { setValueAs: (v) => (v === '' ? null : Number(v)) })}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
           >
             <option value="">미소속 (free agent)</option>
             {teams.map((t) => (

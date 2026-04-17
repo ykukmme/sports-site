@@ -104,7 +104,7 @@ export function AdminMatchFormPage() {
           <Field label="상태" error={updateForm.formState.errors.status?.message}>
             <select
               {...updateForm.register('status')}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
             >
               <option value="SCHEDULED">예정</option>
               <option value="ONGOING">진행 중</option>
@@ -125,7 +125,7 @@ export function AdminMatchFormPage() {
           <Field label="종목 *" error={createForm.formState.errors.gameId?.message}>
             <select
               {...createForm.register('gameId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
             >
               <option value="">종목 선택</option>
               {games.map((g) => (
@@ -136,7 +136,7 @@ export function AdminMatchFormPage() {
           <Field label="팀 A *" error={createForm.formState.errors.teamAId?.message}>
             <select
               {...createForm.register('teamAId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
             >
               <option value="">팀 A 선택</option>
               {teams.map((t) => (
@@ -147,7 +147,7 @@ export function AdminMatchFormPage() {
           <Field label="팀 B *" error={createForm.formState.errors.teamBId?.message}>
             <select
               {...createForm.register('teamBId', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
             >
               <option value="">팀 B 선택</option>
               {teams.map((t) => (
