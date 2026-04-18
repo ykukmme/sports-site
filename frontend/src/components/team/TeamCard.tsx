@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useTeamTheme } from '../../context/TeamThemeContext'
 import type { TeamResponse } from '../../types/domain'
 import { getTeamLeagueLabel } from '../../constants/teamLeagues'
+import { TeamPlatformBadges } from './TeamPlatformBadges'
 
 interface TeamCardProps {
   team: TeamResponse
@@ -11,20 +12,23 @@ interface TeamCardProps {
 export function TeamCard({ team }: TeamCardProps) {
   const { activeTeamId, setTeamTheme } = useTeamTheme()
   const isActive = activeTeamId === team.id
-  const socialLinks = getTeamSocialLinks(team)
 
   return (
-    <Card className={`h-full transition-colors duration-300 hover:border-primary/70 ${isActive ? 'border-primary shadow-card' : ''}`}>
-      <CardContent className="flex h-full flex-col items-center gap-2 p-4">
-        <Link to={`/teams/${team.id}`} className="flex flex-1 flex-col items-center gap-2 text-center">
+    <Card
+      className={`h-full transition-colors duration-300 hover:border-primary/70 ${
+        isActive ? 'border-primary shadow-card' : ''
+      }`}
+    >
+      <CardContent className="flex h-full flex-col items-center gap-3 p-4">
+        <Link to={`/teams/${team.id}`} className="flex flex-1 flex-col items-center gap-3 text-center">
           {team.logoUrl ? (
             <div className="asset-plate h-20 w-20">
               <img
                 src={team.logoUrl}
                 alt={`${team.name} 로고`}
                 className="h-full w-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.parentElement?.classList.add('hidden')
+                onError={(event) => {
+                  event.currentTarget.parentElement?.classList.add('hidden')
                 }}
               />
             </div>
@@ -34,34 +38,19 @@ export function TeamCard({ team }: TeamCardProps) {
             </div>
           )}
 
-          <div>
+          <div className="space-y-1">
             <p className="text-sm font-semibold">{team.name}</p>
             <p className="text-xs text-muted-foreground">{getTeamLeagueLabel(team.league)}</p>
           </div>
         </Link>
 
-        {socialLinks.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-1">
-            {socialLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                target="_blank"
-                rel="noreferrer"
-                className="whitespace-nowrap rounded border px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                aria-label={`${team.name} ${link.label}`}
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-        )}
+        <TeamPlatformBadges team={team} teamName={team.name} align="center" size="sm" />
 
         {team.primaryColor && (
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
               isActive ? setTeamTheme(null) : setTeamTheme(team)
             }}
             className={`mt-1 w-full rounded-md border py-1 text-xs transition-colors ${
@@ -76,13 +65,4 @@ export function TeamCard({ team }: TeamCardProps) {
       </CardContent>
     </Card>
   )
-}
-
-function getTeamSocialLinks(team: TeamResponse) {
-  return [
-    team.instagramUrl ? { label: 'IG', href: team.instagramUrl } : null,
-    team.xUrl ? { label: 'X', href: team.xUrl } : null,
-    team.youtubeUrl ? { label: 'YT', href: team.youtubeUrl } : null,
-    team.liveUrl ? { label: team.livePlatform || 'LIVE', href: team.liveUrl } : null,
-  ].filter((link): link is { label: string; href: string } => Boolean(link))
 }

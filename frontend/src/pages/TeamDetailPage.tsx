@@ -1,10 +1,10 @@
 import { useParams } from 'react-router-dom'
 import { useTeamDetail } from '../hooks/useTeamDetail'
 import { PlayerRow } from '../components/team/PlayerRow'
+import { TeamPlatformBadges } from '../components/team/TeamPlatformBadges'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
-import type { TeamResponse } from '../types/domain'
 import { getTeamLeagueLabel } from '../constants/teamLeagues'
 
 export function TeamDetailPage() {
@@ -12,12 +12,21 @@ export function TeamDetailPage() {
   const teamId = id ? parseInt(id, 10) : NaN
   const { data: team, isLoading, error } = useTeamDetail(isNaN(teamId) ? 0 : teamId)
 
-  if (!id || isNaN(teamId)) return <ErrorMessage message="올바르지 않은 팀 ID입니다." />
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage message={error.message} />
-  if (!team) return <EmptyState message="팀 정보를 찾을 수 없습니다." />
+  if (!id || isNaN(teamId)) {
+    return <ErrorMessage message="올바르지 않은 팀 ID입니다." />
+  }
 
-  const socialLinks = getTeamSocialLinks(team)
+  if (isLoading) {
+    return <LoadingSpinner />
+  }
+
+  if (error) {
+    return <ErrorMessage message={error.message} />
+  }
+
+  if (!team) {
+    return <EmptyState message="팀 정보를 찾을 수 없습니다." />
+  }
 
   return (
     <div>
@@ -28,8 +37,8 @@ export function TeamDetailPage() {
               src={team.logoUrl}
               alt={`${team.name} 로고`}
               className="h-full w-full object-contain"
-              onError={(e) => {
-                e.currentTarget.parentElement?.classList.add('hidden')
+              onError={(event) => {
+                event.currentTarget.parentElement?.classList.add('hidden')
               }}
             />
           </div>
@@ -38,24 +47,13 @@ export function TeamDetailPage() {
             {(team.shortName ?? team.name).charAt(0)}
           </div>
         )}
+
         <div>
           <h1 className="text-4xl font-semibold leading-tight">{team.name}</h1>
           <p className="text-sm text-muted-foreground">{getTeamLeagueLabel(team.league)}</p>
-          {socialLinks.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {socialLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-          )}
+          <div className="mt-3">
+            <TeamPlatformBadges team={team} teamName={team.name} align="start" size="md" />
+          </div>
         </div>
       </div>
 
@@ -86,13 +84,4 @@ export function TeamDetailPage() {
       )}
     </div>
   )
-}
-
-function getTeamSocialLinks(team: TeamResponse) {
-  return [
-    team.instagramUrl ? { label: 'IG', href: team.instagramUrl } : null,
-    team.xUrl ? { label: 'X', href: team.xUrl } : null,
-    team.youtubeUrl ? { label: 'YT', href: team.youtubeUrl } : null,
-    team.liveUrl ? { label: team.livePlatform || 'LIVE', href: team.liveUrl } : null,
-  ].filter((link): link is { label: string; href: string } => Boolean(link))
 }
