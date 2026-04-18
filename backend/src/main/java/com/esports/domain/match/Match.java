@@ -48,6 +48,13 @@ public class Match {
     @Column(name = "external_id", unique = true, length = 100)
     private String externalId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "external_source", nullable = false, length = 30)
+    private MatchExternalSource externalSource = MatchExternalSource.MANUAL;
+
+    @Column(name = "last_synced_at")
+    private OffsetDateTime lastSyncedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -61,6 +68,9 @@ public class Match {
         this.updatedAt = now;
         if (this.status == null) {
             this.status = MatchStatus.SCHEDULED;
+        }
+        if (this.externalSource == null) {
+            this.externalSource = MatchExternalSource.MANUAL;
         }
     }
 
@@ -99,6 +109,8 @@ public class Match {
     public OffsetDateTime getScheduledAt() { return scheduledAt; }
     public MatchStatus getStatus() { return status; }
     public String getExternalId() { return externalId; }
+    public MatchExternalSource getExternalSource() { return externalSource; }
+    public OffsetDateTime getLastSyncedAt() { return lastSyncedAt; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 
@@ -107,4 +119,6 @@ public class Match {
     public void setScheduledAt(OffsetDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
     public void setStatus(MatchStatus status) { this.status = status; }
     public void setExternalId(String externalId) { this.externalId = externalId; }
+    public void setExternalSource(MatchExternalSource externalSource) { this.externalSource = externalSource == null ? MatchExternalSource.MANUAL : externalSource; }
+    public void setLastSyncedAt(OffsetDateTime lastSyncedAt) { this.lastSyncedAt = lastSyncedAt; }
 }

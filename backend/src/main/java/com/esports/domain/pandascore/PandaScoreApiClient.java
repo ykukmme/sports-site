@@ -4,7 +4,9 @@ import com.esports.config.PandaScoreProperties;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import java.time.Duration;
 import java.util.List;
 
 // PandaScore API HTTP 클라이언트
@@ -17,12 +19,21 @@ public class PandaScoreApiClient {
 
     public PandaScoreApiClient(PandaScoreProperties properties) {
         this.properties = properties;
-        this.restClient = RestClient.create();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofMillis(properties.getConnectTimeoutMs()));
+        requestFactory.setReadTimeout(Duration.ofMillis(properties.getReadTimeoutMs()));
+        this.restClient = RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     // 예정 경기 조회
     public List<PandaScoreMatch> getUpcomingMatches() {
         return fetchMatches("/matches/upcoming?per_page=50");
+    }
+
+    public List<PandaScoreMatch> getUpcomingLolMatches() {
+        return fetchMatches("/lol/matches/upcoming?per_page=50");
     }
 
     // 진행 중 경기 조회
@@ -51,6 +62,7 @@ public class PandaScoreApiClient {
             String name,
             String status,
             @JsonProperty("scheduled_at") String scheduledAt,
+            @JsonProperty("begin_at") String beginAt,
             @JsonProperty("tournament") PandaScoreTournament tournament,
             List<PandaScoreOpponent> opponents
     ) {}

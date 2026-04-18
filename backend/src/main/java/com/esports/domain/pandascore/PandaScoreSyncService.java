@@ -2,6 +2,7 @@ package com.esports.domain.pandascore;
 
 import com.esports.config.PandaScoreProperties;
 import com.esports.domain.match.Match;
+import com.esports.domain.match.MatchExternalSource;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
 import com.esports.domain.team.Team;
@@ -102,6 +103,8 @@ public class PandaScoreSyncService {
                 // 기존 경기 업데이트 또는 신규 저장
                 Match existing = matchRepository.findByExternalId(externalId).orElse(null);
                 if (existing != null) {
+                    existing.setExternalSource(MatchExternalSource.PANDASCORE);
+                    existing.setLastSyncedAt(OffsetDateTime.now());
                     updateMatchStatus(existing, psMatch.status());
                 } else {
                     // 신규 경기 저장은 관리자가 직접 등록하는 방식으로 처리

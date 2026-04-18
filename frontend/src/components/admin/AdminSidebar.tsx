@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { to: '/admin/matches', label: '경기 관리' },
   { to: '/admin/teams', label: '팀 관리' },
   { to: '/admin/players', label: '로스터 관리' },
+  { to: '/admin/pandascore/preview', label: 'PandaScore Preview' },
 ]
 
 export function AdminSidebar() {

@@ -18,6 +18,9 @@ public record MatchResponse(
         String stage,
         OffsetDateTime scheduledAt,
         String status,
+        String externalId,
+        String externalSource,
+        OffsetDateTime lastSyncedAt,
         // 결과가 없는 경기(SCHEDULED/ONGOING)에서는 null
         MatchResultResponse result
 ) {
@@ -32,6 +35,9 @@ public record MatchResponse(
                 match.getStage(),
                 match.getScheduledAt(),
                 match.getStatus().name(),
+                match.getExternalId(),
+                externalSourceName(match),
+                match.getLastSyncedAt(),
                 null
         );
     }
@@ -47,6 +53,9 @@ public record MatchResponse(
                 match.getStage(),
                 match.getScheduledAt(),
                 match.getStatus().name(),
+                match.getExternalId(),
+                externalSourceName(match),
+                match.getLastSyncedAt(),
                 matchResult != null ? MatchResultResponse.from(matchResult) : null
         );
     }
@@ -56,5 +65,11 @@ public record MatchResponse(
         public static TeamSummary from(Team team) {
             return new TeamSummary(team.getId(), team.getName(), team.getShortName());
         }
+    }
+
+    private static String externalSourceName(Match match) {
+        return match.getExternalSource() != null
+                ? match.getExternalSource().name()
+                : MatchExternalSource.MANUAL.name();
     }
 }

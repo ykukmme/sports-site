@@ -1,5 +1,6 @@
 package com.esports.domain.pandascore;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 // PandaScore API 폴링 스케줄러
 // t2.micro 고려 — 순차 처리, 병렬 호출 금지
 @Component
+@ConditionalOnProperty(prefix = "pandascore", name = "scheduler-enabled", havingValue = "true")
 public class PandaScoreScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(PandaScoreScheduler.class);

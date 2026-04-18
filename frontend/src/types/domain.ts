@@ -39,6 +39,7 @@ export interface TeamSummary {
 
 // 경기 상태 — 백엔드 MatchStatus enum과 동일
 export type MatchStatus = 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
+export type MatchExternalSource = 'MANUAL' | 'PANDASCORE'
 export type PlayerStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED'
 export type PlayerExternalSource = 'MANUAL' | 'PANDASCORE'
 
@@ -52,8 +53,42 @@ export interface MatchResponse {
   stage: string
   scheduledAt: string
   status: MatchStatus
+  externalId: string | null
+  externalSource: MatchExternalSource
+  lastSyncedAt: string | null
   // 결과가 없는 경기(SCHEDULED/ONGOING)에서는 null
   result: MatchResultResponse | null
+}
+
+export type PandaScorePreviewStatus =
+  | 'NEW'
+  | 'UPDATE'
+  | 'TEAM_MATCH_FAILED'
+  | 'CONFLICT'
+  | 'REJECTED'
+
+export type PandaScoreTeamMatchMethod = 'EXTERNAL_ID' | 'NAME_CANDIDATE' | 'NONE'
+
+export interface PandaScoreTeamPreview {
+  externalId: string | null
+  name: string | null
+  matchedTeamId: number | null
+  matchedTeamName: string | null
+  matchMethod: PandaScoreTeamMatchMethod
+  confirmed?: boolean
+}
+
+export interface PandaScoreMatchPreviewResponse {
+  externalId: string | null
+  source: 'PANDASCORE'
+  previewStatus: PandaScorePreviewStatus
+  tournamentName: string | null
+  scheduledAt: string | null
+  pandaStatus: string | null
+  teamA: PandaScoreTeamPreview
+  teamB: PandaScoreTeamPreview
+  existingMatchId: number | null
+  conflictReasons: string[]
 }
 
 // 팀 응답 DTO — players는 상세 조회 시에만 포함

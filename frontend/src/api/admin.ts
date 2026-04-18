@@ -1,6 +1,13 @@
 import apiClient from './client'
 import type { ApiResponse, PageResponse } from '../types/api'
-import type { MatchResponse, TeamResponse, PlayerResponse, MatchStatus, GameResponse } from '../types/domain'
+import type {
+  MatchResponse,
+  TeamResponse,
+  PlayerResponse,
+  MatchStatus,
+  GameResponse,
+  PandaScoreMatchPreviewResponse,
+} from '../types/domain'
 import type {
   MatchCreateFormValues,
   MatchUpdateFormValues,
@@ -159,4 +166,14 @@ export async function updateAdminPlayer(id: number, data: PlayerFormValues): Pro
 
 export async function deleteAdminPlayer(id: number): Promise<void> {
   await apiClient.delete(`/api/admin/players/${id}`)
+}
+
+export async function fetchPandaScoreMatchPreview(): Promise<PandaScoreMatchPreviewResponse[]> {
+  const res = await apiClient.get<ApiResponse<PandaScoreMatchPreviewResponse[]>>(
+    '/api/admin/pandascore/matches/preview',
+    {
+      params: { game: 'lol', type: 'upcoming' },
+    },
+  )
+  return res.data.data ?? []
 }

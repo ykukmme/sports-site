@@ -61,3 +61,6 @@ ai:
 pandascore:
   api-key: ${PANDASCORE_API_KEY:}
   base-url: https://api.pandascore.co
+  scheduler-enabled: ${PANDASCORE_SCHEDULER_ENABLED:false}
+  connect-timeout-ms: ${PANDASCORE_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${PANDASCORE_READ_TIMEOUT_MS:10000}

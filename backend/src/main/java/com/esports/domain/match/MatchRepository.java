@@ -30,6 +30,8 @@ public interface MatchRepository extends JpaRepository<Match, Long>, JpaSpecific
     // 예정 경기 조회 — 특정 시각 이후의 SCHEDULED 경기 (페이지네이션으로 OOM 방지)
     Page<Match> findByStatusAndScheduledAtAfter(MatchStatus status, OffsetDateTime after, Pageable pageable);
 
+    List<Match> findByScheduledAtBetween(OffsetDateTime from, OffsetDateTime to);
+
     // 외부 ID로 경기 조회 (PandaScore 동기화 시 중복 방지)
     Optional<Match> findByExternalId(String externalId);
 
