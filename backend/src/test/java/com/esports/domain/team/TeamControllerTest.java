@@ -18,7 +18,8 @@ import java.util.List;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TeamController.class)
 @Import(SecurityConfig.class)
@@ -35,13 +36,11 @@ class TeamControllerTest {
 
     @Test
     void listReturns200() throws Exception {
-        // given
         when(teamQueryService.findAll(null)).thenReturn(List.of(
-                new TeamResponse(1L, "T1", "T1", "KR", null, null, null, null, null, null, 1L, null, null, null),
-                new TeamResponse(2L, "Gen.G", "GEN", "KR", null, null, null, null, null, null, 1L, null, null, null)
+                new TeamResponse(1L, "T1", "T1", "LCK", null, null, null, null, null, null, null, 1L, null, null, null),
+                new TeamResponse(2L, "Gen.G", "GEN", "LCK", null, null, null, null, null, null, null, 1L, null, null, null)
         ));
 
-        // when & then
         mockMvc.perform(get("/api/v1/teams"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2));
@@ -49,13 +48,42 @@ class TeamControllerTest {
 
     @Test
     void getByIdReturns200WithPlayers() throws Exception {
-        // given: 소속 선수 포함 팀 상세
-        PlayerResponse player = new PlayerResponse(1L, "Faker", "이상혁", "MID", "KR", "1996-05-07", null, null, null, null, PlayerStatus.ACTIVE, null, PlayerExternalSource.MANUAL, null, 1L);
+        PlayerResponse player = new PlayerResponse(
+                1L,
+                "Faker",
+                "이상혁",
+                "MID",
+                "KR",
+                "1996-05-07",
+                null,
+                null,
+                null,
+                null,
+                PlayerStatus.ACTIVE,
+                null,
+                PlayerExternalSource.MANUAL,
+                null,
+                1L
+        );
         TeamResponse response = new TeamResponse(
-                1L, "T1", "T1", "KR", null, null, null, null, null, null, 1L, null, null, List.of(player));
+                1L,
+                "T1",
+                "T1",
+                "LCK",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                1L,
+                null,
+                null,
+                List.of(player)
+        );
         when(teamQueryService.findById(1L)).thenReturn(response);
 
-        // when & then
         mockMvc.perform(get("/api/v1/teams/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.players.length()").value(1))
@@ -64,11 +92,9 @@ class TeamControllerTest {
 
     @Test
     void getByIdReturns404WhenNotFound() throws Exception {
-        // given
         when(teamQueryService.findById(999L))
                 .thenThrow(new BusinessException("TEAM_NOT_FOUND", "팀을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
-        // when & then
         mockMvc.perform(get("/api/v1/teams/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("TEAM_NOT_FOUND"));

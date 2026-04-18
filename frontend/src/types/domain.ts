@@ -99,6 +99,26 @@ export interface PandaScoreMatchImportResponse {
   items: PandaScoreMatchImportItemResponse[]
 }
 
+export type PandaScoreTeamImportResultStatus = 'CREATED' | 'MATCHED' | 'UPDATED' | 'SKIPPED'
+
+export interface PandaScoreTeamImportItemResponse {
+  externalId: string | null
+  teamName: string | null
+  leagueCode: string
+  resultStatus: PandaScoreTeamImportResultStatus
+  teamId: number | null
+  message: string
+}
+
+export interface PandaScoreTeamImportResponse {
+  fetchedCount: number
+  createdCount: number
+  matchedCount: number
+  updatedCount: number
+  skippedCount: number
+  items: PandaScoreTeamImportItemResponse[]
+}
+
 export interface TeamResponse {
   id: number
   name: string
@@ -110,6 +130,7 @@ export interface TeamResponse {
   youtubeUrl: string | null
   livePlatform: string | null
   liveUrl: string | null
+  externalId: string | null
   gameId: number
   primaryColor: string | null
   secondaryColor: string | null

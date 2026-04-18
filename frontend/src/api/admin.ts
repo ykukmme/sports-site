@@ -8,6 +8,7 @@ import type {
   GameResponse,
   PandaScoreMatchPreviewResponse,
   PandaScoreMatchImportResponse,
+  PandaScoreTeamImportResponse,
 } from '../types/domain'
 import type {
   MatchCreateFormValues,
@@ -191,6 +192,19 @@ export async function importPandaScoreMatches(
     {
       externalIds,
       leagueCodes,
+    },
+  )
+  return res.data.data!
+}
+
+export async function importPandaScoreTeams(
+  leagueCodes: TeamLeagueCode[],
+): Promise<PandaScoreTeamImportResponse> {
+  const res = await apiClient.post<ApiResponse<PandaScoreTeamImportResponse>>(
+    '/api/admin/teams/pandascore/import',
+    null,
+    {
+      params: { leagueCodes: leagueCodes.join(',') },
     },
   )
   return res.data.data!

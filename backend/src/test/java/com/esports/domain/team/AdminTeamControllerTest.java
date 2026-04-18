@@ -1,5 +1,6 @@
 package com.esports.domain.team;
 
+import com.esports.domain.pandascore.PandaScoreTeamImportService;
 import com.esports.config.JwtTokenProvider;
 import com.esports.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ class AdminTeamControllerTest {
     @Autowired ObjectMapper objectMapper;
     @MockBean TeamCommandService teamCommandService;
     @MockBean TeamLogoStorageService teamLogoStorageService;
+    @MockBean PandaScoreTeamImportService pandaScoreTeamImportService;
     @MockBean JwtTokenProvider jwtTokenProvider;
 
     @Test

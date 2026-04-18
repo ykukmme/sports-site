@@ -1,15 +1,15 @@
-// 어드민 팀 관리 훅
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { TeamLeagueCode } from '../constants/teamLeagues'
 import type { TeamFormValues } from '../types/adminForms'
 import {
-  fetchAdminTeams,
-  fetchAdminTeam,
   createAdminTeam,
-  updateAdminTeam,
   deleteAdminTeam,
+  fetchAdminTeam,
+  fetchAdminTeams,
+  importPandaScoreTeams,
+  updateAdminTeam,
 } from '../api/admin'
 
-// 팀 목록 훅
 export function useAdminTeamList() {
   return useQuery({
     queryKey: ['admin', 'teams'],
@@ -18,7 +18,6 @@ export function useAdminTeamList() {
   })
 }
 
-// 팀 상세 훅 (선수 목록 포함)
 export function useAdminTeam(id: number) {
   return useQuery({
     queryKey: ['admin', 'teams', id],
@@ -28,7 +27,6 @@ export function useAdminTeam(id: number) {
   })
 }
 
-// 팀 등록 훅
 export function useAdminCreateTeam() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -39,7 +37,6 @@ export function useAdminCreateTeam() {
   })
 }
 
-// 팀 수정 훅
 export function useAdminUpdateTeam() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -51,11 +48,20 @@ export function useAdminUpdateTeam() {
   })
 }
 
-// 팀 삭제 훅
 export function useAdminDeleteTeam() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => deleteAdminTeam(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'teams'] })
+    },
+  })
+}
+
+export function useAdminImportPandaScoreTeams() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueCodes: TeamLeagueCode[]) => importPandaScoreTeams(leagueCodes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'teams'] })
     },

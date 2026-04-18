@@ -230,10 +230,10 @@ class PandaScoreMatchPreviewServiceTest {
                 new PandaScoreApiClient.PandaScoreTournament(1L, "LCK", "lck"),
                 List.of(
                         new PandaScoreApiClient.PandaScoreOpponent(
-                                new PandaScoreApiClient.PandaScoreTeam(10L, "Gen.G", "geng")
+                                new PandaScoreApiClient.PandaScoreTeam(10L, "Gen.G", "geng", "GEN", null)
                         ),
                         new PandaScoreApiClient.PandaScoreOpponent(
-                                new PandaScoreApiClient.PandaScoreTeam(20L, "Dplus KIA", "dplus-kia")
+                                new PandaScoreApiClient.PandaScoreTeam(20L, "Dplus KIA", "dplus-kia", "DK", null)
                         )
                 )
         );
