@@ -1,10 +1,20 @@
 package com.esports.domain.team;
 
 import com.esports.domain.game.Game;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+
 import java.time.OffsetDateTime;
 
-// E-sports 팀 — 특정 종목 소속
 @Entity
 @Table(name = "teams")
 public class Team {
@@ -20,7 +30,7 @@ public class Team {
     private String shortName;
 
     @Column(length = 50)
-    private String region;
+    private String league;
 
     @Column(name = "logo_url")
     private String logoUrl;
@@ -40,18 +50,15 @@ public class Team {
     @Column(name = "live_url")
     private String liveUrl;
 
-    // PandaScore 등 외부 데이터 동기화 시 사용하는 외부 식별자
     @Column(name = "external_id", unique = true, length = 100)
     private String externalId;
 
-    // 팬 테마 시스템용 팀 색상 — hex 코드 (#RRGGBB)
     @Column(name = "primary_color", length = 7)
     private String primaryColor;
 
     @Column(name = "secondary_color", length = 7)
     private String secondaryColor;
 
-    // 팀이 속한 종목
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
@@ -69,7 +76,6 @@ public class Team {
         this.updatedAt = now;
     }
 
-    // 수정 시 updatedAt 자동 갱신
     @PreUpdate
     void preUpdate() {
         this.updatedAt = OffsetDateTime.now();
@@ -86,7 +92,7 @@ public class Team {
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getShortName() { return shortName; }
-    public String getRegion() { return region; }
+    public String getLeague() { return league; }
     public String getLogoUrl() { return logoUrl; }
     public String getInstagramUrl() { return instagramUrl; }
     public String getXUrl() { return xUrl; }
@@ -97,13 +103,12 @@ public class Team {
     public Game getGame() { return game; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
-
     public String getPrimaryColor() { return primaryColor; }
     public String getSecondaryColor() { return secondaryColor; }
 
     public void setName(String name) { this.name = name; }
     public void setShortName(String shortName) { this.shortName = shortName; }
-    public void setRegion(String region) { this.region = region; }
+    public void setLeague(String league) { this.league = league; }
     public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
     public void setInstagramUrl(String instagramUrl) { this.instagramUrl = instagramUrl; }
     public void setXUrl(String xUrl) { this.xUrl = xUrl; }

@@ -25,7 +25,6 @@ class TeamCommandServiceTest {
 
     @Test
     void createPersistsTeam() {
-        // given
         Game game = mock(Game.class);
         when(game.getId()).thenReturn(1L);
         when(gameRepository.findById(1L)).thenReturn(Optional.of(game));
@@ -37,19 +36,16 @@ class TeamCommandServiceTest {
         when(teamRepository.save(any(Team.class))).thenReturn(saved);
 
         TeamRequest request = new TeamRequest(
-                "T1", "T1", "KR", null, null, null, null, null, null, null, 1L, null, null);
+                "T1", "T1", "LCK", null, null, null, null, null, null, null, 1L, null, null);
 
-        // when
         TeamResponse result = teamCommandService.create(request);
 
-        // then
         assertThat(result.name()).isEqualTo("T1");
         verify(teamRepository).save(any(Team.class));
     }
 
     @Test
     void updateChangesName() {
-        // given
         Game game = mock(Game.class);
         when(game.getId()).thenReturn(1L);
         when(gameRepository.findById(1L)).thenReturn(Optional.of(game));
@@ -60,25 +56,20 @@ class TeamCommandServiceTest {
         TeamUpdateRequest request = new TeamUpdateRequest(
                 "T1 Esports", null, null, null, null, null, null, null, null, null, 1L, null, null);
 
-        // when
         teamCommandService.update(1L, request);
 
-        // then
         verify(team).setName("T1 Esports");
     }
 
     @Test
     void deleteRemovesTeam() {
-        // given
         Team team = mock(Team.class);
         when(teamRepository.findById(1L)).thenReturn(Optional.of(team));
         when(playerRepository.existsByTeamId(1L)).thenReturn(false);
         when(matchRepository.existsByTeamAIdOrTeamBId(1L, 1L)).thenReturn(false);
 
-        // when
         teamCommandService.delete(1L);
 
-        // then
         verify(teamRepository).delete(team);
     }
 }

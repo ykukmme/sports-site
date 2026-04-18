@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
 import type { TeamResponse } from '../types/domain'
+import { getTeamLeagueLabel } from '../constants/teamLeagues'
 
 export function TeamDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -39,7 +40,7 @@ export function TeamDetailPage() {
         )}
         <div>
           <h1 className="text-4xl font-semibold leading-tight">{team.name}</h1>
-          <p className="text-sm text-muted-foreground">{team.region ?? '-'}</p>
+          <p className="text-sm text-muted-foreground">{getTeamLeagueLabel(team.league)}</p>
           {socialLinks.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {socialLinks.map((link) => (

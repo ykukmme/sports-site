@@ -2,6 +2,7 @@ package com.esports.domain.pandascore;
 
 import com.esports.common.ApiResponse;
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.team.TeamLeague;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +24,8 @@ public class PandaScorePreviewController {
     @GetMapping("/matches/preview")
     public ApiResponse<List<PandaScoreMatchPreviewResponse>> previewMatches(
             @RequestParam(defaultValue = "lol") String game,
-            @RequestParam(defaultValue = "upcoming") String type) {
+            @RequestParam(defaultValue = "upcoming") String type,
+            @RequestParam(required = false) List<String> leagueCodes) {
         if (!"lol".equalsIgnoreCase(game) || !"upcoming".equalsIgnoreCase(type)) {
             throw new BusinessException(
                     "PANDASCORE_PREVIEW_UNSUPPORTED_SCOPE",
@@ -32,6 +34,6 @@ public class PandaScorePreviewController {
             );
         }
 
-        return ApiResponse.ok(previewService.previewUpcomingLolMatches());
+        return ApiResponse.ok(previewService.previewUpcomingLolMatches(TeamLeague.fromCodes(leagueCodes)));
     }
 }

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { useTeamTheme } from '../../context/TeamThemeContext'
 import type { TeamResponse } from '../../types/domain'
+import { getTeamLeagueLabel } from '../../constants/teamLeagues'
 
 interface TeamCardProps {
   team: TeamResponse
@@ -35,7 +36,7 @@ export function TeamCard({ team }: TeamCardProps) {
 
           <div>
             <p className="text-sm font-semibold">{team.name}</p>
-            <p className="text-xs text-muted-foreground">{team.region ?? '-'}</p>
+            <p className="text-xs text-muted-foreground">{getTeamLeagueLabel(team.league)}</p>
           </div>
         </Link>
 

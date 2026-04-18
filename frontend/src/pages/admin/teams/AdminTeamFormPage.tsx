@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,6 +10,7 @@ import { useAdminTeam, useAdminCreateTeam, useAdminUpdateTeam } from '../../../h
 import { fetchGamesForAdmin, uploadTeamLogo } from '../../../api/admin'
 import { Button } from '../../../components/ui/button'
 import { ApiError } from '../../../api/client'
+import { TEAM_LEAGUES, getTeamLeagueLabel, type TeamLeagueCode } from '../../../constants/teamLeagues'
 
 export function AdminTeamFormPage() {
   const navigate = useNavigate()
@@ -43,7 +44,7 @@ export function AdminTeamFormPage() {
     defaultValues: {
       name: '',
       shortName: '',
-      region: '',
+      league: 'LCK',
       logoUrl: '',
       instagramUrl: '',
       xUrl: '',
@@ -55,12 +56,23 @@ export function AdminTeamFormPage() {
     },
   })
 
+  const leagueOptions = useMemo(() => {
+    if (!existingTeam?.league || TEAM_LEAGUES.some((league) => league.code === existingTeam.league)) {
+      return TEAM_LEAGUES
+    }
+
+    return [
+      { code: existingTeam.league as TeamLeagueCode, label: `${getTeamLeagueLabel(existingTeam.league)} (현재 값)` },
+      ...TEAM_LEAGUES,
+    ]
+  }, [existingTeam?.league])
+
   useEffect(() => {
     if (isEditMode && existingTeam) {
       reset({
         name: existingTeam.name,
         shortName: existingTeam.shortName ?? '',
-        region: existingTeam.region ?? '',
+        league: (existingTeam.league as TeamLeagueCode | null) ?? 'LCK',
         logoUrl: existingTeam.logoUrl ?? '',
         instagramUrl: existingTeam.instagramUrl ?? '',
         xUrl: existingTeam.xUrl ?? '',
@@ -114,8 +126,17 @@ export function AdminTeamFormPage() {
           <TextInput {...register('shortName')} placeholder="예: T1, GEN" />
         </Field>
 
-        <Field label="지역" error={errors.region?.message}>
-          <TextInput {...register('region')} placeholder="예: 한국, 중국" />
+        <Field label="리그 *" error={errors.league?.message}>
+          <select
+            {...register('league')}
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
+          >
+            {leagueOptions.map((league) => (
+              <option key={league.code} value={league.code}>
+                {league.label}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <Field label="로고 URL" error={errors.logoUrl?.message}>
@@ -153,7 +174,7 @@ export function AdminTeamFormPage() {
                 <div className="asset-plate size-12 p-1.5">
                   <img src={logoUrl} alt="팀 로고 미리보기" className="h-full w-full object-contain" />
                 </div>
-                <span>팀을 저장하면 이 로고가 연결됩니다.</span>
+                <span>팀 카드와 상세 페이지에 같은 로고가 연결됩니다.</span>
               </div>
             )}
           </div>

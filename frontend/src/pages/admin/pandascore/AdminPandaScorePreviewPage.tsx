@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import {
@@ -15,6 +16,7 @@ import type {
   PandaScorePreviewStatus,
   PandaScoreTeamPreview,
 } from '../../../types/domain'
+import { TEAM_LEAGUES, getTeamLeagueLabel, type TeamLeagueCode } from '../../../constants/teamLeagues'
 
 const STATUS_LABELS: Record<PandaScorePreviewStatus, string> = {
   NEW: '신규',
@@ -32,24 +34,73 @@ const STATUS_VARIANTS: Record<PandaScorePreviewStatus, 'default' | 'secondary' |
   REJECTED: 'destructive',
 }
 
+const DEFAULT_LEAGUES = TEAM_LEAGUES.map((league) => league.code)
+
 export function AdminPandaScorePreviewPage() {
-  const { data, error, isFetching, isError, refetch } = usePandaScoreMatchPreview()
+  const [selectedLeagueCodes, setSelectedLeagueCodes] = useState<TeamLeagueCode[]>(DEFAULT_LEAGUES)
+  const { data, error, isFetching, isError, refetch } = usePandaScoreMatchPreview(selectedLeagueCodes)
   const previews = data ?? []
   const errorMessage =
     error instanceof ApiError ? error.message : error instanceof Error ? error.message : null
 
+  const selectedLeagueLabels = useMemo(
+    () => selectedLeagueCodes.map((code) => getTeamLeagueLabel(code)).join(', '),
+    [selectedLeagueCodes],
+  )
+
+  function toggleLeague(code: TeamLeagueCode) {
+    setSelectedLeagueCodes((prev) =>
+      prev.includes(code) ? prev.filter((value) => value !== code) : [...prev, code],
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground">PandaScore Preview</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            LoL 예정 경기를 저장하지 않고 먼저 매칭 상태만 확인합니다.
+            선택한 리그의 LoL 예정 경기를 저장하지 않고 먼저 매칭 상태만 확인합니다.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            현재 선택: {selectedLeagueLabels}
           </p>
         </div>
-        <Button size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? '가져오는 중...' : 'Preview 가져오기'}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelectedLeagueCodes(DEFAULT_LEAGUES)}
+            disabled={isFetching}
+          >
+            전체 선택
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching || selectedLeagueCodes.length === 0}
+          >
+            {isFetching ? '가져오는 중...' : 'Preview 가져오기'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {TEAM_LEAGUES.map((league) => {
+          const isSelected = selectedLeagueCodes.includes(league.code)
+          return (
+            <Button
+              key={league.code}
+              type="button"
+              size="sm"
+              variant={isSelected ? 'default' : 'outline'}
+              onClick={() => toggleLeague(league.code)}
+              className="min-w-[96px]"
+            >
+              {league.label}
+            </Button>
+          )
+        })}
       </div>
 
       {isError && errorMessage && (
@@ -70,6 +121,7 @@ export function AdminPandaScorePreviewPage() {
           <TableHeader>
             <TableRow>
               <TableHead>상태</TableHead>
+              <TableHead>리그</TableHead>
               <TableHead>경기</TableHead>
               <TableHead>팀 A</TableHead>
               <TableHead>팀 B</TableHead>
@@ -80,17 +132,20 @@ export function AdminPandaScorePreviewPage() {
           <TableBody>
             {previews.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  Preview를 가져오면 PandaScore 예정 경기 매칭 결과가 표시됩니다.
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  리그를 선택한 뒤 Preview를 가져오면 PandaScore 예정 경기 매칭 결과가 표시됩니다.
                 </TableCell>
               </TableRow>
             ) : (
               previews.map((preview) => (
-                <TableRow key={preview.externalId ?? `${preview.tournamentName}-${preview.scheduledAt}`}>
+                <TableRow key={preview.externalId ?? `${preview.leagueCode}-${preview.tournamentName}-${preview.scheduledAt}`}>
                   <TableCell>
                     <Badge variant={STATUS_VARIANTS[preview.previewStatus]}>
                       {STATUS_LABELS[preview.previewStatus]}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {preview.leagueName ?? getTeamLeagueLabel(preview.leagueCode)}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-foreground">

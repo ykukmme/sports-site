@@ -1,16 +1,18 @@
 package com.esports.domain.pandascore;
 
 import com.esports.config.PandaScoreProperties;
+import com.esports.domain.team.TeamLeague;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.springframework.stereotype.Component;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import java.time.Duration;
-import java.util.List;
 
-// PandaScore API HTTP 클라이언트
-// Hard Rule: API 키는 PandaScoreProperties를 통해서만 주입
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 @Component
 public class PandaScoreApiClient {
 
@@ -27,7 +29,6 @@ public class PandaScoreApiClient {
                 .build();
     }
 
-    // 예정 경기 조회
     public List<PandaScoreMatch> getUpcomingMatches() {
         return fetchMatches("/matches/upcoming?per_page=50");
     }
@@ -36,12 +37,27 @@ public class PandaScoreApiClient {
         return fetchMatches("/lol/matches/upcoming?per_page=50");
     }
 
-    // 진행 중 경기 조회
+    public List<PandaScoreMatch> getUpcomingLolMatchesByLeagues(List<TeamLeague> leagues) {
+        Map<Long, PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
+
+        for (TeamLeague league : leagues) {
+            List<PandaScoreMatch> leagueMatches = fetchMatches(
+                    "/leagues/" + league.getPandaScoreLeagueId() + "/matches/upcoming?per_page=100"
+            );
+            for (PandaScoreMatch match : leagueMatches) {
+                if (match.id() != null) {
+                    dedupedMatches.put(match.id(), match);
+                }
+            }
+        }
+
+        return List.copyOf(dedupedMatches.values());
+    }
+
     public List<PandaScoreMatch> getRunningMatches() {
         return fetchMatches("/matches/running?per_page=50");
     }
 
-    // 완료된 경기 조회
     public List<PandaScoreMatch> getPastMatches() {
         return fetchMatches("/matches/past?per_page=50");
     }
@@ -55,7 +71,6 @@ public class PandaScoreApiClient {
         return matches != null ? List.of(matches) : List.of();
     }
 
-    // PandaScore 경기 응답 DTO
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreMatch(
             Long id,
@@ -63,9 +78,13 @@ public class PandaScoreApiClient {
             String status,
             @JsonProperty("scheduled_at") String scheduledAt,
             @JsonProperty("begin_at") String beginAt,
+            @JsonProperty("league") PandaScoreLeague league,
             @JsonProperty("tournament") PandaScoreTournament tournament,
             List<PandaScoreOpponent> opponents
     ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PandaScoreLeague(Long id, String name, String slug) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreTournament(Long id, String name, String slug) {}

@@ -7,6 +7,7 @@ import com.esports.domain.game.GameRepository;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.team.Team;
+import com.esports.domain.team.TeamLeague;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -70,16 +72,18 @@ class PandaScoreMatchPreviewServiceTest {
     void marksNewWhenExternalIdIsNewAndTeamsAreConfirmed() {
         stubGame();
         PandaScoreApiClient.PandaScoreMatch pandaMatch = pandaMatch(100L, "2026-05-01T10:00:00Z");
-        when(apiClient.getUpcomingLolMatches()).thenReturn(List.of(pandaMatch));
+        when(apiClient.getUpcomingLolMatchesByLeagues(anyList())).thenReturn(List.of(pandaMatch));
         when(matchRepository.findByExternalId("100")).thenReturn(Optional.empty());
         when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
                 .thenReturn(List.of());
         stubConfirmedTeams();
 
-        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches();
+        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches(List.of(TeamLeague.LCK));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).previewStatus()).isEqualTo(PandaScorePreviewStatus.NEW);
+        assertThat(result.get(0).leagueCode()).isEqualTo("LCK");
+        assertThat(result.get(0).leagueName()).isEqualTo("LCK");
         assertThat(result.get(0).conflictReasons()).isEmpty();
     }
 
@@ -87,7 +91,7 @@ class PandaScoreMatchPreviewServiceTest {
     void marksTeamMatchFailedWhenOnlyNameCandidateExists() {
         stubGame();
         PandaScoreApiClient.PandaScoreMatch pandaMatch = pandaMatch(100L, "2026-05-01T10:00:00Z");
-        when(apiClient.getUpcomingLolMatches()).thenReturn(List.of(pandaMatch));
+        when(apiClient.getUpcomingLolMatchesByLeagues(anyList())).thenReturn(List.of(pandaMatch));
         when(matchRepository.findByExternalId("100")).thenReturn(Optional.empty());
         when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
                 .thenReturn(List.of());
@@ -97,7 +101,7 @@ class PandaScoreMatchPreviewServiceTest {
                         confirmedTeam("20", "Dplus KIA", 2L)
                 );
 
-        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches();
+        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches(List.of(TeamLeague.LCK));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).previewStatus()).isEqualTo(PandaScorePreviewStatus.TEAM_MATCH_FAILED);
@@ -112,18 +116,18 @@ class PandaScoreMatchPreviewServiceTest {
         when(existing.getId()).thenReturn(77L);
         when(existing.getTournamentName()).thenReturn("Old Tournament");
         when(existing.getScheduledAt()).thenReturn(OffsetDateTime.parse("2026-05-01T09:00:00Z"));
-        when(apiClient.getUpcomingLolMatches()).thenReturn(List.of(pandaMatch));
+        when(apiClient.getUpcomingLolMatchesByLeagues(anyList())).thenReturn(List.of(pandaMatch));
         when(matchRepository.findByExternalId("100")).thenReturn(Optional.of(existing));
         when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
                 .thenReturn(List.of());
         stubConfirmedTeams();
 
-        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches();
+        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches(List.of(TeamLeague.LCK));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).previewStatus()).isEqualTo(PandaScorePreviewStatus.UPDATE);
         assertThat(result.get(0).existingMatchId()).isEqualTo(77L);
-        assertThat(result.get(0).conflictReasons()).contains("대회명 업데이트 후보입니다.", "경기 시간이 업데이트 후보입니다.");
+        assertThat(result.get(0).conflictReasons()).contains("대회명 업데이트 후보입니다.", "경기 시간대 업데이트 후보입니다.");
     }
 
     @Test
@@ -131,13 +135,13 @@ class PandaScoreMatchPreviewServiceTest {
         stubGame();
         PandaScoreApiClient.PandaScoreMatch pandaMatch = pandaMatch(100L, "2026-05-01T10:00:00Z");
         Match conflict = mockConflictMatch(77L, 1L, 2L, "2026-05-01T11:00:00Z");
-        when(apiClient.getUpcomingLolMatches()).thenReturn(List.of(pandaMatch));
+        when(apiClient.getUpcomingLolMatchesByLeagues(anyList())).thenReturn(List.of(pandaMatch));
         when(matchRepository.findByExternalId("100")).thenReturn(Optional.empty());
         when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
                 .thenReturn(List.of(conflict));
         stubConfirmedTeams();
 
-        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches();
+        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches(List.of(TeamLeague.LCK));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).previewStatus()).isEqualTo(PandaScorePreviewStatus.CONFLICT);
@@ -153,12 +157,13 @@ class PandaScoreMatchPreviewServiceTest {
                 null,
                 "invalid-date",
                 null,
+                new PandaScoreApiClient.PandaScoreLeague(293L, "LCK", "league-of-legends-lck-champions-korea"),
                 null,
                 List.of()
         );
-        when(apiClient.getUpcomingLolMatches()).thenReturn(List.of(invalid));
+        when(apiClient.getUpcomingLolMatchesByLeagues(anyList())).thenReturn(List.of(invalid));
 
-        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches();
+        List<PandaScoreMatchPreviewResponse> result = service.previewUpcomingLolMatches(List.of(TeamLeague.LCK));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).previewStatus()).isEqualTo(PandaScorePreviewStatus.REJECTED);
@@ -176,13 +181,13 @@ class PandaScoreMatchPreviewServiceTest {
         stubGame();
         PandaScoreApiClient.PandaScoreMatch first = pandaMatch(100L, "2026-05-01T10:00:00Z");
         PandaScoreApiClient.PandaScoreMatch second = pandaMatch(101L, "2026-05-02T10:00:00Z");
-        when(apiClient.getUpcomingLolMatches()).thenReturn(List.of(first, second));
+        when(apiClient.getUpcomingLolMatchesByLeagues(anyList())).thenReturn(List.of(first, second));
         when(matchRepository.findByExternalId(any())).thenReturn(Optional.empty());
         when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
                 .thenReturn(List.of());
         stubConfirmedTeams();
 
-        service.previewUpcomingLolMatches();
+        service.previewUpcomingLolMatches(List.of(TeamLeague.LCK, TeamLeague.LPL));
 
         verify(matchRepository, times(1))
                 .findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class));
@@ -221,6 +226,7 @@ class PandaScoreMatchPreviewServiceTest {
                 "not_started",
                 scheduledAt,
                 null,
+                new PandaScoreApiClient.PandaScoreLeague(293L, "LCK", "league-of-legends-lck-champions-korea"),
                 new PandaScoreApiClient.PandaScoreTournament(1L, "LCK", "lck"),
                 List.of(
                         new PandaScoreApiClient.PandaScoreOpponent(

@@ -6,6 +6,8 @@ import java.util.List;
 public record PandaScoreMatchPreviewResponse(
         String externalId,
         String source,
+        String leagueCode,
+        String leagueName,
         PandaScorePreviewStatus previewStatus,
         String tournamentName,
         OffsetDateTime scheduledAt,

@@ -15,6 +15,7 @@ import type {
   TeamFormValues,
   PlayerFormValues,
 } from '../types/adminForms'
+import type { TeamLeagueCode } from '../constants/teamLeagues'
 
 function toIso(dateTimeLocal: string): string {
   return new Date(dateTimeLocal).toISOString()
@@ -168,11 +169,13 @@ export async function deleteAdminPlayer(id: number): Promise<void> {
   await apiClient.delete(`/api/admin/players/${id}`)
 }
 
-export async function fetchPandaScoreMatchPreview(): Promise<PandaScoreMatchPreviewResponse[]> {
+export async function fetchPandaScoreMatchPreview(
+  leagueCodes: TeamLeagueCode[],
+): Promise<PandaScoreMatchPreviewResponse[]> {
   const res = await apiClient.get<ApiResponse<PandaScoreMatchPreviewResponse[]>>(
     '/api/admin/pandascore/matches/preview',
     {
-      params: { game: 'lol', type: 'upcoming' },
+      params: { game: 'lol', type: 'upcoming', leagueCodes: leagueCodes.join(',') },
     },
   )
   return res.data.data ?? []

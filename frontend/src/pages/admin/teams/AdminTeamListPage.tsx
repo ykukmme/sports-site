@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '../../../components/ui/table'
 import { ApiError } from '../../../api/client'
+import { getTeamLeagueLabel } from '../../../constants/teamLeagues'
 
 export function AdminTeamListPage() {
   const navigate = useNavigate()
@@ -59,7 +60,7 @@ export function AdminTeamListPage() {
               <TableHead>로고</TableHead>
               <TableHead>팀명</TableHead>
               <TableHead>약칭</TableHead>
-              <TableHead>지역</TableHead>
+              <TableHead>리그</TableHead>
               <TableHead>SNS</TableHead>
               <TableHead>팀 색상</TableHead>
               <TableHead className="text-right">액션</TableHead>
@@ -96,7 +97,7 @@ export function AdminTeamListPage() {
                   </TableCell>
                   <TableCell className="font-medium">{team.name}</TableCell>
                   <TableCell className="text-muted-foreground">{team.shortName ?? '-'}</TableCell>
-                  <TableCell className="text-muted-foreground">{team.region ?? '-'}</TableCell>
+                  <TableCell className="text-muted-foreground">{getTeamLeagueLabel(team.league)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1 text-xs">
                       {team.instagramUrl && <SocialBadge label="IG" />}

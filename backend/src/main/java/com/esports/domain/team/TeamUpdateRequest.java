@@ -8,7 +8,7 @@ public record TeamUpdateRequest(
         String name,
 
         String shortName,
-        String region,
+        String league,
 
         @Pattern(regexp = "^((https://.*)|(/uploads/team-logos/.*))?$", message = "로고 URL은 https:// 또는 /uploads/team-logos/로 시작해야 합니다.")
         String logoUrl,

@@ -34,7 +34,7 @@ public class TeamCommandService {
                         "GAME_NOT_FOUND", "종목을 찾을 수 없습니다. id=" + request.gameId(), HttpStatus.NOT_FOUND));
 
         Team team = new Team(request.name(), request.shortName(), game);
-        team.setRegion(request.region());
+        team.setLeague(TeamLeague.fromCode(request.league()).getCode());
         team.setLogoUrl(request.logoUrl());
         team.setInstagramUrl(request.instagramUrl());
         team.setXUrl(request.xUrl());
@@ -55,7 +55,7 @@ public class TeamCommandService {
 
         if (request.name() != null) team.setName(request.name());
         if (request.shortName() != null) team.setShortName(request.shortName());
-        if (request.region() != null) team.setRegion(request.region());
+        if (request.league() != null) team.setLeague(TeamLeague.fromCode(request.league()).getCode());
         if (request.logoUrl() != null) team.setLogoUrl(request.logoUrl());
         if (request.instagramUrl() != null) team.setInstagramUrl(request.instagramUrl());
         if (request.xUrl() != null) team.setXUrl(request.xUrl());

@@ -1,10 +1,12 @@
 import { z } from 'zod'
+import { TEAM_LEAGUES } from '../constants/teamLeagues'
 
 const urlMessage = '올바른 URL을 입력해주세요.'
 const optionalUrl = z.string().url(urlMessage).or(z.literal('')).optional()
 const rosterRoles = ['TOP', 'JGL', 'MID', 'BOT', 'SPT', 'HEAD COACH', 'COACH'] as const
 const playerStatuses = ['ACTIVE', 'INACTIVE', 'RETIRED'] as const
 const playerExternalSources = ['MANUAL', 'PANDASCORE'] as const
+const teamLeagueCodes = TEAM_LEAGUES.map((league) => league.code) as [string, ...string[]]
 
 const logoUrlSchema = z
   .string()
@@ -59,7 +61,7 @@ export type MatchResultFormValues = z.infer<typeof matchResultSchema>
 export const teamFormSchema = z.object({
   name: z.string().min(1, '팀명을 입력해주세요.'),
   shortName: z.string().optional(),
-  region: z.string().optional(),
+  league: z.enum(teamLeagueCodes, { message: '리그를 선택해주세요.' }),
   logoUrl: logoUrlSchema,
   instagramUrl: optionalUrl,
   xUrl: optionalUrl,

@@ -6,6 +6,7 @@ import com.esports.domain.game.Game;
 import com.esports.domain.game.GameRepository;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
+import com.esports.domain.team.TeamLeague;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,10 @@ public class PandaScoreMatchPreviewService {
     }
 
     public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches() {
+        return previewUpcomingLolMatches(TeamLeague.supportedLeagues());
+    }
+
+    public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches(List<TeamLeague> leagues) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BusinessException(
                     "PANDASCORE_NOT_CONFIGURED",
@@ -60,7 +65,7 @@ public class PandaScoreMatchPreviewService {
 
         List<PandaScoreApiClient.PandaScoreMatch> matches;
         try {
-            matches = apiClient.getUpcomingLolMatches();
+            matches = apiClient.getUpcomingLolMatchesByLeagues(leagues);
         } catch (RestClientException e) {
             throw new BusinessException(
                     "PANDASCORE_FETCH_FAILED",
@@ -72,6 +77,10 @@ public class PandaScoreMatchPreviewService {
         List<Match> conflictCandidates = findConflictCandidates(matches);
 
         return matches.stream()
+                .sorted(Comparator.comparing(
+                        match -> parseDateTime(firstNonBlank(match.scheduledAt(), match.beginAt())),
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                ))
                 .map(match -> toPreview(game, match, conflictCandidates))
                 .toList();
     }
@@ -86,11 +95,20 @@ public class PandaScoreMatchPreviewService {
         PandaScoreTeamPreview teamB = previewTeam(game.getId(), pandaMatch, 1);
         OffsetDateTime scheduledAt = parseDateTime(firstNonBlank(pandaMatch.scheduledAt(), pandaMatch.beginAt()));
         String tournamentName = pandaMatch.tournament() != null ? pandaMatch.tournament().name() : pandaMatch.name();
+        TeamLeague league = pandaMatch.league() != null
+                ? TeamLeague.fromPandaScoreLeagueId(pandaMatch.league().id())
+                : null;
+        String leagueCode = league != null ? league.getCode() : null;
+        String leagueName = league != null
+                ? league.getLabel()
+                : pandaMatch.league() != null ? pandaMatch.league().name() : null;
 
         if (!rejectionReasons.isEmpty()) {
             return new PandaScoreMatchPreviewResponse(
                     externalId,
                     SOURCE,
+                    leagueCode,
+                    leagueName,
                     PandaScorePreviewStatus.REJECTED,
                     tournamentName,
                     scheduledAt,
@@ -107,6 +125,8 @@ public class PandaScoreMatchPreviewService {
             return new PandaScoreMatchPreviewResponse(
                     externalId,
                     SOURCE,
+                    leagueCode,
+                    leagueName,
                     PandaScorePreviewStatus.UPDATE,
                     tournamentName,
                     scheduledAt,
@@ -123,6 +143,8 @@ public class PandaScoreMatchPreviewService {
             return new PandaScoreMatchPreviewResponse(
                     externalId,
                     SOURCE,
+                    leagueCode,
+                    leagueName,
                     PandaScorePreviewStatus.TEAM_MATCH_FAILED,
                     tournamentName,
                     scheduledAt,
@@ -139,6 +161,8 @@ public class PandaScoreMatchPreviewService {
             return new PandaScoreMatchPreviewResponse(
                     externalId,
                     SOURCE,
+                    leagueCode,
+                    leagueName,
                     PandaScorePreviewStatus.CONFLICT,
                     tournamentName,
                     scheduledAt,
@@ -153,6 +177,8 @@ public class PandaScoreMatchPreviewService {
         return new PandaScoreMatchPreviewResponse(
                 externalId,
                 SOURCE,
+                leagueCode,
+                leagueName,
                 PandaScorePreviewStatus.NEW,
                 tournamentName,
                 scheduledAt,
@@ -259,7 +285,7 @@ public class PandaScoreMatchPreviewService {
             reasons.add("대회명 업데이트 후보입니다.");
         }
         if (scheduledAt != null && !scheduledAt.equals(existing.getScheduledAt())) {
-            reasons.add("경기 시간이 업데이트 후보입니다.");
+            reasons.add("경기 시간대 업데이트 후보입니다.");
         }
         if (reasons.isEmpty()) {
             reasons.add("기존 경기와 연결됩니다.");
