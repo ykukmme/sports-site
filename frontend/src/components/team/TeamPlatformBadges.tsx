@@ -1,5 +1,7 @@
 import { Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import soopLogo from '../../assets/platforms/soop.jpg'
+import chzzkLogo from '../../assets/platforms/chzzk.png'
 import type { TeamResponse } from '../../types/domain'
 
 type PlatformKey =
@@ -223,14 +225,35 @@ function PlatformIcon({ platform, className }: { platform: PlatformKey; classNam
     case 'youtube-live':
       return <YoutubePlatformIcon className={className} />
     case 'chzzk':
-      return <ChzzkPlatformIcon className={className} />
+      return <BrandImageIcon alt="치지직" src={chzzkLogo} className={className} rounded={false} />
     case 'soop':
-      return <SoopPlatformIcon className={className} />
+      return <BrandImageIcon alt="SOOP" src={soopLogo} className={className} rounded />
     case 'twitch':
       return <TwitchPlatformIcon className={className} />
     default:
       return <Play className={className} strokeWidth={1.8} />
   }
+}
+
+function BrandImageIcon({
+  alt,
+  src,
+  className,
+  rounded = false,
+}: {
+  alt: string
+  src: string
+  className?: string
+  rounded?: boolean
+}) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={cn('object-contain', rounded ? 'rounded-[4px]' : '', className)}
+      aria-hidden="true"
+    />
+  )
 }
 
 function XPlatformIcon({ className }: { className?: string }) {
@@ -253,22 +276,6 @@ function YoutubePlatformIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
       <path d="M21.4 7.2a3.1 3.1 0 0 0-2.18-2.2C17.3 4.5 12 4.5 12 4.5s-5.3 0-7.22.5A3.1 3.1 0 0 0 2.6 7.2 32 32 0 0 0 2.1 12c0 1.62.17 3.24.5 4.8a3.1 3.1 0 0 0 2.18 2.2c1.92.5 7.22.5 7.22.5s5.3 0 7.22-.5a3.1 3.1 0 0 0 2.18-2.2c.33-1.56.5-3.18.5-4.8 0-1.62-.17-3.24-.5-4.8ZM10 15.5v-7l6 3.5-6 3.5Z" />
-    </svg>
-  )
-}
-
-function ChzzkPlatformIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-      <path d="M4 4h8.2l-2.9 4.1H20L13.8 16H20v4H11.8l2.9-4H4l6.1-7.9H4V4Z" />
-    </svg>
-  )
-}
-
-function SoopPlatformIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-      <path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Zm0 2.5A1.5 1.5 0 0 0 5.5 7v10A1.5 1.5 0 0 0 7 18.5h10a1.5 1.5 0 0 0 1.5-1.5V7A1.5 1.5 0 0 0 17 5.5H7Zm1.8 2.7A2.7 2.7 0 1 0 11.5 11a2.7 2.7 0 0 0-2.7-2.8Zm7.2.4a1.55 1.55 0 1 0 0-3.1 1.55 1.55 0 0 0 0 3.1Z" />
     </svg>
   )
 }
