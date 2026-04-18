@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -55,7 +57,7 @@ public class PandaScoreTeamImportService {
 
         List<PandaScoreApiClient.PandaScoreLeagueTeam> pandaTeams;
         try {
-            pandaTeams = apiClient.getLolTeamsByLeagues(leagues);
+            pandaTeams = collectTeamsFromUpcomingMatches(leagues);
         } catch (RestClientException e) {
             throw new BusinessException(
                     "PANDASCORE_TEAM_FETCH_FAILED",
@@ -162,6 +164,28 @@ public class PandaScoreTeamImportService {
                 skippedCount,
                 List.copyOf(items)
         );
+    }
+
+    private List<PandaScoreApiClient.PandaScoreLeagueTeam> collectTeamsFromUpcomingMatches(List<TeamLeague> leagues) {
+        Map<Long, PandaScoreApiClient.PandaScoreLeagueTeam> dedupedTeams = new LinkedHashMap<>();
+
+        for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getUpcomingLolMatchesByLeagues(leagues)) {
+            TeamLeague league = match.league() != null
+                    ? TeamLeague.fromPandaScoreLeagueId(match.league().id())
+                    : null;
+            if (league == null || match.opponents() == null) {
+                continue;
+            }
+
+            for (PandaScoreApiClient.PandaScoreOpponent opponent : match.opponents()) {
+                PandaScoreApiClient.PandaScoreTeam team = opponent != null ? opponent.opponent() : null;
+                if (team != null && team.id() != null) {
+                    dedupedTeams.put(team.id(), new PandaScoreApiClient.PandaScoreLeagueTeam(league, team));
+                }
+            }
+        }
+
+        return List.copyOf(dedupedTeams.values());
     }
 
     private boolean applyImportedFields(Team team,

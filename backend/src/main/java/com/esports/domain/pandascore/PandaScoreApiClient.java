@@ -54,30 +54,6 @@ public class PandaScoreApiClient {
         return List.copyOf(dedupedMatches.values());
     }
 
-    public List<PandaScoreLeagueTeam> getLolTeamsByLeagues(List<TeamLeague> leagues) {
-        Map<Long, PandaScoreLeagueTeam> dedupedTeams = new LinkedHashMap<>();
-
-        for (TeamLeague league : leagues) {
-            PandaScoreTeam[] teams = restClient.get()
-                    .uri(properties.getBaseUrl() + "/leagues/" + league.getPandaScoreLeagueId() + "/teams?per_page=100")
-                    .header("Authorization", "Bearer " + properties.getApiKey())
-                    .retrieve()
-                    .body(PandaScoreTeam[].class);
-
-            if (teams == null) {
-                continue;
-            }
-
-            for (PandaScoreTeam team : teams) {
-                if (team.id() != null) {
-                    dedupedTeams.put(team.id(), new PandaScoreLeagueTeam(league, team));
-                }
-            }
-        }
-
-        return List.copyOf(dedupedTeams.values());
-    }
-
     public List<PandaScoreMatch> getRunningMatches() {
         return fetchMatches("/matches/running?per_page=50");
     }
