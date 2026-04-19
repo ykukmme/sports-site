@@ -5,7 +5,9 @@ import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 
 @Component
 public class PandaScoreTeamMatcher {
@@ -35,7 +37,7 @@ public class PandaScoreTeamMatcher {
             }
         }
 
-        Team candidate = findNameCandidate(gameId, pandaTeam.name());
+        Team candidate = findCandidate(gameId, pandaTeam);
         if (candidate != null) {
             return new PandaScoreTeamPreview(
                     externalId,
@@ -55,19 +57,44 @@ public class PandaScoreTeamMatcher {
         );
     }
 
-    private Team findNameCandidate(Long gameId, String name) {
-        String normalizedName = normalize(name);
-        if (normalizedName.isBlank()) return null;
+    private Team findCandidate(Long gameId, PandaScoreTeam pandaTeam) {
+        Set<String> pandaKeys = candidateKeys(pandaTeam.name(), pandaTeam.acronym(), pandaTeam.slug());
+        if (pandaKeys.isEmpty()) {
+            return null;
+        }
 
         return teamRepository.findByGameId(gameId).stream()
-                .filter(team -> normalize(team.getName()).equals(normalizedName)
-                        || normalize(team.getShortName()).equals(normalizedName))
+                .filter(team -> teamKeys(team).stream().anyMatch(pandaKeys::contains))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private Set<String> teamKeys(Team team) {
+        return candidateKeys(team.getName(), team.getShortName());
+    }
+
+    private Set<String> candidateKeys(String... values) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (String value : values) {
+            String normalized = normalize(value);
+            if (!normalized.isBlank()) {
+                keys.add(normalized);
+            }
+
+            String compact = normalizeCompact(value);
+            if (!compact.isBlank()) {
+                keys.add(compact);
+            }
+        }
+        return keys;
     }
 
     private String normalize(String value) {
         if (value == null) return "";
         return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeCompact(String value) {
+        return normalize(value).replaceAll("[^a-z0-9]", "");
     }
 }

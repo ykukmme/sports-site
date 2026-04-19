@@ -16,15 +16,17 @@ import {
   usePandaScoreMatchPreview,
 } from '../../../hooks/usePandaScorePreview'
 import type {
+  PandaScoreImportResultStatus,
   PandaScoreMatchImportResponse,
   PandaScoreMatchPreviewResponse,
+  PandaScoreMatchPreviewType,
   PandaScorePreviewStatus,
   PandaScoreTeamPreview,
 } from '../../../types/domain'
 
 const STATUS_LABELS: Record<PandaScorePreviewStatus, string> = {
   NEW: '신규',
-  UPDATE: '업데이트 예정',
+  UPDATE: '업데이트',
   TEAM_MATCH_FAILED: '팀 매칭 실패',
   CONFLICT: '충돌 확인',
   REJECTED: '제외',
@@ -41,14 +43,30 @@ const STATUS_VARIANTS: Record<
   REJECTED: 'destructive',
 }
 
+const IMPORT_RESULT_LABELS: Record<PandaScoreImportResultStatus, string> = {
+  CREATED: '신규 저장',
+  UPDATED: '기존 경기 업데이트',
+  SKIPPED: '저장 안 함',
+}
+
+const IMPORT_RESULT_VARIANTS: Record<
+  PandaScoreImportResultStatus,
+  'default' | 'secondary' | 'destructive'
+> = {
+  CREATED: 'default',
+  UPDATED: 'secondary',
+  SKIPPED: 'destructive',
+}
+
 const DEFAULT_LEAGUES = TEAM_LEAGUES.map((league) => league.code)
 
 export function AdminPandaScorePreviewPage() {
   const [selectedLeagueCodes, setSelectedLeagueCodes] = useState<TeamLeagueCode[]>(DEFAULT_LEAGUES)
   const [selectedExternalIds, setSelectedExternalIds] = useState<string[]>([])
+  const [previewType, setPreviewType] = useState<PandaScoreMatchPreviewType>('upcoming')
   const [importResult, setImportResult] = useState<PandaScoreMatchImportResponse | null>(null)
 
-  const previewQuery = usePandaScoreMatchPreview(selectedLeagueCodes)
+  const previewQuery = usePandaScoreMatchPreview(selectedLeagueCodes, previewType)
   const importMutation = usePandaScoreMatchImport()
 
   const previews = previewQuery.data ?? []
@@ -94,6 +112,12 @@ export function AdminPandaScorePreviewPage() {
     )
   }
 
+  function changePreviewType(type: PandaScoreMatchPreviewType) {
+    setPreviewType(type)
+    setImportResult(null)
+    setSelectedExternalIds([])
+  }
+
   function selectAllImportable() {
     setSelectedExternalIds(importableExternalIds)
   }
@@ -116,6 +140,7 @@ export function AdminPandaScorePreviewPage() {
     const result = await importMutation.mutateAsync({
       externalIds: selectedExternalIds,
       leagueCodes: selectedLeagueCodes,
+      type: previewType,
     })
 
     setImportResult(result)
@@ -129,12 +154,37 @@ export function AdminPandaScorePreviewPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">PandaScore Preview</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            LoL 예정 경기를 저장하지 않고 먼저 매칭 상태만 확인합니다.
+            {previewType === 'upcoming'
+              ? 'LoL 예정 경기를 저장하지 않고 먼저 매칭 상태만 확인합니다.'
+              : '2026년 완료 경기를 미리 확인합니다. 완료 경기를 저장한 뒤 경기 결과 동기화를 실행하세요.'}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">현재 선택: {selectedLeagueLabels}</p>
+          <p className="mt-2 text-xs text-muted-foreground">현재 선택 리그: {selectedLeagueLabels}</p>
+          {previewType === 'completed' && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              국제전 포함: FIRST STAND, Mid-Season Invitational, League of Legends World Championship
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={previewType === 'upcoming' ? 'default' : 'outline'}
+            onClick={() => changePreviewType('upcoming')}
+            disabled={previewQuery.isFetching || importMutation.isPending}
+          >
+            예정 경기
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={previewType === 'completed' ? 'default' : 'outline'}
+            onClick={() => changePreviewType('completed')}
+            disabled={previewQuery.isFetching || importMutation.isPending}
+          >
+            완료 경기
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -212,8 +262,29 @@ export function AdminPandaScorePreviewPage() {
           <div className="font-medium">저장 결과</div>
           <div className="mt-1 text-muted-foreground">
             요청 {importResult.requestedCount}건 / 신규 {importResult.createdCount}건 / 업데이트{' '}
-            {importResult.updatedCount}건 / 스킵 {importResult.skippedCount}건
+            {importResult.updatedCount}건 / 건너뜀 {importResult.skippedCount}건
           </div>
+          {importResult.items.length > 0 && (
+            <div className="mt-3 grid gap-2">
+              {importResult.items.map((item) => (
+                <div
+                  key={`${item.externalId}-${item.matchId ?? 'new'}`}
+                  className="flex flex-col gap-2 rounded-lg border border-border px-3 py-3 md:flex-row md:items-start md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="font-mono text-xs text-muted-foreground">
+                      externalId {item.externalId}
+                      {item.matchId ? ` / matchId ${item.matchId}` : ''}
+                    </div>
+                    <div className="mt-1 text-sm text-foreground">{item.message}</div>
+                  </div>
+                  <Badge variant={IMPORT_RESULT_VARIANTS[item.importStatus]}>
+                    {IMPORT_RESULT_LABELS[item.importStatus]}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -243,7 +314,9 @@ export function AdminPandaScorePreviewPage() {
             {previews.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
-                  리그를 선택한 뒤 Preview를 불러오면 PandaScore 일정 경기 매칭 결과가 표시됩니다.
+                  {previewType === 'upcoming'
+                    ? '리그를 선택하고 Preview를 불러오면 PandaScore 예정 경기 매칭 결과가 표시됩니다.'
+                    : '리그를 선택하고 Preview를 불러오면 2026년 완료 경기와 국제전 결과가 표시됩니다.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -296,12 +369,17 @@ export function AdminPandaScorePreviewPage() {
                         ? new Date(preview.scheduledAt).toLocaleString('ko-KR')
                         : '-'}
                     </TableCell>
-                    <TableCell className="max-w-sm text-sm text-muted-foreground">
-                      {preview.conflictReasons.length > 0
-                        ? preview.conflictReasons.join(' / ')
-                        : selectable
-                          ? '저장 가능'
-                          : '추가 확인 필요'}
+                    <TableCell className="max-w-sm">
+                      <div className="flex flex-col gap-2">
+                        {getReviewNotes(preview, previewType).map((note, index) => (
+                          <div
+                            key={`${preview.externalId ?? preview.tournamentName ?? 'preview'}-${index}`}
+                            className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground"
+                          >
+                            {note}
+                          </div>
+                        ))}
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -324,12 +402,7 @@ function Summary({ label, value }: { label: string; value: number }) {
 }
 
 function renderTeam(team: PandaScoreTeamPreview) {
-  const methodLabel =
-    team.matchMethod === 'EXTERNAL_ID'
-      ? '확정'
-      : team.matchMethod === 'NAME_CANDIDATE'
-        ? '후보'
-        : '미매칭'
+  const methodLabel = getTeamMatchLabel(team)
 
   return (
     <div>
@@ -364,4 +437,60 @@ function countNeedsReview(previews: PandaScoreMatchPreviewResponse[]) {
   return previews.filter((preview) =>
     ['TEAM_MATCH_FAILED', 'CONFLICT', 'REJECTED'].includes(preview.previewStatus),
   ).length
+}
+
+function getReviewNotes(
+  preview: PandaScoreMatchPreviewResponse,
+  previewType: PandaScoreMatchPreviewType,
+) {
+  const reasons = preview.conflictReasons.filter((reason) => reason.trim().length > 0)
+  if (reasons.length > 0) {
+    return reasons
+  }
+
+  switch (preview.previewStatus) {
+    case 'NEW':
+    case 'UPDATE':
+      return [
+        previewType === 'completed'
+          ? 'externalId 매칭과 일정이 확인되었습니다. 저장 후 경기 결과 동기화를 실행하세요.'
+          : 'externalId 매칭과 일정이 확인되어 바로 저장할 수 있습니다.',
+      ]
+    case 'TEAM_MATCH_FAILED':
+      return [
+        getTeamReviewNote('팀 A', preview.teamA),
+        getTeamReviewNote('팀 B', preview.teamB),
+        '먼저 팀 동기화 또는 팀 externalId 연결이 필요합니다.',
+      ].filter((note): note is string => Boolean(note))
+    case 'CONFLICT':
+      return ['같은 팀 조합의 기존 경기와 일정이 가까워 충돌 검토가 필요합니다.']
+    case 'REJECTED':
+      return [
+        preview.scheduledAt ? null : '경기 일정이 없어 저장할 수 없습니다.',
+        preview.externalId ? null : 'PandaScore 경기 ID가 없어 저장할 수 없습니다.',
+        preview.pandaStatus ? null : 'PandaScore 경기 상태가 비어 있습니다.',
+      ].filter((note): note is string => Boolean(note))
+    default:
+      return ['추가 확인이 필요합니다.']
+  }
+}
+
+function getTeamReviewNote(label: string, team: PandaScoreTeamPreview) {
+  if (team.matchMethod === 'EXTERNAL_ID') {
+    return `${label} externalId 매칭이 확정되었습니다.`
+  }
+  if (team.matchMethod === 'NAME_CANDIDATE') {
+    return `${label}는 이름 후보만 있습니다. 기존 팀과 externalId 연결이 필요합니다.`
+  }
+  return `${label}는 현재 매칭된 팀이 없습니다.`
+}
+
+function getTeamMatchLabel(team: PandaScoreTeamPreview) {
+  if (team.matchMethod === 'EXTERNAL_ID') {
+    return '확정'
+  }
+  if (team.matchMethod === 'NAME_CANDIDATE') {
+    return '후보'
+  }
+  return '미매칭'
 }

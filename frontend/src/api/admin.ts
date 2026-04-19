@@ -8,6 +8,8 @@ import type {
   GameResponse,
   PandaScoreMatchPreviewResponse,
   PandaScoreMatchImportResponse,
+  PandaScoreMatchResultSyncResponse,
+  PandaScoreMatchPreviewType,
   PandaScoreTeamImportResponse,
 } from '../types/domain'
 import type {
@@ -173,11 +175,12 @@ export async function deleteAdminPlayer(id: number): Promise<void> {
 
 export async function fetchPandaScoreMatchPreview(
   leagueCodes: TeamLeagueCode[],
+  type: PandaScoreMatchPreviewType = 'upcoming',
 ): Promise<PandaScoreMatchPreviewResponse[]> {
   const res = await apiClient.get<ApiResponse<PandaScoreMatchPreviewResponse[]>>(
     '/api/admin/pandascore/matches/preview',
     {
-      params: { game: 'lol', type: 'upcoming', leagueCodes: leagueCodes.join(',') },
+      params: { game: 'lol', type, leagueCodes: leagueCodes.join(',') },
     },
   )
   return res.data.data ?? []
@@ -186,11 +189,25 @@ export async function fetchPandaScoreMatchPreview(
 export async function importPandaScoreMatches(
   externalIds: string[],
   leagueCodes: TeamLeagueCode[],
+  type: PandaScoreMatchPreviewType = 'upcoming',
 ): Promise<PandaScoreMatchImportResponse> {
   const res = await apiClient.post<ApiResponse<PandaScoreMatchImportResponse>>(
     '/api/admin/pandascore/matches/import',
     {
       externalIds,
+      leagueCodes,
+      type,
+    },
+  )
+  return res.data.data!
+}
+
+export async function syncPandaScoreMatchResults(
+  leagueCodes: TeamLeagueCode[],
+): Promise<PandaScoreMatchResultSyncResponse> {
+  const res = await apiClient.post<ApiResponse<PandaScoreMatchResultSyncResponse>>(
+    '/api/admin/pandascore/matches/results/sync',
+    {
       leagueCodes,
     },
   )

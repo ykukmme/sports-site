@@ -55,6 +55,7 @@ export type PandaScorePreviewStatus =
   | 'TEAM_MATCH_FAILED'
   | 'CONFLICT'
   | 'REJECTED'
+export type PandaScoreMatchPreviewType = 'upcoming' | 'completed'
 
 export type PandaScoreImportResultStatus = 'CREATED' | 'UPDATED' | 'SKIPPED'
 
@@ -97,6 +98,21 @@ export interface PandaScoreMatchImportResponse {
   updatedCount: number
   skippedCount: number
   items: PandaScoreMatchImportItemResponse[]
+}
+
+export interface PandaScoreMatchResultSyncItemResponse {
+  externalId: string | null
+  syncStatus: PandaScoreImportResultStatus
+  matchId: number | null
+  message: string
+}
+
+export interface PandaScoreMatchResultSyncResponse {
+  requestedCount: number
+  createdCount: number
+  updatedCount: number
+  skippedCount: number
+  items: PandaScoreMatchResultSyncItemResponse[]
 }
 
 export type PandaScoreTeamImportResultStatus = 'CREATED' | 'MATCHED' | 'UPDATED' | 'SKIPPED'

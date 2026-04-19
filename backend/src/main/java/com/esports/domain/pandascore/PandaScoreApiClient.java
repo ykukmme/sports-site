@@ -62,6 +62,41 @@ public class PandaScoreApiClient {
         return fetchMatches("/matches/past?per_page=50");
     }
 
+    public List<PandaScoreMatch> getPastLolMatchesPages(int totalPages) {
+        Map<Long, PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
+
+        for (int page = 1; page <= totalPages; page++) {
+            List<PandaScoreMatch> pageMatches = fetchMatches("/lol/matches/past?per_page=100&page=" + page);
+            for (PandaScoreMatch match : pageMatches) {
+                if (match.id() != null) {
+                    dedupedMatches.put(match.id(), match);
+                }
+            }
+            if (pageMatches.size() < 100) {
+                break;
+            }
+        }
+
+        return List.copyOf(dedupedMatches.values());
+    }
+
+    public List<PandaScoreMatch> getPastLolMatchesByLeagues(List<TeamLeague> leagues) {
+        Map<Long, PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
+
+        for (TeamLeague league : leagues) {
+            List<PandaScoreMatch> leagueMatches = fetchMatches(
+                    "/leagues/" + league.getPandaScoreLeagueId() + "/matches/past?per_page=100"
+            );
+            for (PandaScoreMatch match : leagueMatches) {
+                if (match.id() != null) {
+                    dedupedMatches.put(match.id(), match);
+                }
+            }
+        }
+
+        return List.copyOf(dedupedMatches.values());
+    }
+
     private List<PandaScoreMatch> fetchMatches(String path) {
         PandaScoreMatch[] matches = restClient.get()
                 .uri(properties.getBaseUrl() + path)
@@ -80,8 +115,24 @@ public class PandaScoreApiClient {
             @JsonProperty("begin_at") String beginAt,
             @JsonProperty("league") PandaScoreLeague league,
             @JsonProperty("tournament") PandaScoreTournament tournament,
-            List<PandaScoreOpponent> opponents
-    ) {}
+            List<PandaScoreOpponent> opponents,
+            @JsonProperty("winner_id") Long winnerId,
+            @JsonProperty("end_at") String endAt,
+            List<PandaScoreMatchResult> results
+    ) {
+        public PandaScoreMatch(
+                Long id,
+                String name,
+                String status,
+                String scheduledAt,
+                String beginAt,
+                PandaScoreLeague league,
+                PandaScoreTournament tournament,
+                List<PandaScoreOpponent> opponents
+        ) {
+            this(id, name, status, scheduledAt, beginAt, league, tournament, opponents, null, null, List.of());
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreLeague(Long id, String name, String slug) {}
@@ -91,6 +142,12 @@ public class PandaScoreApiClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreOpponent(PandaScoreTeam opponent) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PandaScoreMatchResult(
+            @JsonProperty("team_id") Long teamId,
+            Integer score
+    ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreTeam(

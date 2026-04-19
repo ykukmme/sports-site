@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/admin/pandascore")
@@ -19,11 +20,14 @@ public class PandaScorePreviewController {
 
     private final PandaScoreMatchPreviewService previewService;
     private final PandaScoreMatchImportService importService;
+    private final PandaScoreMatchResultSyncService resultSyncService;
 
     public PandaScorePreviewController(PandaScoreMatchPreviewService previewService,
-                                       PandaScoreMatchImportService importService) {
+                                       PandaScoreMatchImportService importService,
+                                       PandaScoreMatchResultSyncService resultSyncService) {
         this.previewService = previewService;
         this.importService = importService;
+        this.resultSyncService = resultSyncService;
     }
 
     @GetMapping("/matches/preview")
@@ -31,20 +35,38 @@ public class PandaScorePreviewController {
             @RequestParam(defaultValue = "lol") String game,
             @RequestParam(defaultValue = "upcoming") String type,
             @RequestParam(required = false) List<String> leagueCodes) {
-        if (!"lol".equalsIgnoreCase(game) || !"upcoming".equalsIgnoreCase(type)) {
+        if (!"lol".equalsIgnoreCase(game)) {
             throw new BusinessException(
                     "PANDASCORE_PREVIEW_UNSUPPORTED_SCOPE",
-                    "현재 PandaScore Preview는 LoL 예정 경기만 지원합니다.",
+                    "현재 PandaScore Preview는 LoL 경기만 지원합니다.",
                     HttpStatus.BAD_REQUEST
             );
         }
 
-        return ApiResponse.ok(previewService.previewUpcomingLolMatches(TeamLeague.fromCodes(leagueCodes)));
+        List<TeamLeague> leagues = TeamLeague.fromCodes(leagueCodes);
+        String normalizedType = type == null ? "upcoming" : type.trim().toLowerCase(Locale.ROOT);
+
+        return switch (normalizedType) {
+            case "upcoming" -> ApiResponse.ok(previewService.previewUpcomingLolMatches(leagues));
+            case "completed", "past" -> ApiResponse.ok(previewService.previewCompletedLolMatches(leagues));
+            default -> throw new BusinessException(
+                    "PANDASCORE_PREVIEW_UNSUPPORTED_SCOPE",
+                    "현재 PandaScore Preview는 LoL 예정 경기와 완료 경기만 지원합니다.",
+                    HttpStatus.BAD_REQUEST
+            );
+        };
     }
 
     @PostMapping("/matches/import")
     public ApiResponse<PandaScoreMatchImportResponse> importMatches(
             @RequestBody PandaScoreMatchImportRequest request) {
-        return ApiResponse.ok(importService.importUpcomingLolMatches(request));
+        return ApiResponse.ok(importService.importLolMatches(request));
+    }
+
+    @PostMapping("/matches/results/sync")
+    public ApiResponse<PandaScoreMatchResultSyncResponse> syncCompletedMatchResults(
+            @RequestBody(required = false) PandaScoreMatchResultSyncRequest request) {
+        List<String> leagueCodes = request != null ? request.leagueCodes() : null;
+        return ApiResponse.ok(resultSyncService.syncCompletedLolMatchResults(TeamLeague.fromCodes(leagueCodes)));
     }
 }

@@ -21,9 +21,14 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PandaScoreMatchPreviewServiceTest {
@@ -172,7 +177,7 @@ class PandaScoreMatchPreviewServiceTest {
                         "PandaScore 경기 ID가 없습니다.",
                         "경기 상태가 없습니다.",
                         "참가 팀이 2개 미만입니다.",
-                        "경기 예정 시간 형식이 올바르지 않습니다."
+                        "경기 일정 시간 형식이 올바르지 않습니다."
                 );
     }
 
@@ -191,6 +196,30 @@ class PandaScoreMatchPreviewServiceTest {
 
         verify(matchRepository, times(1))
                 .findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class));
+    }
+
+    @Test
+    void previewCompletedMatchesIncludes2026RegionalAndInternationalOnly() {
+        stubGame();
+        when(apiClient.getPastLolMatchesByLeagues(anyList())).thenReturn(List.of(
+                finishedMatch(200L, "2026-04-18T05:00:00Z", 293L, "LCK", "league-of-legends-lck-champions-korea", "LCK 2026", "lck-2026"),
+                finishedMatch(201L, "2025-09-28T05:00:00Z", 293L, "LCK", "league-of-legends-lck-champions-korea", "LCK 2025", "lck-2025")
+        ));
+        when(apiClient.getPastLolMatchesPages(anyInt())).thenReturn(List.of(
+                finishedMatch(300L, "2026-03-20T09:00:00Z", 9999L, "First Stand", "league-of-legends-first-stand", "First Stand 2026", "first-stand-2026"),
+                finishedMatch(301L, "2026-04-18T09:00:00Z", 9998L, "Random Cup", "random-cup", "Random Cup 2026", "random-cup-2026")
+        ));
+        when(matchRepository.findByExternalId(any())).thenReturn(Optional.empty());
+        when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(List.of());
+        stubConfirmedTeams();
+
+        List<PandaScoreMatchPreviewResponse> result = service.previewCompletedLolMatches(List.of(TeamLeague.LCK));
+
+        assertThat(result).extracting(PandaScoreMatchPreviewResponse::externalId)
+                .containsExactly("300", "200");
+        assertThat(result).allSatisfy(preview ->
+                assertThat(preview.previewStatus()).isEqualTo(PandaScorePreviewStatus.NEW));
     }
 
     private void stubGame() {
@@ -235,6 +264,38 @@ class PandaScoreMatchPreviewServiceTest {
                         new PandaScoreApiClient.PandaScoreOpponent(
                                 new PandaScoreApiClient.PandaScoreTeam(20L, "Dplus KIA", "dplus-kia", "DK", null)
                         )
+                )
+        );
+    }
+
+    private PandaScoreApiClient.PandaScoreMatch finishedMatch(Long id,
+                                                              String endAt,
+                                                              Long leagueId,
+                                                              String leagueName,
+                                                              String leagueSlug,
+                                                              String tournamentName,
+                                                              String tournamentSlug) {
+        return new PandaScoreApiClient.PandaScoreMatch(
+                id,
+                "Gen.G vs Dplus KIA",
+                "finished",
+                endAt,
+                endAt,
+                new PandaScoreApiClient.PandaScoreLeague(leagueId, leagueName, leagueSlug),
+                new PandaScoreApiClient.PandaScoreTournament(id, tournamentName, tournamentSlug),
+                List.of(
+                        new PandaScoreApiClient.PandaScoreOpponent(
+                                new PandaScoreApiClient.PandaScoreTeam(10L, "Gen.G", "geng", "GEN", null)
+                        ),
+                        new PandaScoreApiClient.PandaScoreOpponent(
+                                new PandaScoreApiClient.PandaScoreTeam(20L, "Dplus KIA", "dplus-kia", "DK", null)
+                        )
+                ),
+                10L,
+                endAt,
+                List.of(
+                        new PandaScoreApiClient.PandaScoreMatchResult(10L, 2),
+                        new PandaScoreApiClient.PandaScoreMatchResult(20L, 1)
                 )
         );
     }

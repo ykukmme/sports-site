@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { MatchStatus } from '../types/domain'
 import type { MatchCreateFormValues, MatchUpdateFormValues, MatchResultFormValues } from '../types/adminForms'
+import { TEAM_LEAGUES } from '../constants/teamLeagues'
 import {
   fetchAdminMatches,
   fetchAdminMatch,
@@ -10,6 +11,7 @@ import {
   deleteAdminMatch,
   createMatchResult,
   updateMatchResult,
+  syncPandaScoreMatchResults,
 } from '../api/admin'
 
 // 경기 목록 쿼리 키 — 페이지·필터 포함
@@ -87,6 +89,16 @@ export function useUpdateMatchResult() {
   return useMutation({
     mutationFn: ({ matchId, data }: { matchId: number; data: MatchResultFormValues }) =>
       updateMatchResult(matchId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function usePandaScoreMatchResultSync() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => syncPandaScoreMatchResults(TEAM_LEAGUES.map((league) => league.code)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
     },

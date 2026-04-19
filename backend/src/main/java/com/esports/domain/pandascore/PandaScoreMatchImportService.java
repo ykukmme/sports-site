@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -42,7 +43,15 @@ public class PandaScoreMatchImportService {
         this.matchRepository = matchRepository;
     }
 
+    public PandaScoreMatchImportResponse importLolMatches(PandaScoreMatchImportRequest request) {
+        return importMatches(request);
+    }
+
     public PandaScoreMatchImportResponse importUpcomingLolMatches(PandaScoreMatchImportRequest request) {
+        return importMatches(request);
+    }
+
+    private PandaScoreMatchImportResponse importMatches(PandaScoreMatchImportRequest request) {
         List<String> requestedExternalIds = normalizeExternalIds(request.externalIds());
         if (requestedExternalIds.isEmpty()) {
             throw new BusinessException(
@@ -60,8 +69,11 @@ public class PandaScoreMatchImportService {
                 ));
 
         List<TeamLeague> leagues = TeamLeague.fromCodes(request.leagueCodes());
-        Map<String, PandaScoreMatchPreviewResponse> previewByExternalId = previewService.previewUpcomingLolMatches(leagues)
-                .stream()
+        List<PandaScoreMatchPreviewResponse> previews = isCompletedImport(request.type())
+                ? previewService.previewCompletedLolMatches(leagues)
+                : previewService.previewUpcomingLolMatches(leagues);
+
+        Map<String, PandaScoreMatchPreviewResponse> previewByExternalId = previews.stream()
                 .filter(preview -> preview.externalId() != null && !preview.externalId().isBlank())
                 .collect(Collectors.toMap(
                         PandaScoreMatchPreviewResponse::externalId,
@@ -114,6 +126,7 @@ public class PandaScoreMatchImportService {
                 createdMatch.setExternalId(externalId);
                 createdMatch.setExternalSource(MatchExternalSource.PANDASCORE);
                 createdMatch.setLastSyncedAt(now);
+
                 Match savedMatch = matchRepository.save(createdMatch);
                 createdCount++;
                 items.add(new PandaScoreMatchImportItemResponse(
@@ -131,6 +144,7 @@ public class PandaScoreMatchImportService {
             match.setStatus(status);
             match.setExternalSource(MatchExternalSource.PANDASCORE);
             match.setLastSyncedAt(now);
+
             updatedCount++;
             items.add(new PandaScoreMatchImportItemResponse(
                     externalId,
@@ -163,6 +177,15 @@ public class PandaScoreMatchImportService {
                         Collectors.toCollection(LinkedHashSet::new),
                         List::copyOf
                 ));
+    }
+
+    private boolean isCompletedImport(String type) {
+        if (type == null || type.isBlank()) {
+            return false;
+        }
+
+        String normalized = type.trim().toLowerCase(Locale.ROOT);
+        return "completed".equals(normalized) || "past".equals(normalized);
     }
 
     private boolean isImportable(PandaScoreMatchPreviewResponse preview) {
@@ -216,9 +239,10 @@ public class PandaScoreMatchImportService {
             return MatchStatus.SCHEDULED;
         }
 
-        String normalized = pandaStatus.trim().toLowerCase();
+        String normalized = pandaStatus.trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
             case "running", "live", "in_progress" -> MatchStatus.ONGOING;
+            case "finished", "completed" -> MatchStatus.COMPLETED;
             case "canceled", "cancelled" -> MatchStatus.CANCELLED;
             default -> MatchStatus.SCHEDULED;
         };

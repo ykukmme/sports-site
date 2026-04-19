@@ -16,7 +16,10 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -24,6 +27,8 @@ import java.util.Objects;
 public class PandaScoreMatchPreviewService {
 
     private static final String SOURCE = "PANDASCORE";
+    private static final int COMPLETED_PREVIEW_YEAR = 2026;
+    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 5;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -48,6 +53,18 @@ public class PandaScoreMatchPreviewService {
     }
 
     public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches(List<TeamLeague> leagues) {
+        return previewLolMatches(leagues, false);
+    }
+
+    public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches() {
+        return previewCompletedLolMatches(TeamLeague.supportedLeagues());
+    }
+
+    public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues) {
+        return previewLolMatches(leagues, true);
+    }
+
+    private List<PandaScoreMatchPreviewResponse> previewLolMatches(List<TeamLeague> leagues, boolean completed) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BusinessException(
                     "PANDASCORE_NOT_CONFIGURED",
@@ -65,11 +82,15 @@ public class PandaScoreMatchPreviewService {
 
         List<PandaScoreApiClient.PandaScoreMatch> matches;
         try {
-            matches = apiClient.getUpcomingLolMatchesByLeagues(leagues);
+            matches = completed
+                    ? getCompletedPreviewMatches(leagues)
+                    : apiClient.getUpcomingLolMatchesByLeagues(leagues);
         } catch (RestClientException e) {
             throw new BusinessException(
                     "PANDASCORE_FETCH_FAILED",
-                    "PandaScore API에서 경기 정보를 가져오지 못했습니다.",
+                    completed
+                            ? "PandaScore API에서 완료 경기 정보를 가져오지 못했습니다."
+                            : "PandaScore API에서 경기 정보를 가져오지 못했습니다.",
                     HttpStatus.BAD_GATEWAY
             );
         }
@@ -77,12 +98,27 @@ public class PandaScoreMatchPreviewService {
         List<Match> conflictCandidates = findConflictCandidates(matches);
 
         return matches.stream()
-                .sorted(Comparator.comparing(
-                        match -> parseDateTime(firstNonBlank(match.scheduledAt(), match.beginAt())),
-                        Comparator.nullsLast(Comparator.naturalOrder())
-                ))
+                .sorted(Comparator.comparing(this::resolveMatchDateTime, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(match -> toPreview(game, match, conflictCandidates))
                 .toList();
+    }
+
+    private List<PandaScoreApiClient.PandaScoreMatch> getCompletedPreviewMatches(List<TeamLeague> leagues) {
+        Map<Long, PandaScoreApiClient.PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
+
+        for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesByLeagues(leagues)) {
+            if (shouldIncludeCompletedMatch(match, false) && match.id() != null) {
+                dedupedMatches.put(match.id(), match);
+            }
+        }
+
+        for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT)) {
+            if (shouldIncludeCompletedMatch(match, true) && match.id() != null) {
+                dedupedMatches.put(match.id(), match);
+            }
+        }
+
+        return List.copyOf(dedupedMatches.values());
     }
 
     private PandaScoreMatchPreviewResponse toPreview(Game game,
@@ -93,7 +129,7 @@ public class PandaScoreMatchPreviewService {
 
         PandaScoreTeamPreview teamA = previewTeam(game.getId(), pandaMatch, 0);
         PandaScoreTeamPreview teamB = previewTeam(game.getId(), pandaMatch, 1);
-        OffsetDateTime scheduledAt = parseDateTime(firstNonBlank(pandaMatch.scheduledAt(), pandaMatch.beginAt()));
+        OffsetDateTime scheduledAt = resolveMatchDateTime(pandaMatch);
         String tournamentName = pandaMatch.tournament() != null ? pandaMatch.tournament().name() : pandaMatch.name();
         TeamLeague league = pandaMatch.league() != null
                 ? TeamLeague.fromPandaScoreLeagueId(pandaMatch.league().id())
@@ -192,8 +228,12 @@ public class PandaScoreMatchPreviewService {
 
     private List<String> validate(PandaScoreApiClient.PandaScoreMatch match) {
         List<String> reasons = new ArrayList<>();
-        if (match.id() == null) reasons.add("PandaScore 경기 ID가 없습니다.");
-        if (match.status() == null || match.status().isBlank()) reasons.add("경기 상태가 없습니다.");
+        if (match.id() == null) {
+            reasons.add("PandaScore 경기 ID가 없습니다.");
+        }
+        if (match.status() == null || match.status().isBlank()) {
+            reasons.add("경기 상태가 없습니다.");
+        }
         if (match.opponents() == null || match.opponents().size() < 2) {
             reasons.add("참가 팀이 2개 미만입니다.");
         } else {
@@ -205,11 +245,11 @@ public class PandaScoreMatchPreviewService {
             }
         }
 
-        String scheduledAt = firstNonBlank(match.scheduledAt(), match.beginAt());
+        String scheduledAt = firstNonBlank(match.scheduledAt(), match.beginAt(), match.endAt());
         if (scheduledAt == null) {
-            reasons.add("경기 예정 시간이 없습니다.");
+            reasons.add("경기 일정 시간이 없습니다.");
         } else if (parseDateTime(scheduledAt) == null) {
-            reasons.add("경기 예정 시간 형식이 올바르지 않습니다.");
+            reasons.add("경기 일정 시간 형식이 올바르지 않습니다.");
         }
 
         return reasons;
@@ -235,7 +275,7 @@ public class PandaScoreMatchPreviewService {
 
     private List<Match> findConflictCandidates(List<PandaScoreApiClient.PandaScoreMatch> matches) {
         List<OffsetDateTime> scheduledTimes = matches.stream()
-                .map(match -> parseDateTime(firstNonBlank(match.scheduledAt(), match.beginAt())))
+                .map(this::resolveMatchDateTime)
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -293,8 +333,50 @@ public class PandaScoreMatchPreviewService {
         return reasons;
     }
 
+    private boolean shouldIncludeCompletedMatch(PandaScoreApiClient.PandaScoreMatch match, boolean allowInternational) {
+        OffsetDateTime referenceTime = resolveMatchDateTime(match);
+        if (referenceTime == null || referenceTime.getYear() != COMPLETED_PREVIEW_YEAR) {
+            return false;
+        }
+
+        String normalizedStatus = normalize(match.status());
+        if (!"finished".equals(normalizedStatus) && !"completed".equals(normalizedStatus)) {
+            return false;
+        }
+
+        if (match.league() != null && TeamLeague.fromPandaScoreLeagueId(match.league().id()) != null) {
+            return true;
+        }
+
+        return allowInternational && isSupportedInternationalCompetition(match);
+    }
+
+    private boolean isSupportedInternationalCompetition(PandaScoreApiClient.PandaScoreMatch match) {
+        String combined = String.join(
+                " ",
+                normalize(match.name()),
+                match.league() != null ? normalize(match.league().name()) : "",
+                match.league() != null ? normalize(match.league().slug()) : "",
+                match.tournament() != null ? normalize(match.tournament().name()) : "",
+                match.tournament() != null ? normalize(match.tournament().slug()) : ""
+        );
+
+        return combined.contains("first stand")
+                || combined.contains("mid season invitational")
+                || combined.matches(".*\\bmsi\\b.*")
+                || combined.contains("league of legends world championship")
+                || combined.matches(".*\\bworlds\\b.*")
+                || combined.contains("world championship");
+    }
+
+    private OffsetDateTime resolveMatchDateTime(PandaScoreApiClient.PandaScoreMatch match) {
+        return parseDateTime(firstNonBlank(match.scheduledAt(), match.beginAt(), match.endAt()));
+    }
+
     private OffsetDateTime parseDateTime(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         try {
             return OffsetDateTime.parse(value);
         } catch (DateTimeParseException ignored) {
@@ -302,13 +384,27 @@ public class PandaScoreMatchPreviewService {
         }
     }
 
-    private String firstNonBlank(String first, String second) {
-        if (!isBlank(first)) return first;
-        if (!isBlank(second)) return second;
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value;
+            }
+        }
         return null;
     }
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim()
+                .replace('-', ' ')
+                .replace('_', ' ')
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
     }
 }
