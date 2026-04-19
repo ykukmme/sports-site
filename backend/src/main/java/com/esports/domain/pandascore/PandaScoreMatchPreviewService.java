@@ -29,6 +29,7 @@ public class PandaScoreMatchPreviewService {
     private static final String SOURCE = "PANDASCORE";
     private static final int COMPLETED_PREVIEW_YEAR = 2026;
     private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 5;
+    private static final int COMPLETED_PREVIEW_RESULT_LIMIT = 80;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -95,10 +96,17 @@ public class PandaScoreMatchPreviewService {
             );
         }
 
+        if (completed) {
+            matches = limitCompletedPreviewMatches(matches);
+        }
+
         List<Match> conflictCandidates = findConflictCandidates(matches);
+        Comparator<PandaScoreApiClient.PandaScoreMatch> sortOrder = completed
+                ? completedMatchComparator()
+                : upcomingMatchComparator();
 
         return matches.stream()
-                .sorted(Comparator.comparing(this::resolveMatchDateTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                .sorted(sortOrder)
                 .map(match -> toPreview(game, match, conflictCandidates))
                 .toList();
     }
@@ -119,6 +127,15 @@ public class PandaScoreMatchPreviewService {
         }
 
         return List.copyOf(dedupedMatches.values());
+    }
+
+    private List<PandaScoreApiClient.PandaScoreMatch> limitCompletedPreviewMatches(
+            List<PandaScoreApiClient.PandaScoreMatch> matches
+    ) {
+        return matches.stream()
+                .sorted(completedMatchComparator())
+                .limit(COMPLETED_PREVIEW_RESULT_LIMIT)
+                .toList();
     }
 
     private PandaScoreMatchPreviewResponse toPreview(Game game,
@@ -367,6 +384,20 @@ public class PandaScoreMatchPreviewService {
                 || combined.contains("league of legends world championship")
                 || combined.matches(".*\\bworlds\\b.*")
                 || combined.contains("world championship");
+    }
+
+    private Comparator<PandaScoreApiClient.PandaScoreMatch> upcomingMatchComparator() {
+        return Comparator.comparing(
+                this::resolveMatchDateTime,
+                Comparator.nullsLast(Comparator.naturalOrder())
+        );
+    }
+
+    private Comparator<PandaScoreApiClient.PandaScoreMatch> completedMatchComparator() {
+        return Comparator.comparing(
+                this::resolveMatchDateTime,
+                Comparator.nullsLast(Comparator.reverseOrder())
+        );
     }
 
     private OffsetDateTime resolveMatchDateTime(PandaScoreApiClient.PandaScoreMatch match) {

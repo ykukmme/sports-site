@@ -217,7 +217,7 @@ class PandaScoreMatchPreviewServiceTest {
         List<PandaScoreMatchPreviewResponse> result = service.previewCompletedLolMatches(List.of(TeamLeague.LCK));
 
         assertThat(result).extracting(PandaScoreMatchPreviewResponse::externalId)
-                .containsExactly("300", "200");
+                .containsExactly("200", "300");
         assertThat(result).allSatisfy(preview ->
                 assertThat(preview.previewStatus()).isEqualTo(PandaScorePreviewStatus.NEW));
     }
