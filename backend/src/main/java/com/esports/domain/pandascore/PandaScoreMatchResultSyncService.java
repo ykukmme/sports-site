@@ -20,18 +20,17 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class PandaScoreMatchResultSyncService {
-
-    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 10;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -81,9 +80,7 @@ public class PandaScoreMatchResultSyncService {
             );
         }
 
-        Map<String, Match> matchByExternalId = matchRepository.findAll().stream()
-                .filter(match -> match.getExternalId() != null && !match.getExternalId().isBlank())
-                .collect(Collectors.toMap(Match::getExternalId, Function.identity(), (left, right) -> left));
+        Map<String, Match> matchByExternalId = loadStoredMatchesByExternalId(matches);
 
         List<PandaScoreMatchResultSyncItemResponse> items = new ArrayList<>();
         int createdCount = 0;
@@ -97,6 +94,12 @@ public class PandaScoreMatchResultSyncService {
                 .toList()) {
             String externalId = pandaMatch.id() != null ? String.valueOf(pandaMatch.id()) : null;
             String rejectionReason = validateCompletedMatch(pandaMatch);
+            if (rejectionReason != null
+                    && hasGameWinnerSummary(pandaMatch)
+                    && isFinishedStatus(pandaMatch.status())
+                    && parseDateTime(firstNonBlank(pandaMatch.endAt(), pandaMatch.beginAt(), pandaMatch.scheduledAt())) != null) {
+                rejectionReason = null;
+            }
 
             if (externalId == null) {
                 items.add(new PandaScoreMatchResultSyncItemResponse(
@@ -208,7 +211,7 @@ public class PandaScoreMatchResultSyncService {
 
         if (!selectedInternationalTypes.isEmpty()) {
             List<PandaScoreApiClient.PandaScoreMatch> globalMatches =
-                    apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT);
+                    apiClient.getPastLolMatchesPages(resolveCompletedGlobalPageLimit());
             if (globalMatches != null) {
                 for (PandaScoreApiClient.PandaScoreMatch match : globalMatches) {
                     if (match.id() != null && detectInternationalCompetitionType(match)
@@ -221,6 +224,39 @@ public class PandaScoreMatchResultSyncService {
         }
 
         return List.copyOf(dedupedMatches.values());
+    }
+
+    private Map<String, Match> loadStoredMatchesByExternalId(List<PandaScoreApiClient.PandaScoreMatch> matches) {
+        LinkedHashSet<String> externalIds = matches.stream()
+                .map(PandaScoreApiClient.PandaScoreMatch::id)
+                .filter(Objects::nonNull)
+                .map(String::valueOf)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (externalIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<String> idList = new ArrayList<>(externalIds);
+        int batchSize = Math.max(1, properties.getMatchLookupBatchSize());
+        Map<String, Match> result = new HashMap<>();
+
+        for (int index = 0; index < idList.size(); index += batchSize) {
+            int end = Math.min(index + batchSize, idList.size());
+            List<String> batch = idList.subList(index, end);
+            for (Match match : matchRepository.findByExternalIdIn(batch)) {
+                String externalId = match.getExternalId();
+                if (externalId != null && !externalId.isBlank()) {
+                    result.putIfAbsent(externalId, match);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private int resolveCompletedGlobalPageLimit() {
+        return Math.max(1, properties.getCompletedGlobalPageLimit());
     }
 
     private boolean isSelectedRegionalLeague(PandaScoreApiClient.PandaScoreMatch match,
@@ -252,7 +288,9 @@ public class PandaScoreMatchResultSyncService {
     }
 
     private ScoreLine resolveScoreLine(Match match, PandaScoreApiClient.PandaScoreMatch pandaMatch) {
-        Map<String, Integer> scoreByExternalId = pandaMatch.results().stream()
+        List<PandaScoreApiClient.PandaScoreMatchResult> matchResults =
+                pandaMatch.results() != null ? pandaMatch.results() : List.of();
+        Map<String, Integer> scoreByExternalId = matchResults.stream()
                 .filter(Objects::nonNull)
                 .filter(result -> result.teamId() != null && result.score() != null)
                 .collect(Collectors.toMap(
@@ -270,7 +308,12 @@ public class PandaScoreMatchResultSyncService {
         Integer scoreTeamA = scoreByExternalId.get(teamAExternalId);
         Integer scoreTeamB = scoreByExternalId.get(teamBExternalId);
         if (scoreTeamA == null || scoreTeamB == null) {
-            return null;
+            Map<String, Integer> gameWinByExternalId = deriveSeriesScoreByGames(pandaMatch);
+            scoreTeamA = gameWinByExternalId.getOrDefault(teamAExternalId, 0);
+            scoreTeamB = gameWinByExternalId.getOrDefault(teamBExternalId, 0);
+            if (scoreTeamA == 0 && scoreTeamB == 0) {
+                return null;
+            }
         }
 
         Team winnerTeam = resolveWinnerTeam(match, pandaMatch.winnerId(), scoreTeamA, scoreTeamB);
@@ -286,13 +329,43 @@ public class PandaScoreMatchResultSyncService {
         return new ScoreLine(scoreTeamA, scoreTeamB, winnerTeam, playedAt);
     }
 
-    private Team resolveWinnerTeam(Match match, Long winnerId, int scoreTeamA, int scoreTeamB) {
-        String winnerExternalId = String.valueOf(winnerId);
-        if (winnerExternalId.equals(match.getTeamA().getExternalId())) {
-            return match.getTeamA();
+    private boolean hasGameWinnerSummary(PandaScoreApiClient.PandaScoreMatch match) {
+        return match.games() != null && match.games().stream()
+                .filter(Objects::nonNull)
+                .map(PandaScoreApiClient.PandaScoreGameSummary::winner)
+                .filter(Objects::nonNull)
+                .anyMatch(winner -> winner.id() != null);
+    }
+
+    private boolean isFinishedStatus(String status) {
+        return status != null
+                && ("finished".equalsIgnoreCase(status) || "completed".equalsIgnoreCase(status));
+    }
+
+    private Map<String, Integer> deriveSeriesScoreByGames(PandaScoreApiClient.PandaScoreMatch match) {
+        Map<String, Integer> wins = new HashMap<>();
+        if (match.games() == null) {
+            return wins;
         }
-        if (winnerExternalId.equals(match.getTeamB().getExternalId())) {
-            return match.getTeamB();
+        for (PandaScoreApiClient.PandaScoreGameSummary game : match.games()) {
+            if (game == null || game.winner() == null || game.winner().id() == null) {
+                continue;
+            }
+            String winnerExternalId = String.valueOf(game.winner().id());
+            wins.put(winnerExternalId, wins.getOrDefault(winnerExternalId, 0) + 1);
+        }
+        return wins;
+    }
+
+    private Team resolveWinnerTeam(Match match, Long winnerId, int scoreTeamA, int scoreTeamB) {
+        if (winnerId != null) {
+            String winnerExternalId = String.valueOf(winnerId);
+            if (winnerExternalId.equals(match.getTeamA().getExternalId())) {
+                return match.getTeamA();
+            }
+            if (winnerExternalId.equals(match.getTeamB().getExternalId())) {
+                return match.getTeamB();
+            }
         }
         if (scoreTeamA > scoreTeamB) {
             return match.getTeamA();

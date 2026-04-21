@@ -36,5 +36,7 @@ public interface MatchRepository extends JpaRepository<Match, Long>, JpaSpecific
     Optional<Match> findByExternalId(String externalId);
 
     // 팀 삭제 전 경기 참조 여부 확인 — teamA 또는 teamB로 참가한 경기가 있으면 true
+    List<Match> findByExternalIdIn(List<String> externalIds);
+
     boolean existsByTeamAIdOrTeamBId(Long teamAId, Long teamBId);
 }

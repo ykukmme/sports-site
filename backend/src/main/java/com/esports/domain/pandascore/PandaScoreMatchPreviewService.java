@@ -31,7 +31,6 @@ public class PandaScoreMatchPreviewService {
 
     private static final String SOURCE = "PANDASCORE";
     private static final int COMPLETED_PREVIEW_YEAR = 2026;
-    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 10;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -161,13 +160,17 @@ public class PandaScoreMatchPreviewService {
             }
         }
 
-        for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT)) {
+        for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesPages(resolveCompletedGlobalPageLimit())) {
             if (shouldIncludeCompletedMatch(match, selectedLeagues, selectedInternationalTypes) && match.id() != null) {
                 dedupedMatches.put(match.id(), match);
             }
         }
 
         return List.copyOf(dedupedMatches.values());
+    }
+
+    private int resolveCompletedGlobalPageLimit() {
+        return Math.max(1, properties.getCompletedGlobalPageLimit());
     }
 
     private PandaScoreMatchPreviewResponse toPreview(Game game,

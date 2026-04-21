@@ -225,6 +225,26 @@ class PandaScoreMatchPreviewServiceTest {
     }
 
     @Test
+    void previewCompletedMatchesUsesConfiguredGlobalPageLimit() {
+        properties.setCompletedGlobalPageLimit(3);
+        stubGame();
+        when(apiClient.getPastLolMatchesByLeagues(anyList())).thenReturn(List.of());
+        when(apiClient.getPastLolMatchesPages(3)).thenReturn(List.of(
+                finishedMatch(500L, "2026-04-18T09:00:00Z", 9999L, "First Stand", "league-of-legends-first-stand", "First Stand 2026", "first-stand-2026")
+        ));
+        when(matchRepository.findByExternalId(any())).thenReturn(Optional.empty());
+        when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(List.of());
+        stubConfirmedTeams();
+
+        List<PandaScoreMatchPreviewResponse> result = service.previewCompletedLolMatches(List.of(TeamLeague.LCK));
+
+        assertThat(result).extracting(PandaScoreMatchPreviewResponse::externalId)
+                .containsExactly("500");
+        verify(apiClient).getPastLolMatchesPages(3);
+    }
+
+    @Test
     void previewCompletedMatchesAppliesSinceDateAndExcludeExisting() {
         stubGame();
         when(apiClient.getPastLolMatchesByLeagues(anyList())).thenReturn(List.of(

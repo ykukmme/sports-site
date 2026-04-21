@@ -118,8 +118,25 @@ public class PandaScoreApiClient {
             List<PandaScoreOpponent> opponents,
             @JsonProperty("winner_id") Long winnerId,
             @JsonProperty("end_at") String endAt,
-            List<PandaScoreMatchResult> results
+            List<PandaScoreMatchResult> results,
+            List<PandaScoreGameSummary> games
     ) {
+        public PandaScoreMatch(
+                Long id,
+                String name,
+                String status,
+                String scheduledAt,
+                String beginAt,
+                PandaScoreLeague league,
+                PandaScoreTournament tournament,
+                List<PandaScoreOpponent> opponents,
+                Long winnerId,
+                String endAt,
+                List<PandaScoreMatchResult> results
+        ) {
+            this(id, name, status, scheduledAt, beginAt, league, tournament, opponents, winnerId, endAt, results, List.of());
+        }
+
         public PandaScoreMatch(
                 Long id,
                 String name,
@@ -130,7 +147,7 @@ public class PandaScoreApiClient {
                 PandaScoreTournament tournament,
                 List<PandaScoreOpponent> opponents
         ) {
-            this(id, name, status, scheduledAt, beginAt, league, tournament, opponents, null, null, List.of());
+            this(id, name, status, scheduledAt, beginAt, league, tournament, opponents, null, null, List.of(), List.of());
         }
     }
 
@@ -147,6 +164,26 @@ public class PandaScoreApiClient {
     public record PandaScoreMatchResult(
             @JsonProperty("team_id") Long teamId,
             Integer score
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PandaScoreGameSummary(
+            Long id,
+            String status,
+            Boolean finished,
+            Boolean complete,
+            @JsonProperty("begin_at") String beginAt,
+            @JsonProperty("end_at") String endAt,
+            Integer length,
+            @JsonProperty("winner_type") String winnerType,
+            PandaScoreGameWinner winner
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PandaScoreGameWinner(
+            Long id,
+            String type,
+            String name
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

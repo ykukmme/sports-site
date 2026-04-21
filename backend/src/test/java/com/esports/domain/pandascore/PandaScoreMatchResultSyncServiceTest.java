@@ -61,7 +61,7 @@ class PandaScoreMatchResultSyncServiceTest {
         when(match.getTeamA()).thenReturn(teamA);
         when(match.getTeamB()).thenReturn(teamB);
         when(match.isParticipant(any())).thenReturn(true);
-        when(matchRepository.findAll()).thenReturn(List.of(match));
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(match));
         when(matchResultRepository.findByMatchId(7L)).thenReturn(Optional.empty());
         when(apiClient.getPastLolMatchesByLeagues(List.of(TeamLeague.LCK))).thenReturn(List.of(
                 finishedMatch(100L, 2882L, 2883L, 2, 1)
@@ -90,7 +90,7 @@ class PandaScoreMatchResultSyncServiceTest {
 
         when(match.getId()).thenReturn(7L);
         when(match.getExternalId()).thenReturn("100");
-        when(matchRepository.findAll()).thenReturn(List.of(match));
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(match));
         when(matchResultRepository.findByMatchId(7L)).thenReturn(Optional.of(existingResult));
         when(apiClient.getPastLolMatchesByLeagues(List.of(TeamLeague.LCK))).thenReturn(List.of(
                 finishedMatch(100L, 2882L, 2883L, 2, 1)
@@ -115,7 +115,7 @@ class PandaScoreMatchResultSyncServiceTest {
         when(match.getTeamA()).thenReturn(teamA);
         when(match.getTeamB()).thenReturn(teamB);
         when(match.isParticipant(any())).thenReturn(true);
-        when(matchRepository.findAll()).thenReturn(List.of(match));
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(match));
         when(matchResultRepository.findByMatchId(9L)).thenReturn(Optional.empty());
         when(apiClient.getPastLolMatchesByLeagues(List.of())).thenReturn(List.of());
         when(apiClient.getPastLolMatchesPages(anyInt())).thenReturn(List.of(
@@ -130,6 +130,88 @@ class PandaScoreMatchResultSyncServiceTest {
         assertThat(response.createdCount()).isEqualTo(1);
         verify(match).setStage("FIRST STAND");
         verify(match).setInternationalCompetitionCode("INTERNATIONAL_FIRST_STAND");
+    }
+
+    @Test
+    void createsResultFromGameSummaryWhenResultsAreMissing() {
+        Match match = mock(Match.class);
+        Team teamA = team("2882");
+        Team teamB = team("2883");
+
+        when(match.getId()).thenReturn(11L);
+        when(match.getExternalId()).thenReturn("1100");
+        when(match.getTeamA()).thenReturn(teamA);
+        when(match.getTeamB()).thenReturn(teamB);
+        when(match.isParticipant(any())).thenReturn(true);
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(match));
+        when(matchResultRepository.findByMatchId(11L)).thenReturn(Optional.empty());
+        when(apiClient.getPastLolMatchesByLeagues(List.of(TeamLeague.LCK))).thenReturn(List.of(
+                finishedMatchWithoutResultsWithGameSummary(1100L, 2882L, 2883L)
+        ));
+
+        PandaScoreMatchResultSyncResponse response = service.syncCompletedLolMatchResults(List.of(TeamLeague.LCK));
+
+        assertThat(response.createdCount()).isEqualTo(1);
+        assertThat(response.skippedCount()).isZero();
+
+        ArgumentCaptor<MatchResult> captor = ArgumentCaptor.forClass(MatchResult.class);
+        verify(matchResultRepository).save(captor.capture());
+        MatchResult saved = captor.getValue();
+        assertThat(saved.getScoreTeamA()).isEqualTo(2);
+        assertThat(saved.getScoreTeamB()).isEqualTo(1);
+        assertThat(saved.getWinnerTeam()).isSameAs(teamA);
+    }
+
+    @Test
+    void usesExternalIdLookupWithoutFullScan() {
+        Match match = mock(Match.class);
+        Team teamA = team("2882");
+        Team teamB = team("2883");
+
+        when(match.getId()).thenReturn(12L);
+        when(match.getExternalId()).thenReturn("1200");
+        when(match.getTeamA()).thenReturn(teamA);
+        when(match.getTeamB()).thenReturn(teamB);
+        when(match.isParticipant(any())).thenReturn(true);
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(match));
+        when(matchResultRepository.findByMatchId(12L)).thenReturn(Optional.empty());
+        when(apiClient.getPastLolMatchesByLeagues(List.of(TeamLeague.LCK))).thenReturn(List.of(
+                finishedMatch(1200L, 2882L, 2883L, 2, 0)
+        ));
+
+        PandaScoreMatchResultSyncResponse response = service.syncCompletedLolMatchResults(List.of(TeamLeague.LCK));
+
+        assertThat(response.createdCount()).isEqualTo(1);
+        verify(matchRepository, never()).findAll();
+        verify(matchRepository).findByExternalIdIn(anyList());
+    }
+
+    @Test
+    void usesConfiguredCompletedGlobalPageLimit() {
+        properties.setCompletedGlobalPageLimit(3);
+        Match match = mock(Match.class);
+        Team teamA = team("2882");
+        Team teamB = team("2883");
+
+        when(match.getId()).thenReturn(13L);
+        when(match.getExternalId()).thenReturn("1300");
+        when(match.getTeamA()).thenReturn(teamA);
+        when(match.getTeamB()).thenReturn(teamB);
+        when(match.isParticipant(any())).thenReturn(true);
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(match));
+        when(matchResultRepository.findByMatchId(13L)).thenReturn(Optional.empty());
+        when(apiClient.getPastLolMatchesByLeagues(List.of())).thenReturn(List.of());
+        when(apiClient.getPastLolMatchesPages(3)).thenReturn(List.of(
+                finishedInternationalMatch(1300L, "First Stand", "first-stand-2026", 2882L, 2883L, 2, 1)
+        ));
+
+        PandaScoreMatchResultSyncResponse response = service.syncCompletedLolMatchResults(
+                List.of(),
+                List.of(InternationalCompetitionType.FIRST_STAND)
+        );
+
+        assertThat(response.createdCount()).isEqualTo(1);
+        verify(apiClient).getPastLolMatchesPages(3);
     }
 
     private Team team(String externalId) {
@@ -200,6 +282,68 @@ class PandaScoreMatchResultSyncServiceTest {
                 List.of(
                         new PandaScoreApiClient.PandaScoreMatchResult(teamAExternalId, scoreA),
                         new PandaScoreApiClient.PandaScoreMatchResult(teamBExternalId, scoreB)
+                )
+        );
+    }
+
+    private PandaScoreApiClient.PandaScoreMatch finishedMatchWithoutResultsWithGameSummary(
+            Long matchId,
+            Long teamAExternalId,
+            Long teamBExternalId
+    ) {
+        return new PandaScoreApiClient.PandaScoreMatch(
+                matchId,
+                "Gen.G vs Dplus KIA",
+                "finished",
+                "2026-05-01T10:00:00Z",
+                "2026-05-01T10:00:00Z",
+                new PandaScoreApiClient.PandaScoreLeague(293L, "LCK", "league-of-legends-lck-champions-korea"),
+                new PandaScoreApiClient.PandaScoreTournament(1L, "LCK", "lck"),
+                List.of(
+                        new PandaScoreApiClient.PandaScoreOpponent(
+                                new PandaScoreApiClient.PandaScoreTeam(teamAExternalId, "Gen.G", "geng", "GEN", null)
+                        ),
+                        new PandaScoreApiClient.PandaScoreOpponent(
+                                new PandaScoreApiClient.PandaScoreTeam(teamBExternalId, "Dplus KIA", "dplus-kia", "DK", null)
+                        )
+                ),
+                null,
+                "2026-05-01T12:00:00Z",
+                List.of(),
+                List.of(
+                        new PandaScoreApiClient.PandaScoreGameSummary(
+                                1L,
+                                "finished",
+                                true,
+                                true,
+                                "2026-05-01T10:00:00Z",
+                                "2026-05-01T10:40:00Z",
+                                2400,
+                                "Team",
+                                new PandaScoreApiClient.PandaScoreGameWinner(teamAExternalId, "Team", "Gen.G")
+                        ),
+                        new PandaScoreApiClient.PandaScoreGameSummary(
+                                2L,
+                                "finished",
+                                true,
+                                true,
+                                "2026-05-01T10:50:00Z",
+                                "2026-05-01T11:30:00Z",
+                                2400,
+                                "Team",
+                                new PandaScoreApiClient.PandaScoreGameWinner(teamAExternalId, "Team", "Gen.G")
+                        ),
+                        new PandaScoreApiClient.PandaScoreGameSummary(
+                                3L,
+                                "finished",
+                                true,
+                                true,
+                                "2026-05-01T11:40:00Z",
+                                "2026-05-01T12:20:00Z",
+                                2400,
+                                "Team",
+                                new PandaScoreApiClient.PandaScoreGameWinner(teamBExternalId, "Team", "Dplus KIA")
+                        )
                 )
         );
     }

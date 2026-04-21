@@ -64,3 +64,5 @@ pandascore:
   scheduler-enabled: ${PANDASCORE_SCHEDULER_ENABLED:false}
   connect-timeout-ms: ${PANDASCORE_CONNECT_TIMEOUT_MS:3000}
   read-timeout-ms: ${PANDASCORE_READ_TIMEOUT_MS:10000}
+  completed-global-page-limit: ${PANDASCORE_COMPLETED_GLOBAL_PAGE_LIMIT:10}
+  match-lookup-batch-size: ${PANDASCORE_MATCH_LOOKUP_BATCH_SIZE:500}
