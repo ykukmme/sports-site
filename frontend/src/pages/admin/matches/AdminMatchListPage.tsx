@@ -36,13 +36,21 @@ export function AdminMatchListPage() {
   const [leagueFilter, setLeagueFilter] = useState<string>('ALL')
   const [teamFilter, setTeamFilter] = useState<string>('ALL')
   const [sinceDate, setSinceDate] = useState<string>('')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
 
   const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
   const league = leagueFilter === 'ALL' ? undefined : leagueFilter
 
-  const { data, isLoading, isError } = useAdminMatchList(page, undefined, league, teamId, sinceDate || undefined)
+  const { data, isLoading, isError } = useAdminMatchList(
+    page,
+    undefined,
+    league,
+    teamId,
+    sinceDate || undefined,
+    sortDirection,
+  )
   const { data: teamsData } = useAdminTeamList()
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
@@ -77,6 +85,7 @@ export function AdminMatchListPage() {
     setLeagueFilter('ALL')
     setTeamFilter('ALL')
     setSinceDate('')
+    setSortDirection('desc')
     setPage(0)
   }
 
@@ -124,7 +133,7 @@ export function AdminMatchListPage() {
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 md:grid-cols-4">
+      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 md:grid-cols-5">
         <label className="text-sm">
           <span className="mb-1 block text-muted-foreground">리그</span>
           <select
@@ -175,6 +184,21 @@ export function AdminMatchListPage() {
               setPage(0)
             }}
           />
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-muted-foreground">날짜 정렬</span>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+            value={sortDirection}
+            onChange={(event) => {
+              setSortDirection(event.target.value as 'asc' | 'desc')
+              setPage(0)
+            }}
+          >
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+          </select>
         </label>
 
         <div className="flex items-end">

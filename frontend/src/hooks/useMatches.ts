@@ -24,10 +24,11 @@ export function useMatchResultsPage(
   league?: string,
   teamId?: number,
   sinceDate?: string,
+  sortDirection: 'asc' | 'desc' = 'desc',
 ) {
   return useQuery({
-    queryKey: ['matches', 'results', 'page', page, league, teamId, sinceDate],
-    queryFn: () => fetchMatchResultsPage(page, league, teamId, sinceDate),
+    queryKey: ['matches', 'results', 'page', page, league, teamId, sinceDate, sortDirection],
+    queryFn: () => fetchMatchResultsPage(page, league, teamId, sinceDate, sortDirection),
     staleTime: 60_000,
   })
 }

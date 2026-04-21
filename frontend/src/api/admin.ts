@@ -57,8 +57,9 @@ export async function fetchAdminMatches(
   league?: string,
   teamId?: number,
   sinceDate?: string,
+  sortDirection: 'asc' | 'desc' = 'desc',
 ): Promise<PageResponse<MatchResponse>> {
-  const params: Record<string, unknown> = { page, size: 20, sort: 'scheduledAt,desc' }
+  const params: Record<string, unknown> = { page, size: 20, sort: `scheduledAt,${sortDirection}` }
   if (status) params.status = status
   if (league && league !== 'ALL') params.league = league
   if (teamId && teamId > 0) params.teamId = teamId

@@ -32,13 +32,14 @@ export async function fetchMatchResultsPage(
   league?: string,
   teamId?: number,
   sinceDate?: string,
+  sortDirection: 'asc' | 'desc' = 'desc',
 ): Promise<PageResponse<MatchResponse>> {
   const params: Record<string, unknown> = {
     status: 'COMPLETED',
     hasResult: true,
     page,
     size: 20,
-    sort: 'scheduledAt,desc',
+    sort: `scheduledAt,${sortDirection}`,
   }
   if (league && league !== 'ALL') params.league = league
   if (teamId && teamId > 0) params.teamId = teamId

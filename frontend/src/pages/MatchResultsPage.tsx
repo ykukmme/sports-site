@@ -10,11 +10,18 @@ export function MatchResultsPage() {
   const [selectedLeague, setSelectedLeague] = useState<string>('ALL')
   const [selectedTeamId, setSelectedTeamId] = useState<string>('ALL')
   const [sinceDate, setSinceDate] = useState<string>('')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   const { data: teams } = useTeams()
   const selectedTeamNumber = selectedTeamId === 'ALL' ? undefined : Number(selectedTeamId)
   const selectedLeagueParam = selectedLeague === 'ALL' ? undefined : selectedLeague
-  const resultsQuery = useMatchResultsPage(page, selectedLeagueParam, selectedTeamNumber, sinceDate || undefined)
+  const resultsQuery = useMatchResultsPage(
+    page,
+    selectedLeagueParam,
+    selectedTeamNumber,
+    sinceDate || undefined,
+    sortDirection,
+  )
 
   const teamsInLeague = useMemo(() => {
     const source = teams ?? []
@@ -51,6 +58,7 @@ export function MatchResultsPage() {
     setSelectedLeague('ALL')
     setSelectedTeamId('ALL')
     setSinceDate('')
+    setSortDirection('desc')
     setPage(0)
   }
 
@@ -61,7 +69,7 @@ export function MatchResultsPage() {
     <div>
       <h1 className="mb-6 text-4xl font-semibold leading-tight">경기 결과</h1>
 
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-3">
+      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
         <label className="text-sm">
           <span className="mb-1 block text-muted-foreground">리그</span>
           <select
@@ -114,11 +122,24 @@ export function MatchResultsPage() {
             </Button>
           </div>
         </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-muted-foreground">날짜 정렬</span>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
+            value={sortDirection}
+            onChange={(event) => {
+              setSortDirection(event.target.value as 'asc' | 'desc')
+              setPage(0)
+            }}
+          >
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+          </select>
+        </label>
       </div>
 
-      <p className="mb-4 text-sm text-muted-foreground">
-        전체 {pageData?.totalElements ?? 0}건
-      </p>
+      <p className="mb-4 text-sm text-muted-foreground">전체 {pageData?.totalElements ?? 0}건</p>
 
       <MatchList matches={matches} isLoading={resultsQuery.isLoading} error={resultsQuery.error} />
 
