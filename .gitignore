@@ -31,3 +31,10 @@ npm-debug.log*
 # === OS ===
 .DS_Store
 Thumbs.db
+# Added by code-review-graph
+.code-review-graph/
+
+# === Internal docs (local-only; do not commit) ===
+memory/
+docs/portfolio/
+docs/decisions/
