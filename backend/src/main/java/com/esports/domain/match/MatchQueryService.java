@@ -39,6 +39,7 @@ public class MatchQueryService {
                                            String league,
                                            Long teamId,
                                            LocalDate sinceDate,
+                                           Boolean hasResult,
                                            Pageable pageable) {
         Specification<Match> spec = Specification.where(null);
 
@@ -67,6 +68,15 @@ public class MatchQueryService {
             OffsetDateTime from = sinceDate.atStartOfDay().atOffset(ZoneOffset.UTC);
             spec = spec.and((root, query, cb) ->
                     cb.greaterThanOrEqualTo(root.get("scheduledAt"), from));
+        }
+        if (Boolean.TRUE.equals(hasResult)) {
+            spec = spec.and((root, query, cb) -> {
+                var subquery = query.subquery(Long.class);
+                var matchResultRoot = subquery.from(MatchResult.class);
+                subquery.select(matchResultRoot.get("id"));
+                subquery.where(cb.equal(matchResultRoot.get("match").get("id"), root.get("id")));
+                return cb.exists(subquery);
+            });
         }
 
         Page<Match> matchPage = matchRepository.findAll(spec, pageable);

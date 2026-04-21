@@ -10,8 +10,10 @@ export async function fetchUpcomingMatches(): Promise<MatchResponse[]> {
 
 // 완료된 경기 결과 목록 조회 (최대 100건)
 export async function fetchMatchResults(): Promise<MatchResponse[]> {
-  const res = await apiClient.get<ApiResponse<MatchResponse[]>>('/api/v1/matches/results')
-  return res.data.data ?? []
+  const res = await apiClient.get<ApiResponse<PageResponse<MatchResponse>>>('/api/v1/matches', {
+    params: { status: 'COMPLETED', hasResult: true, page: 0, size: 50, sort: 'scheduledAt,desc' },
+  })
+  return res.data.data?.content ?? []
 }
 
 // 종목별 경기 목록 조회 (페이지네이션)
@@ -23,4 +25,33 @@ export async function fetchMatchesByGame(
     params: { gameId, page },
   })
   return res.data.data ?? { content: [], totalElements: 0, totalPages: 0, number: 0, size: 20, first: true, last: true }
+}
+
+export async function fetchMatchResultsPage(
+  page = 0,
+  league?: string,
+  teamId?: number,
+  sinceDate?: string,
+): Promise<PageResponse<MatchResponse>> {
+  const params: Record<string, unknown> = {
+    status: 'COMPLETED',
+    hasResult: true,
+    page,
+    size: 20,
+    sort: 'scheduledAt,desc',
+  }
+  if (league && league !== 'ALL') params.league = league
+  if (teamId && teamId > 0) params.teamId = teamId
+  if (sinceDate) params.sinceDate = sinceDate
+
+  const res = await apiClient.get<ApiResponse<PageResponse<MatchResponse>>>('/api/v1/matches', { params })
+  return res.data.data ?? {
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    number: 0,
+    size: 20,
+    first: true,
+    last: true,
+  }
 }

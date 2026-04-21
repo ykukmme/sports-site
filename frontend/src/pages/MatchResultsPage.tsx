@@ -1,88 +1,47 @@
 import { useMemo, useState } from 'react'
-import { useMatchResults } from '../hooks/useMatches'
-import { useTeams } from '../hooks/useTeams'
-import { MatchList } from '../components/match/MatchList'
 import { Button } from '@/components/ui/button'
+import { MatchList } from '../components/match/MatchList'
 import { TEAM_LEAGUES } from '../constants/teamLeagues'
+import { useMatchResultsPage } from '../hooks/useMatches'
+import { useTeams } from '../hooks/useTeams'
 
 export function MatchResultsPage() {
-  const { data, isLoading, error } = useMatchResults()
-  const { data: teams } = useTeams()
-
+  const [page, setPage] = useState(0)
   const [selectedLeague, setSelectedLeague] = useState<string>('ALL')
   const [selectedTeamId, setSelectedTeamId] = useState<string>('ALL')
   const [sinceDate, setSinceDate] = useState<string>('')
 
-  const teamLeagueById = useMemo(() => {
-    const map = new Map<number, string>()
-    ;(teams ?? []).forEach((team) => {
-      if (team.league) {
-        map.set(team.id, team.league)
-      }
-    })
-    return map
-  }, [teams])
+  const { data: teams } = useTeams()
+  const selectedTeamNumber = selectedTeamId === 'ALL' ? undefined : Number(selectedTeamId)
+  const selectedLeagueParam = selectedLeague === 'ALL' ? undefined : selectedLeague
+  const resultsQuery = useMatchResultsPage(page, selectedLeagueParam, selectedTeamNumber, sinceDate || undefined)
 
   const teamsInLeague = useMemo(() => {
     const source = teams ?? []
     const filtered =
       selectedLeague === 'ALL'
         ? source
-        : source.filter((team) => team.league === selectedLeague)
-
+        : source.filter((team) => (team.league ?? '').toUpperCase() === selectedLeague)
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name))
   }, [teams, selectedLeague])
 
-  const filteredMatches = useMemo(() => {
-    if (!data) return []
-
-    const selectedTeamNumber = selectedTeamId === 'ALL' ? null : Number(selectedTeamId)
-    const thresholdDate = sinceDate ? new Date(`${sinceDate}T00:00:00`) : null
-
-    return data.filter((match) => {
-      if (selectedLeague !== 'ALL') {
-        const teamALeague = teamLeagueById.get(match.teamA.id)
-        const teamBLeague = teamLeagueById.get(match.teamB.id)
-        if (teamALeague !== selectedLeague && teamBLeague !== selectedLeague) {
-          return false
-        }
-      }
-
-      if (selectedTeamNumber !== null) {
-        if (match.teamA.id !== selectedTeamNumber && match.teamB.id !== selectedTeamNumber) {
-          return false
-        }
-      }
-
-      const scheduledAt = new Date(match.scheduledAt)
-      if (isNaN(scheduledAt.getTime())) {
-        return false
-      }
-
-      if (thresholdDate && scheduledAt < thresholdDate) {
-        return false
-      }
-
-      return true
-    })
-  }, [data, selectedLeague, selectedTeamId, sinceDate, teamLeagueById])
-
   const availableLeagueCodes = useMemo(() => {
-    const codes = new Set((teams ?? []).map((team) => team.league).filter(Boolean))
+    const codes = new Set((teams ?? []).map((team) => (team.league ?? '').toUpperCase()).filter(Boolean))
     return TEAM_LEAGUES.filter((league) => codes.has(league.code))
   }, [teams])
 
   const handleLeagueChange = (league: string) => {
     setSelectedLeague(league)
-    if (selectedTeamId === 'ALL') return
-
+    setPage(0)
+    if (selectedTeamId === 'ALL') {
+      return
+    }
     const selectedTeam = (teams ?? []).find((team) => team.id === Number(selectedTeamId))
     if (!selectedTeam) {
       setSelectedTeamId('ALL')
       return
     }
-
-    if (league !== 'ALL' && selectedTeam.league !== league) {
+    if (league !== 'ALL' && (selectedTeam.league ?? '').toUpperCase() !== league) {
       setSelectedTeamId('ALL')
     }
   }
@@ -91,7 +50,11 @@ export function MatchResultsPage() {
     setSelectedLeague('ALL')
     setSelectedTeamId('ALL')
     setSinceDate('')
+    setPage(0)
   }
+
+  const pageData = resultsQuery.data
+  const matches = pageData?.content ?? []
 
   return (
     <div>
@@ -119,7 +82,10 @@ export function MatchResultsPage() {
           <select
             className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
             value={selectedTeamId}
-            onChange={(event) => setSelectedTeamId(event.target.value)}
+            onChange={(event) => {
+              setSelectedTeamId(event.target.value)
+              setPage(0)
+            }}
           >
             <option value="ALL">전체</option>
             {teamsInLeague.map((team) => (
@@ -137,7 +103,10 @@ export function MatchResultsPage() {
               type="date"
               className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
               value={sinceDate}
-              onChange={(event) => setSinceDate(event.target.value)}
+              onChange={(event) => {
+                setSinceDate(event.target.value)
+                setPage(0)
+              }}
             />
             <Button type="button" variant="outline" onClick={resetFilters}>
               초기화
@@ -146,9 +115,33 @@ export function MatchResultsPage() {
         </label>
       </div>
 
-      <p className="mb-4 text-sm text-muted-foreground">필터 결과: {filteredMatches.length}건</p>
+      <p className="mb-4 text-sm text-muted-foreground">
+        전체 {pageData?.totalElements ?? 0}건
+      </p>
 
-      <MatchList matches={filteredMatches} isLoading={isLoading} error={error} />
+      <MatchList matches={matches} isLoading={resultsQuery.isLoading} error={resultsQuery.error} />
+
+      <div className="mt-4 flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pageData?.first ?? true}
+          onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+        >
+          이전
+        </Button>
+        <span className="flex items-center text-sm text-muted-foreground">
+          {(pageData?.number ?? 0) + 1} / {pageData?.totalPages ?? 1}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pageData?.last ?? true}
+          onClick={() => setPage((prev) => prev + 1)}
+        >
+          다음
+        </Button>
+      </div>
     </div>
   )
 }

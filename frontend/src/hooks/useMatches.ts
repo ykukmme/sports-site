@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchUpcomingMatches, fetchMatchResults, fetchMatchesByGame } from '../api/matches'
+import { fetchUpcomingMatches, fetchMatchResults, fetchMatchResultsPage, fetchMatchesByGame } from '../api/matches'
 
 // 예정 경기 목록 훅
 export function useUpcomingMatches() {
@@ -15,6 +15,19 @@ export function useMatchResults() {
   return useQuery({
     queryKey: ['matches', 'results'],
     queryFn: fetchMatchResults,
+    staleTime: 60_000,
+  })
+}
+
+export function useMatchResultsPage(
+  page = 0,
+  league?: string,
+  teamId?: number,
+  sinceDate?: string,
+) {
+  return useQuery({
+    queryKey: ['matches', 'results', 'page', page, league, teamId, sinceDate],
+    queryFn: () => fetchMatchResultsPage(page, league, teamId, sinceDate),
     staleTime: 60_000,
   })
 }

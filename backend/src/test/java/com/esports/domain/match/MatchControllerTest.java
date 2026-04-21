@@ -45,6 +45,7 @@ class MatchControllerTest {
                 isNull(),
                 isNull(),
                 isNull(),
+                isNull(),
                 any(Pageable.class)))
                 .thenReturn(emptyPage);
 
