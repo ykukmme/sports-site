@@ -2,6 +2,10 @@ package com.esports.domain.match;
 
 import com.esports.config.JwtTokenProvider;
 import com.esports.config.SecurityConfig;
+import com.esports.domain.matchexternal.GolDetailEnrichmentService;
+import com.esports.domain.matchexternal.MatchExternalDetailBatchSyncResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailSyncItemResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +17,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,6 +33,7 @@ class AdminMatchControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean MatchCommandService matchCommandService;
+    @MockBean GolDetailEnrichmentService golDetailEnrichmentService;
     @MockBean JwtTokenProvider jwtTokenProvider;
 
     @Test
@@ -84,5 +90,66 @@ class AdminMatchControllerTest {
         // when & then
         mockMvc.perform(delete("/api/admin/matches/1").with(csrf()))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void bindDetailReturns200() throws Exception {
+        MatchExternalDetailSummaryResponse summary = new MatchExternalDetailSummaryResponse(
+                "GOL_GG",
+                "PENDING",
+                "https://gol.gg/game/stats/123456/page-game/",
+                0,
+                null,
+                null
+        );
+        when(golDetailEnrichmentService.bindSourceUrl(eq(1L), any(String.class))).thenReturn(summary);
+
+        mockMvc.perform(post("/api/admin/matches/1/details/bind")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceUrl":"https://gol.gg/game/stats/123456/page-game/"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.provider").value("GOL_GG"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void syncDetailReturns200() throws Exception {
+        MatchExternalDetailSyncItemResponse item = new MatchExternalDetailSyncItemResponse(
+                1L,
+                "SYNCED",
+                "Synced",
+                new MatchExternalDetailSummaryResponse("GOL_GG", "SYNCED", "https://gol.gg/game/stats/1/page-game/", 90, null, null)
+        );
+        when(golDetailEnrichmentService.syncOne(1L)).thenReturn(item);
+
+        mockMvc.perform(post("/api/admin/matches/1/details/sync").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SYNCED"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void syncBatchReturns200() throws Exception {
+        MatchExternalDetailBatchSyncResponse response = new MatchExternalDetailBatchSyncResponse(
+                2,
+                1,
+                1,
+                List.of()
+        );
+        when(golDetailEnrichmentService.syncBatch(any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/admin/matches/details/sync")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"matchIds":[1,2]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.requestedCount").value(2));
     }
 }

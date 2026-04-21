@@ -66,3 +66,10 @@ pandascore:
   read-timeout-ms: ${PANDASCORE_READ_TIMEOUT_MS:10000}
   completed-global-page-limit: ${PANDASCORE_COMPLETED_GLOBAL_PAGE_LIMIT:10}
   match-lookup-batch-size: ${PANDASCORE_MATCH_LOOKUP_BATCH_SIZE:500}
+
+golgg:
+  enabled: ${GOLGG_ENABLED:true}
+  base-url: ${GOLGG_BASE_URL:https://gol.gg}
+  connect-timeout-ms: ${GOLGG_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${GOLGG_READ_TIMEOUT_MS:10000}
+  parse-version: ${GOLGG_PARSE_VERSION:gol-v1}

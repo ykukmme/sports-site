@@ -1,6 +1,8 @@
 package com.esports.domain.match;
 
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.matchexternal.MatchExternalDetailRepository;
+import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -29,11 +31,14 @@ public class MatchQueryService {
 
     private final MatchRepository matchRepository;
     private final MatchResultRepository matchResultRepository;
+    private final MatchExternalDetailRepository matchExternalDetailRepository;
 
     public MatchQueryService(MatchRepository matchRepository,
-                             MatchResultRepository matchResultRepository) {
+                             MatchResultRepository matchResultRepository,
+                             MatchExternalDetailRepository matchExternalDetailRepository) {
         this.matchRepository = matchRepository;
         this.matchResultRepository = matchResultRepository;
+        this.matchExternalDetailRepository = matchExternalDetailRepository;
     }
 
     public Page<MatchResponse> findMatches(MatchStatus status,
@@ -97,9 +102,10 @@ public class MatchQueryService {
         Page<Match> matchPage = matchRepository.findAll(spec, pageable);
         List<Long> matchIds = matchPage.getContent().stream().map(Match::getId).toList();
         Map<Long, MatchResult> resultMap = buildResultMap(matchIds);
+        Map<Long, MatchExternalDetailSummaryResponse> detailMap = buildExternalDetailSummaryMap(matchIds);
 
         List<MatchResponse> responses = matchPage.getContent().stream()
-                .map(match -> toResponse(match, resultMap))
+                .map(match -> toResponse(match, resultMap, detailMap))
                 .toList();
 
         return new PageImpl<>(responses, pageable, matchPage.getTotalElements());
@@ -112,9 +118,13 @@ public class MatchQueryService {
                         "Match not found. id=" + id,
                         HttpStatus.NOT_FOUND));
 
+        MatchExternalDetailSummaryResponse detailSummary = matchExternalDetailRepository.findByMatchId(id)
+                .map(MatchExternalDetailSummaryResponse::from)
+                .orElse(null);
+
         Optional<MatchResult> result = matchResultRepository.findByMatchId(id);
-        return result.map(r -> MatchResponse.withResult(match, r))
-                .orElseGet(() -> MatchResponse.from(match));
+        return result.map(r -> MatchResponse.withResult(match, r, detailSummary))
+                .orElseGet(() -> MatchResponse.from(match, detailSummary));
     }
 
     public List<MatchResponse> findUpcoming() {
@@ -135,10 +145,11 @@ public class MatchQueryService {
 
         List<Long> matchIds = matches.stream().map(Match::getId).toList();
         Map<Long, MatchResult> resultMap = buildResultMap(matchIds);
+        Map<Long, MatchExternalDetailSummaryResponse> detailMap = buildExternalDetailSummaryMap(matchIds);
 
         return matches.stream()
                 .filter(match -> resultMap.containsKey(match.getId()))
-                .map(match -> toResponse(match, resultMap))
+                .map(match -> toResponse(match, resultMap, detailMap))
                 .toList();
     }
 
@@ -153,11 +164,25 @@ public class MatchQueryService {
                 ));
     }
 
-    private MatchResponse toResponse(Match match, Map<Long, MatchResult> resultMap) {
+    private MatchResponse toResponse(Match match,
+                                     Map<Long, MatchResult> resultMap,
+                                     Map<Long, MatchExternalDetailSummaryResponse> detailMap) {
         MatchResult result = resultMap.get(match.getId());
+        MatchExternalDetailSummaryResponse detailSummary = detailMap.get(match.getId());
         return result != null
-                ? MatchResponse.withResult(match, result)
-                : MatchResponse.from(match);
+                ? MatchResponse.withResult(match, result, detailSummary)
+                : MatchResponse.from(match, detailSummary);
+    }
+
+    private Map<Long, MatchExternalDetailSummaryResponse> buildExternalDetailSummaryMap(List<Long> matchIds) {
+        if (matchIds.isEmpty()) {
+            return Map.of();
+        }
+        return matchExternalDetailRepository.findByMatchIdIn(matchIds).stream()
+                .collect(Collectors.toMap(
+                        detail -> detail.getMatch().getId(),
+                        MatchExternalDetailSummaryResponse::from
+                ));
     }
 
     private static jakarta.persistence.criteria.Predicate internationalCompetitionPredicate(
