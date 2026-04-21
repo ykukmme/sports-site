@@ -213,6 +213,9 @@ export async function importPandaScoreMatches(
       leagueCodes,
       type,
     },
+    {
+      timeout: 120_000,
+    },
   )
   return res.data.data!
 }

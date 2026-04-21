@@ -59,6 +59,7 @@ const IMPORT_RESULT_VARIANTS: Record<
 }
 
 const DEFAULT_LEAGUES = TEAM_LEAGUES.map((league) => league.code)
+const IMPORT_BATCH_SIZE = 50
 
 export function AdminPandaScorePreviewPage() {
   const [selectedLeagueCodes, setSelectedLeagueCodes] = useState<TeamLeagueCode[]>(DEFAULT_LEAGUES)
@@ -138,13 +139,26 @@ export function AdminPandaScorePreviewPage() {
       return
     }
 
-    const result = await importMutation.mutateAsync({
-      externalIds: selectedExternalIds,
-      leagueCodes: selectedLeagueCodes,
-      type: previewType,
-    })
+    const externalIdsToImport = [...selectedExternalIds]
+    const chunks = chunkExternalIds(externalIdsToImport, IMPORT_BATCH_SIZE)
+    let mergedResult: PandaScoreMatchImportResponse = {
+      requestedCount: externalIdsToImport.length,
+      createdCount: 0,
+      updatedCount: 0,
+      skippedCount: 0,
+      items: [],
+    }
 
-    setImportResult(result)
+    for (const chunk of chunks) {
+      const partial = await importMutation.mutateAsync({
+        externalIds: chunk,
+        leagueCodes: selectedLeagueCodes,
+        type: previewType,
+      })
+      mergedResult = mergeImportResults(mergedResult, partial)
+    }
+
+    setImportResult(mergedResult)
     clearSelection()
     await previewQuery.refetch()
   }
@@ -411,6 +425,27 @@ export function AdminPandaScorePreviewPage() {
       </div>
     </div>
   )
+}
+
+function chunkExternalIds(ids: string[], size: number) {
+  const chunks: string[][] = []
+  for (let index = 0; index < ids.length; index += size) {
+    chunks.push(ids.slice(index, index + size))
+  }
+  return chunks
+}
+
+function mergeImportResults(
+  base: PandaScoreMatchImportResponse,
+  next: PandaScoreMatchImportResponse,
+): PandaScoreMatchImportResponse {
+  return {
+    requestedCount: base.requestedCount,
+    createdCount: base.createdCount + next.createdCount,
+    updatedCount: base.updatedCount + next.updatedCount,
+    skippedCount: base.skippedCount + next.skippedCount,
+    items: [...base.items, ...next.items],
+  }
 }
 
 function Summary({ label, value }: { label: string; value: number }) {
