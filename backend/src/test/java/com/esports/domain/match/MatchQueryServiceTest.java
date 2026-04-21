@@ -1,7 +1,10 @@
 package com.esports.domain.match;
 
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.game.Game;
+import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.team.Team;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -78,5 +81,55 @@ class MatchQueryServiceTest {
 
         // then
         assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void findResultsReturnsOnlyMatchesWithResult() {
+        Match withResult = mock(Match.class);
+        Match withoutResult = mock(Match.class);
+        when(withResult.getId()).thenReturn(1L);
+        when(withoutResult.getId()).thenReturn(2L);
+        when(withResult.getStatus()).thenReturn(MatchStatus.COMPLETED);
+        when(withResult.getTournamentName()).thenReturn("LCK Spring");
+        when(withResult.getStage()).thenReturn("Playoffs");
+        when(withResult.getScheduledAt()).thenReturn(OffsetDateTime.parse("2026-04-20T10:00:00Z"));
+        when(withResult.getExternalSource()).thenReturn(MatchExternalSource.PANDASCORE);
+        when(withResult.getExternalId()).thenReturn("1001");
+
+        Game game = mock(Game.class);
+        when(game.getId()).thenReturn(1L);
+        when(game.getName()).thenReturn("League of Legends");
+        when(game.getShortName()).thenReturn("LoL");
+        when(withResult.getGame()).thenReturn(game);
+
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+        when(teamA.getId()).thenReturn(10L);
+        when(teamA.getName()).thenReturn("GEN");
+        when(teamA.getShortName()).thenReturn("GEN");
+        when(teamB.getId()).thenReturn(20L);
+        when(teamB.getName()).thenReturn("T1");
+        when(teamB.getShortName()).thenReturn("T1");
+        when(withResult.getTeamA()).thenReturn(teamA);
+        when(withResult.getTeamB()).thenReturn(teamB);
+
+        MatchResult result = mock(MatchResult.class);
+        when(result.getMatch()).thenReturn(withResult);
+        when(result.getWinnerTeam()).thenReturn(teamA);
+        when(result.getScoreTeamA()).thenReturn(3);
+        when(result.getScoreTeamB()).thenReturn(1);
+        when(result.getPlayedAt()).thenReturn(OffsetDateTime.parse("2026-04-20T12:00:00Z"));
+        when(result.getVodUrl()).thenReturn(null);
+
+        when(matchRepository.findByStatus(eq(MatchStatus.COMPLETED), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(withResult, withoutResult)));
+        when(matchResultRepository.findByMatchIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of(result));
+
+        List<MatchResponse> responses = matchQueryService.findResults();
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(1L);
+        assertThat(responses.get(0).result()).isNotNull();
     }
 }

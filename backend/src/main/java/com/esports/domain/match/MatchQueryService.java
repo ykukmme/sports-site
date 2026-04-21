@@ -107,6 +107,7 @@ public class MatchQueryService {
         Map<Long, MatchResult> resultMap = buildResultMap(matchIds);
 
         return matches.stream()
+                .filter(match -> resultMap.containsKey(match.getId()))
                 .map(match -> toResponse(match, resultMap))
                 .toList();
     }
