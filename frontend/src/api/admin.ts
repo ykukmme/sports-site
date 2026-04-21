@@ -221,12 +221,15 @@ export async function importPandaScoreMatches(
 }
 
 export async function syncPandaScoreMatchResults(
-  leagueCodes: TeamLeagueCode[],
+  leagueCodes: MatchLeagueFilterCode[],
 ): Promise<PandaScoreMatchResultSyncResponse> {
   const res = await apiClient.post<ApiResponse<PandaScoreMatchResultSyncResponse>>(
     '/api/admin/pandascore/matches/results/sync',
     {
       leagueCodes,
+    },
+    {
+      timeout: 120_000,
     },
   )
   return res.data.data!

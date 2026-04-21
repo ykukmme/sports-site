@@ -19,7 +19,9 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class PandaScoreMatchResultSyncService {
+
+    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 10;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -45,21 +49,26 @@ public class PandaScoreMatchResultSyncService {
     }
 
     public PandaScoreMatchResultSyncResponse syncCompletedLolMatchResults(List<TeamLeague> leagues) {
+        return syncCompletedLolMatchResults(leagues, false);
+    }
+
+    public PandaScoreMatchResultSyncResponse syncCompletedLolMatchResults(List<TeamLeague> leagues,
+                                                                          boolean includeInternational) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BusinessException(
                     "PANDASCORE_NOT_CONFIGURED",
-                    "PandaScore API 키가 설정되어 있지 않습니다.",
+                    "PandaScore API ?ㅺ? ?ㅼ젙?섏뼱 ?덉? ?딆뒿?덈떎.",
                     HttpStatus.BAD_REQUEST
             );
         }
 
         List<PandaScoreApiClient.PandaScoreMatch> matches;
         try {
-            matches = apiClient.getPastLolMatchesByLeagues(leagues);
+            matches = collectPastCompletedMatches(leagues, includeInternational);
         } catch (RestClientException e) {
             throw new BusinessException(
                     "PANDASCORE_RESULT_FETCH_FAILED",
-                    "PandaScore API에서 완료 경기 결과를 가져오지 못했습니다.",
+                    "PandaScore API?먯꽌 ?꾨즺 寃쎄린 寃곌낵瑜?媛?몄삤吏 紐삵뻽?듬땲??",
                     HttpStatus.BAD_GATEWAY
             );
         }
@@ -86,7 +95,7 @@ public class PandaScoreMatchResultSyncService {
                         null,
                         PandaScoreImportResultStatus.SKIPPED,
                         null,
-                        "PandaScore 경기 ID가 없어 결과를 동기화할 수 없습니다."
+                        "PandaScore 寃쎄린 ID媛 ?놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎."
                 ));
                 continue;
             }
@@ -107,7 +116,7 @@ public class PandaScoreMatchResultSyncService {
                         externalId,
                         PandaScoreImportResultStatus.SKIPPED,
                         null,
-                        "먼저 경기 저장을 해야 결과를 연결할 수 있습니다."
+                        "癒쇱? 寃쎄린 ??μ쓣 ?댁빞 寃곌낵瑜??곌껐?????덉뒿?덈떎."
                 ));
                 continue;
             }
@@ -122,7 +131,7 @@ public class PandaScoreMatchResultSyncService {
                         externalId,
                         PandaScoreImportResultStatus.SKIPPED,
                         match.getId(),
-                        "이미 등록된 경기 결과가 있어 덮어쓰지 않았습니다."
+                        "이미 등록된 경기 결과가 있어 덮어쓰지 않습니다."
                 ));
                 continue;
             }
@@ -133,7 +142,7 @@ public class PandaScoreMatchResultSyncService {
                         externalId,
                         PandaScoreImportResultStatus.SKIPPED,
                         match.getId(),
-                        "팀 점수 또는 승자 정보를 현재 경기와 연결할 수 없습니다."
+                        "? ?먯닔 ?먮뒗 ?뱀옄 ?뺣낫瑜??꾩옱 寃쎄린? ?곌껐?????놁뒿?덈떎."
                 ));
                 continue;
             }
@@ -151,7 +160,7 @@ public class PandaScoreMatchResultSyncService {
                     externalId,
                     PandaScoreImportResultStatus.CREATED,
                     match.getId(),
-                    "완료 경기 결과를 저장했습니다."
+                    "?꾨즺 寃쎄린 寃곌낵瑜???ν뻽?듬땲??"
             ));
         }
 
@@ -165,19 +174,59 @@ public class PandaScoreMatchResultSyncService {
         );
     }
 
+    private List<PandaScoreApiClient.PandaScoreMatch> collectPastCompletedMatches(List<TeamLeague> leagues,
+                                                                                   boolean includeInternational) {
+        Map<Long, PandaScoreApiClient.PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
+        List<TeamLeague> selectedLeagues = leagues == null ? TeamLeague.supportedLeagues() : leagues;
+
+        List<PandaScoreApiClient.PandaScoreMatch> regionalMatches = apiClient.getPastLolMatchesByLeagues(leagues);
+        if (regionalMatches != null) {
+            for (PandaScoreApiClient.PandaScoreMatch match : regionalMatches) {
+                if (match.id() != null && isSelectedRegionalLeague(match, selectedLeagues)) {
+                    dedupedMatches.put(match.id(), match);
+                }
+            }
+        }
+
+        if (includeInternational) {
+            List<PandaScoreApiClient.PandaScoreMatch> globalMatches =
+                    apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT);
+            if (globalMatches != null) {
+                for (PandaScoreApiClient.PandaScoreMatch match : globalMatches) {
+                    if (match.id() != null && isSupportedInternationalCompetition(match)) {
+                        dedupedMatches.put(match.id(), match);
+                    }
+                }
+            }
+        }
+
+        return List.copyOf(dedupedMatches.values());
+    }
+
+    private boolean isSelectedRegionalLeague(PandaScoreApiClient.PandaScoreMatch match,
+                                             List<TeamLeague> selectedLeagues) {
+        if (match.league() == null) {
+            return false;
+        }
+        TeamLeague regionalLeague = TeamLeague.fromPandaScoreLeagueId(match.league().id());
+        return regionalLeague != null && selectedLeagues.contains(regionalLeague);
+    }
+
     private String validateCompletedMatch(PandaScoreApiClient.PandaScoreMatch match) {
-        if (match.status() == null || !"finished".equalsIgnoreCase(match.status())) {
-            return "완료 경기 상태가 아니어서 결과 동기화를 건너뜁니다.";
+        if (match.status() == null
+                || (!"finished".equalsIgnoreCase(match.status())
+                && !"completed".equalsIgnoreCase(match.status()))) {
+            return "?꾨즺 寃쎄린 ?곹깭媛 ?꾨땲?댁꽌 寃곌낵 ?숆린?붾? 嫄대꼫?곷땲??";
         }
         if (match.results() == null || match.results().size() < 2) {
-            return "팀 점수 정보가 없어 결과를 동기화할 수 없습니다.";
+            return "? ?먯닔 ?뺣낫媛 ?놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎.";
         }
         if (match.winnerId() == null) {
-            return "승자 정보가 없어 결과를 동기화할 수 없습니다.";
+            return "?뱀옄 ?뺣낫媛 ?놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎.";
         }
         OffsetDateTime playedAt = parseDateTime(firstNonBlank(match.endAt(), match.beginAt(), match.scheduledAt()));
         if (playedAt == null) {
-            return "경기 종료 시간이 없어 결과를 동기화할 수 없습니다.";
+            return "寃쎄린 醫낅즺 ?쒓컙???놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎.";
         }
         return null;
     }
@@ -252,6 +301,35 @@ public class PandaScoreMatchResultSyncService {
             }
         }
         return null;
+    }
+
+    private boolean isSupportedInternationalCompetition(PandaScoreApiClient.PandaScoreMatch match) {
+        String combined = String.join(
+                " ",
+                normalize(match.name()),
+                match.league() != null ? normalize(match.league().name()) : "",
+                match.league() != null ? normalize(match.league().slug()) : "",
+                match.tournament() != null ? normalize(match.tournament().name()) : "",
+                match.tournament() != null ? normalize(match.tournament().slug()) : ""
+        );
+
+        return combined.contains("first stand")
+                || combined.contains("mid season invitational")
+                || combined.matches(".*\\bmsi\\b.*")
+                || combined.contains("league of legends world championship")
+                || combined.matches(".*\\bworlds\\b.*")
+                || combined.contains("world championship");
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim()
+                .replace('-', ' ')
+                .replace('_', ' ')
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
     }
 
     private record ScoreLine(

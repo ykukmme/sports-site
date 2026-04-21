@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchStatus } from '../types/domain'
 import type { MatchCreateFormValues, MatchResultFormValues, MatchUpdateFormValues } from '../types/adminForms'
-import { TEAM_LEAGUES } from '../constants/teamLeagues'
+import { MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
 import {
   createAdminMatch,
   createMatchResult,
@@ -100,7 +100,7 @@ export function useUpdateMatchResult() {
 export function usePandaScoreMatchResultSync() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => syncPandaScoreMatchResults(TEAM_LEAGUES.map((league) => league.code)),
+    mutationFn: () => syncPandaScoreMatchResults(MATCH_LEAGUE_FILTERS.map((league) => league.code)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
     },

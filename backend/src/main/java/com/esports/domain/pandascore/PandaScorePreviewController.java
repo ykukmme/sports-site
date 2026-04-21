@@ -81,6 +81,11 @@ public class PandaScorePreviewController {
     public ApiResponse<PandaScoreMatchResultSyncResponse> syncCompletedMatchResults(
             @RequestBody(required = false) PandaScoreMatchResultSyncRequest request) {
         List<String> leagueCodes = request != null ? request.leagueCodes() : null;
-        return ApiResponse.ok(resultSyncService.syncCompletedLolMatchResults(TeamLeague.fromCodes(leagueCodes)));
+        return ApiResponse.ok(
+                resultSyncService.syncCompletedLolMatchResults(
+                        TeamLeague.fromCodes(leagueCodes),
+                        TeamLeague.includesInternational(leagueCodes)
+                )
+        );
     }
 }
