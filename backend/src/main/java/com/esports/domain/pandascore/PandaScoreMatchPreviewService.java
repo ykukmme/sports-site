@@ -113,15 +113,18 @@ public class PandaScoreMatchPreviewService {
 
     private List<PandaScoreApiClient.PandaScoreMatch> getCompletedPreviewMatches(List<TeamLeague> leagues) {
         Map<Long, PandaScoreApiClient.PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
+        List<TeamLeague> selectedLeagues = (leagues == null || leagues.isEmpty())
+                ? TeamLeague.supportedLeagues()
+                : leagues;
 
         for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesByLeagues(leagues)) {
-            if (shouldIncludeCompletedMatch(match, false) && match.id() != null) {
+            if (shouldIncludeCompletedMatch(match, false, selectedLeagues) && match.id() != null) {
                 dedupedMatches.put(match.id(), match);
             }
         }
 
         for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT)) {
-            if (shouldIncludeCompletedMatch(match, true) && match.id() != null) {
+            if (shouldIncludeCompletedMatch(match, true, selectedLeagues) && match.id() != null) {
                 dedupedMatches.put(match.id(), match);
             }
         }
@@ -350,7 +353,9 @@ public class PandaScoreMatchPreviewService {
         return reasons;
     }
 
-    private boolean shouldIncludeCompletedMatch(PandaScoreApiClient.PandaScoreMatch match, boolean allowInternational) {
+    private boolean shouldIncludeCompletedMatch(PandaScoreApiClient.PandaScoreMatch match,
+                                                boolean allowInternational,
+                                                List<TeamLeague> selectedLeagues) {
         OffsetDateTime referenceTime = resolveMatchDateTime(match);
         if (referenceTime == null || referenceTime.getYear() != COMPLETED_PREVIEW_YEAR) {
             return false;
@@ -361,8 +366,11 @@ public class PandaScoreMatchPreviewService {
             return false;
         }
 
-        if (match.league() != null && TeamLeague.fromPandaScoreLeagueId(match.league().id()) != null) {
-            return true;
+        if (match.league() != null) {
+            TeamLeague regionalLeague = TeamLeague.fromPandaScoreLeagueId(match.league().id());
+            if (regionalLeague != null) {
+                return selectedLeagues.contains(regionalLeague);
+            }
         }
 
         return allowInternational && isSupportedInternationalCompetition(match);

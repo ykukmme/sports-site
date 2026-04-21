@@ -207,7 +207,8 @@ class PandaScoreMatchPreviewServiceTest {
         ));
         when(apiClient.getPastLolMatchesPages(anyInt())).thenReturn(List.of(
                 finishedMatch(300L, "2026-03-20T09:00:00Z", 9999L, "First Stand", "league-of-legends-first-stand", "First Stand 2026", "first-stand-2026"),
-                finishedMatch(301L, "2026-04-18T09:00:00Z", 9998L, "Random Cup", "random-cup", "Random Cup 2026", "random-cup-2026")
+                finishedMatch(301L, "2026-04-18T09:00:00Z", 9998L, "Random Cup", "random-cup", "Random Cup 2026", "random-cup-2026"),
+                finishedMatch(302L, "2026-04-19T09:00:00Z", 4197L, "LEC", "league-of-legends-lec", "LEC Spring 2026", "lec-spring-2026")
         ));
         when(matchRepository.findByExternalId(any())).thenReturn(Optional.empty());
         when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
