@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -221,6 +222,30 @@ class PandaScoreMatchPreviewServiceTest {
                 .containsExactly("200", "300");
         assertThat(result).allSatisfy(preview ->
                 assertThat(preview.previewStatus()).isEqualTo(PandaScorePreviewStatus.NEW));
+    }
+
+    @Test
+    void previewCompletedMatchesAppliesSinceDateAndExcludeExisting() {
+        stubGame();
+        when(apiClient.getPastLolMatchesByLeagues(anyList())).thenReturn(List.of(
+                finishedMatch(400L, "2026-04-18T05:00:00Z", 293L, "LCK", "league-of-legends-lck-champions-korea", "LCK 2026", "lck-2026"),
+                finishedMatch(401L, "2026-04-10T05:00:00Z", 293L, "LCK", "league-of-legends-lck-champions-korea", "LCK 2026", "lck-2026")
+        ));
+        when(apiClient.getPastLolMatchesPages(anyInt())).thenReturn(List.of());
+
+        Match existing = mock(Match.class);
+        when(matchRepository.findByExternalId("400")).thenReturn(Optional.of(existing));
+        when(matchRepository.findByScheduledAtBetween(any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(List.of());
+        stubConfirmedTeams();
+
+        List<PandaScoreMatchPreviewResponse> result = service.previewCompletedLolMatches(
+                List.of(TeamLeague.LCK),
+                LocalDate.of(2026, 4, 15),
+                true
+        );
+
+        assertThat(result).isEmpty();
     }
 
     private void stubGame() {

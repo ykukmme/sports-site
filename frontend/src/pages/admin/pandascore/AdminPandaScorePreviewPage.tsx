@@ -64,9 +64,10 @@ export function AdminPandaScorePreviewPage() {
   const [selectedLeagueCodes, setSelectedLeagueCodes] = useState<TeamLeagueCode[]>(DEFAULT_LEAGUES)
   const [selectedExternalIds, setSelectedExternalIds] = useState<string[]>([])
   const [previewType, setPreviewType] = useState<PandaScoreMatchPreviewType>('upcoming')
+  const [sinceDate, setSinceDate] = useState<string>('')
   const [importResult, setImportResult] = useState<PandaScoreMatchImportResponse | null>(null)
 
-  const previewQuery = usePandaScoreMatchPreview(selectedLeagueCodes, previewType)
+  const previewQuery = usePandaScoreMatchPreview(selectedLeagueCodes, previewType, sinceDate, true)
   const importMutation = usePandaScoreMatchImport()
 
   const previews = previewQuery.data ?? []
@@ -249,6 +250,26 @@ export function AdminPandaScorePreviewPage() {
             </Button>
           )
         })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">기준일 이후</span>
+        <input
+          type="date"
+          value={sinceDate}
+          onChange={(event) => setSinceDate(event.target.value)}
+          className="h-8 rounded-md border border-input bg-card px-2 text-sm"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setSinceDate('')}
+          disabled={!sinceDate}
+        >
+          날짜 초기화
+        </Button>
+        <span className="text-xs text-muted-foreground">기존 저장 경기 제외 적용</span>
       </div>
 
       {(previewQuery.isError || importMutation.isError) && (

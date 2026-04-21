@@ -3,6 +3,7 @@ package com.esports.domain.pandascore;
 import com.esports.common.ApiResponse;
 import com.esports.common.exception.BusinessException;
 import com.esports.domain.team.TeamLeague;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
@@ -34,11 +36,13 @@ public class PandaScorePreviewController {
     public ApiResponse<List<PandaScoreMatchPreviewResponse>> previewMatches(
             @RequestParam(defaultValue = "lol") String game,
             @RequestParam(defaultValue = "upcoming") String type,
-            @RequestParam(required = false) List<String> leagueCodes) {
+            @RequestParam(required = false) List<String> leagueCodes,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate sinceDate,
+            @RequestParam(defaultValue = "false") boolean excludeExisting) {
         if (!"lol".equalsIgnoreCase(game)) {
             throw new BusinessException(
                     "PANDASCORE_PREVIEW_UNSUPPORTED_SCOPE",
-                    "현재 PandaScore Preview는 LoL 경기만 지원합니다.",
+                    "PandaScore preview supports only LoL.",
                     HttpStatus.BAD_REQUEST
             );
         }
@@ -47,11 +51,15 @@ public class PandaScorePreviewController {
         String normalizedType = type == null ? "upcoming" : type.trim().toLowerCase(Locale.ROOT);
 
         return switch (normalizedType) {
-            case "upcoming" -> ApiResponse.ok(previewService.previewUpcomingLolMatches(leagues));
-            case "completed", "past" -> ApiResponse.ok(previewService.previewCompletedLolMatches(leagues));
+            case "upcoming" -> ApiResponse.ok(
+                    previewService.previewUpcomingLolMatches(leagues, sinceDate, excludeExisting)
+            );
+            case "completed", "past" -> ApiResponse.ok(
+                    previewService.previewCompletedLolMatches(leagues, sinceDate, excludeExisting)
+            );
             default -> throw new BusinessException(
                     "PANDASCORE_PREVIEW_UNSUPPORTED_SCOPE",
-                    "현재 PandaScore Preview는 LoL 예정 경기와 완료 경기만 지원합니다.",
+                    "Only upcoming/completed previews are supported.",
                     HttpStatus.BAD_REQUEST
             );
         };

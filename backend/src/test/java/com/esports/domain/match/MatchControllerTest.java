@@ -39,7 +39,13 @@ class MatchControllerTest {
     void listReturns200() throws Exception {
         // given
         Page<MatchResponse> emptyPage = new PageImpl<>(List.of());
-        when(matchQueryService.findMatches(isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(matchQueryService.findMatches(
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                isNull(),
+                any(Pageable.class)))
                 .thenReturn(emptyPage);
 
         // when & then: 페이지네이션 응답 구조(content, totalElements) 포함 검증

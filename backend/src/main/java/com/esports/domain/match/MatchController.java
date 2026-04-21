@@ -27,9 +27,11 @@ public class MatchController {
     public ApiResponse<Page<MatchResponse>> list(
             @RequestParam(required = false) MatchStatus status,
             @RequestParam(required = false) Long gameId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String league,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate sinceDate,
             @PageableDefault(size = 20, sort = "scheduledAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ApiResponse.ok(matchQueryService.findMatches(status, gameId, date, pageable));
+        return ApiResponse.ok(matchQueryService.findMatches(status, gameId, league, teamId, sinceDate, pageable));
     }
 
     // GET /api/v1/matches/upcoming — 예정 경기 목록

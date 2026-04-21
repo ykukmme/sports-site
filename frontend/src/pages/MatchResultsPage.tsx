@@ -11,8 +11,7 @@ export function MatchResultsPage() {
 
   const [selectedLeague, setSelectedLeague] = useState<string>('ALL')
   const [selectedTeamId, setSelectedTeamId] = useState<string>('ALL')
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
+  const [sinceDate, setSinceDate] = useState<string>('')
 
   const teamLeagueById = useMemo(() => {
     const map = new Map<number, string>()
@@ -38,8 +37,7 @@ export function MatchResultsPage() {
     if (!data) return []
 
     const selectedTeamNumber = selectedTeamId === 'ALL' ? null : Number(selectedTeamId)
-    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null
-    const toDate = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null
+    const thresholdDate = sinceDate ? new Date(`${sinceDate}T00:00:00`) : null
 
     return data.filter((match) => {
       if (selectedLeague !== 'ALL') {
@@ -61,16 +59,13 @@ export function MatchResultsPage() {
         return false
       }
 
-      if (fromDate && scheduledAt < fromDate) {
-        return false
-      }
-      if (toDate && scheduledAt > toDate) {
+      if (thresholdDate && scheduledAt < thresholdDate) {
         return false
       }
 
       return true
     })
-  }, [data, selectedLeague, selectedTeamId, dateFrom, dateTo, teamLeagueById])
+  }, [data, selectedLeague, selectedTeamId, sinceDate, teamLeagueById])
 
   const availableLeagueCodes = useMemo(() => {
     const codes = new Set((teams ?? []).map((team) => team.league).filter(Boolean))
@@ -95,15 +90,14 @@ export function MatchResultsPage() {
   const resetFilters = () => {
     setSelectedLeague('ALL')
     setSelectedTeamId('ALL')
-    setDateFrom('')
-    setDateTo('')
+    setSinceDate('')
   }
 
   return (
     <div>
       <h1 className="mb-6 text-4xl font-semibold leading-tight">경기 결과</h1>
 
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
+      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-3">
         <label className="text-sm">
           <span className="mb-1 block text-muted-foreground">리그</span>
           <select
@@ -137,23 +131,13 @@ export function MatchResultsPage() {
         </label>
 
         <label className="text-sm">
-          <span className="mb-1 block text-muted-foreground">시작일</span>
-          <input
-            type="date"
-            className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
-            value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
-          />
-        </label>
-
-        <label className="text-sm">
-          <span className="mb-1 block text-muted-foreground">종료일</span>
+          <span className="mb-1 block text-muted-foreground">기준일 이후</span>
           <div className="flex gap-2">
             <input
               type="date"
               className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
+              value={sinceDate}
+              onChange={(event) => setSinceDate(event.target.value)}
             />
             <Button type="button" variant="outline" onClick={resetFilters}>
               초기화

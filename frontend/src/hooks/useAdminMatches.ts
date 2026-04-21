@@ -1,33 +1,40 @@
-// 어드민 경기 관리 훅
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchStatus } from '../types/domain'
-import type { MatchCreateFormValues, MatchUpdateFormValues, MatchResultFormValues } from '../types/adminForms'
+import type { MatchCreateFormValues, MatchResultFormValues, MatchUpdateFormValues } from '../types/adminForms'
 import { TEAM_LEAGUES } from '../constants/teamLeagues'
 import {
-  fetchAdminMatches,
-  fetchAdminMatch,
   createAdminMatch,
-  updateAdminMatch,
-  deleteAdminMatch,
   createMatchResult,
-  updateMatchResult,
+  deleteAdminMatch,
+  fetchAdminMatch,
+  fetchAdminMatches,
   syncPandaScoreMatchResults,
+  updateAdminMatch,
+  updateMatchResult,
 } from '../api/admin'
 
-// 경기 목록 쿼리 키 — 페이지·필터 포함
-const MATCHES_KEY = (page: number, status?: MatchStatus) =>
-  ['admin', 'matches', { page, status }] as const
+const MATCHES_KEY = (
+  page: number,
+  status?: MatchStatus,
+  league?: string,
+  teamId?: number,
+  sinceDate?: string,
+) => ['admin', 'matches', { page, status, league, teamId, sinceDate }] as const
 
-// 경기 목록 훅 (페이지네이션)
-export function useAdminMatchList(page = 0, status?: MatchStatus) {
+export function useAdminMatchList(
+  page = 0,
+  status?: MatchStatus,
+  league?: string,
+  teamId?: number,
+  sinceDate?: string,
+) {
   return useQuery({
-    queryKey: MATCHES_KEY(page, status),
-    queryFn: () => fetchAdminMatches(page, status),
+    queryKey: MATCHES_KEY(page, status, league, teamId, sinceDate),
+    queryFn: () => fetchAdminMatches(page, status, league, teamId, sinceDate),
     staleTime: 30_000,
   })
 }
 
-// 경기 상세 훅
 export function useAdminMatch(id: number) {
   return useQuery({
     queryKey: ['admin', 'matches', id],
@@ -37,7 +44,6 @@ export function useAdminMatch(id: number) {
   })
 }
 
-// 경기 등록 훅
 export function useAdminCreateMatch() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -48,7 +54,6 @@ export function useAdminCreateMatch() {
   })
 }
 
-// 경기 수정 훅
 export function useAdminUpdateMatch() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -60,7 +65,6 @@ export function useAdminUpdateMatch() {
   })
 }
 
-// 경기 삭제 훅
 export function useAdminDeleteMatch() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -71,7 +75,6 @@ export function useAdminDeleteMatch() {
   })
 }
 
-// 경기 결과 등록 훅
 export function useCreateMatchResult() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -83,7 +86,6 @@ export function useCreateMatchResult() {
   })
 }
 
-// 경기 결과 수정 훅
 export function useUpdateMatchResult() {
   const queryClient = useQueryClient()
   return useMutation({

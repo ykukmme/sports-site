@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,7 +31,6 @@ public class PandaScoreMatchPreviewService {
     private static final String SOURCE = "PANDASCORE";
     private static final int COMPLETED_PREVIEW_YEAR = 2026;
     private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 2;
-    private static final int COMPLETED_PREVIEW_RESULT_LIMIT = 80;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -50,22 +51,37 @@ public class PandaScoreMatchPreviewService {
     }
 
     public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches() {
-        return previewUpcomingLolMatches(TeamLeague.supportedLeagues());
+        return previewUpcomingLolMatches(TeamLeague.supportedLeagues(), null, false);
     }
 
     public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches(List<TeamLeague> leagues) {
-        return previewLolMatches(leagues, false);
+        return previewUpcomingLolMatches(leagues, null, false);
+    }
+
+    public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches(List<TeamLeague> leagues,
+                                                                          LocalDate sinceDate,
+                                                                          boolean excludeExisting) {
+        return previewLolMatches(leagues, false, sinceDate, excludeExisting);
     }
 
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches() {
-        return previewCompletedLolMatches(TeamLeague.supportedLeagues());
+        return previewCompletedLolMatches(TeamLeague.supportedLeagues(), null, false);
     }
 
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues) {
-        return previewLolMatches(leagues, true);
+        return previewCompletedLolMatches(leagues, null, false);
     }
 
-    private List<PandaScoreMatchPreviewResponse> previewLolMatches(List<TeamLeague> leagues, boolean completed) {
+    public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues,
+                                                                           LocalDate sinceDate,
+                                                                           boolean excludeExisting) {
+        return previewLolMatches(leagues, true, sinceDate, excludeExisting);
+    }
+
+    private List<PandaScoreMatchPreviewResponse> previewLolMatches(List<TeamLeague> leagues,
+                                                                   boolean completed,
+                                                                   LocalDate sinceDate,
+                                                                   boolean excludeExisting) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BusinessException(
                     "PANDASCORE_NOT_CONFIGURED",
@@ -96,9 +112,9 @@ public class PandaScoreMatchPreviewService {
             );
         }
 
-        if (completed) {
-            matches = limitCompletedPreviewMatches(matches);
-        }
+        matches = matches.stream()
+                .filter(match -> isAfterSinceDate(match, sinceDate))
+                .toList();
 
         List<Match> conflictCandidates = findConflictCandidates(matches);
         Comparator<PandaScoreApiClient.PandaScoreMatch> sortOrder = completed
@@ -107,7 +123,8 @@ public class PandaScoreMatchPreviewService {
 
         return matches.stream()
                 .sorted(sortOrder)
-                .map(match -> toPreview(game, match, conflictCandidates))
+                .map(match -> toPreview(game, match, conflictCandidates, excludeExisting))
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -132,18 +149,10 @@ public class PandaScoreMatchPreviewService {
         return List.copyOf(dedupedMatches.values());
     }
 
-    private List<PandaScoreApiClient.PandaScoreMatch> limitCompletedPreviewMatches(
-            List<PandaScoreApiClient.PandaScoreMatch> matches
-    ) {
-        return matches.stream()
-                .sorted(completedMatchComparator())
-                .limit(COMPLETED_PREVIEW_RESULT_LIMIT)
-                .toList();
-    }
-
     private PandaScoreMatchPreviewResponse toPreview(Game game,
                                                      PandaScoreApiClient.PandaScoreMatch pandaMatch,
-                                                     List<Match> conflictCandidates) {
+                                                     List<Match> conflictCandidates,
+                                                     boolean excludeExisting) {
         String externalId = pandaMatch.id() != null ? String.valueOf(pandaMatch.id()) : null;
         List<String> rejectionReasons = validate(pandaMatch);
 
@@ -178,6 +187,9 @@ public class PandaScoreMatchPreviewService {
 
         Match existing = matchRepository.findByExternalId(externalId).orElse(null);
         if (existing != null) {
+            if (excludeExisting) {
+                return null;
+            }
             return new PandaScoreMatchPreviewResponse(
                     externalId,
                     SOURCE,
@@ -244,6 +256,20 @@ public class PandaScoreMatchPreviewService {
                 null,
                 List.of()
         );
+    }
+
+    private boolean isAfterSinceDate(PandaScoreApiClient.PandaScoreMatch match, LocalDate sinceDate) {
+        if (sinceDate == null) {
+            return true;
+        }
+
+        OffsetDateTime referenceTime = resolveMatchDateTime(match);
+        if (referenceTime == null) {
+            return false;
+        }
+
+        OffsetDateTime threshold = sinceDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        return !referenceTime.isBefore(threshold);
     }
 
     private List<String> validate(PandaScoreApiClient.PandaScoreMatch match) {

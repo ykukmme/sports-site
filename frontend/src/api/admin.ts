@@ -54,9 +54,15 @@ export async function fetchGamesForAdmin(): Promise<GameResponse[]> {
 export async function fetchAdminMatches(
   page = 0,
   status?: MatchStatus,
+  league?: string,
+  teamId?: number,
+  sinceDate?: string,
 ): Promise<PageResponse<MatchResponse>> {
   const params: Record<string, unknown> = { page, size: 20, sort: 'scheduledAt,desc' }
   if (status) params.status = status
+  if (league && league !== 'ALL') params.league = league
+  if (teamId && teamId > 0) params.teamId = teamId
+  if (sinceDate) params.sinceDate = sinceDate
   const res = await apiClient.get<ApiResponse<PageResponse<MatchResponse>>>('/api/v1/matches', { params })
   return res.data.data ?? {
     content: [],
@@ -176,11 +182,19 @@ export async function deleteAdminPlayer(id: number): Promise<void> {
 export async function fetchPandaScoreMatchPreview(
   leagueCodes: TeamLeagueCode[],
   type: PandaScoreMatchPreviewType = 'upcoming',
+  sinceDate?: string,
+  excludeExisting = false,
 ): Promise<PandaScoreMatchPreviewResponse[]> {
   const res = await apiClient.get<ApiResponse<PandaScoreMatchPreviewResponse[]>>(
     '/api/admin/pandascore/matches/preview',
     {
-      params: { game: 'lol', type, leagueCodes: leagueCodes.join(',') },
+      params: {
+        game: 'lol',
+        type,
+        leagueCodes: leagueCodes.join(','),
+        sinceDate: sinceDate || undefined,
+        excludeExisting,
+      },
       timeout: 60_000,
     },
   )

@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAdminMatchList, useAdminDeleteMatch, usePandaScoreMatchResultSync } from '../../../hooks/useAdminMatches'
-import { AdminStatusBadge } from '../../../components/admin/AdminStatusBadge'
+import { ApiError } from '../../../api/client'
 import { AdminConfirmDialog } from '../../../components/admin/AdminConfirmDialog'
-import { Button } from '../../../components/ui/button'
+import { AdminStatusBadge } from '../../../components/admin/AdminStatusBadge'
 import { Badge } from '../../../components/ui/badge'
+import { Button } from '../../../components/ui/button'
 import {
   Table,
   TableBody,
@@ -13,11 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
-import { ApiError } from '../../../api/client'
+import { TEAM_LEAGUES } from '../../../constants/teamLeagues'
+import { useAdminMatchList, useAdminDeleteMatch, usePandaScoreMatchResultSync } from '../../../hooks/useAdminMatches'
+import { useAdminTeamList } from '../../../hooks/useAdminTeams'
 import type { PandaScoreImportResultStatus, PandaScoreMatchResultSyncResponse } from '../../../types/domain'
 
 const RESULT_SYNC_LABELS: Record<PandaScoreImportResultStatus, string> = {
-  CREATED: '결과 저장',
+  CREATED: '결과 생성',
   UPDATED: '결과 갱신',
   SKIPPED: '스킵',
 }
@@ -31,12 +33,28 @@ const RESULT_SYNC_VARIANTS: Record<PandaScoreImportResultStatus, 'default' | 'se
 export function AdminMatchListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
+  const [leagueFilter, setLeagueFilter] = useState<string>('ALL')
+  const [teamFilter, setTeamFilter] = useState<string>('ALL')
+  const [sinceDate, setSinceDate] = useState<string>('')
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
 
-  const { data, isLoading, isError } = useAdminMatchList(page)
+  const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
+  const league = leagueFilter === 'ALL' ? undefined : leagueFilter
+
+  const { data, isLoading, isError } = useAdminMatchList(page, undefined, league, teamId, sinceDate || undefined)
+  const { data: teamsData } = useAdminTeamList()
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
+
+  const teams = useMemo(() => {
+    const source = teamsData ?? []
+    const filtered =
+      leagueFilter === 'ALL'
+        ? source
+        : source.filter((team) => (team.league ?? '').toUpperCase() === leagueFilter)
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name))
+  }, [teamsData, leagueFilter])
 
   function handleDeleteConfirm() {
     if (deleteTargetId == null) return
@@ -53,6 +71,13 @@ export function AdminMatchListPage() {
   function closeDeleteDialog() {
     deleteMutation.reset()
     setDeleteTargetId(null)
+  }
+
+  function resetFilters() {
+    setLeagueFilter('ALL')
+    setTeamFilter('ALL')
+    setSinceDate('')
+    setPage(0)
   }
 
   const deleteErrorMessage =
@@ -77,7 +102,7 @@ export function AdminMatchListPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">경기 관리</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            PandaScore 완료 경기 결과는 이미 저장된 경기만 연결하고, 기존 결과는 덮어쓰지 않습니다.
+            PandaScore 완료 경기 결과만 연결하고, 기존 결과는 덮어쓰지 않습니다.
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
@@ -95,6 +120,66 @@ export function AdminMatchListPage() {
           </Button>
           <Button size="sm" onClick={() => navigate('/admin/matches/new')}>
             경기 등록
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 md:grid-cols-4">
+        <label className="text-sm">
+          <span className="mb-1 block text-muted-foreground">리그</span>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+            value={leagueFilter}
+            onChange={(event) => {
+              setLeagueFilter(event.target.value)
+              setTeamFilter('ALL')
+              setPage(0)
+            }}
+          >
+            <option value="ALL">전체</option>
+            {TEAM_LEAGUES.map((leagueOption) => (
+              <option key={leagueOption.code} value={leagueOption.code}>
+                {leagueOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-muted-foreground">팀</span>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+            value={teamFilter}
+            onChange={(event) => {
+              setTeamFilter(event.target.value)
+              setPage(0)
+            }}
+          >
+            <option value="ALL">전체</option>
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-muted-foreground">기준일 이후</span>
+          <input
+            type="date"
+            className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+            value={sinceDate}
+            onChange={(event) => {
+              setSinceDate(event.target.value)
+              setPage(0)
+            }}
+          />
+        </label>
+
+        <div className="flex items-end">
+          <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
+            필터 초기화
           </Button>
         </div>
       </div>
@@ -143,7 +228,7 @@ export function AdminMatchListPage() {
               <TableHead>대회명</TableHead>
               <TableHead>팀 A</TableHead>
               <TableHead>팀 B</TableHead>
-              <TableHead>예정 시각</TableHead>
+              <TableHead>일정</TableHead>
               <TableHead>상태</TableHead>
               <TableHead className="text-right">액션</TableHead>
             </TableRow>
@@ -160,9 +245,7 @@ export function AdminMatchListPage() {
                 <TableRow key={match.id}>
                   <TableCell>
                     <div className="font-medium">{match.tournamentName}</div>
-                    {match.stage && (
-                      <div className="text-xs text-muted-foreground">{match.stage}</div>
-                    )}
+                    {match.stage && <div className="text-xs text-muted-foreground">{match.stage}</div>}
                   </TableCell>
                   <TableCell>{match.teamA.name}</TableCell>
                   <TableCell>{match.teamB.name}</TableCell>

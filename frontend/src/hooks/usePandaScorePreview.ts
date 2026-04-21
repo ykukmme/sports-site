@@ -6,10 +6,12 @@ import type { PandaScoreMatchPreviewType } from '../types/domain'
 export function usePandaScoreMatchPreview(
   leagueCodes: TeamLeagueCode[],
   type: PandaScoreMatchPreviewType,
+  sinceDate?: string,
+  excludeExisting = false,
 ) {
   return useQuery({
-    queryKey: ['admin', 'pandascore', 'matches', 'preview', type, leagueCodes],
-    queryFn: () => fetchPandaScoreMatchPreview(leagueCodes, type),
+    queryKey: ['admin', 'pandascore', 'matches', 'preview', type, leagueCodes, sinceDate, excludeExisting],
+    queryFn: () => fetchPandaScoreMatchPreview(leagueCodes, type, sinceDate, excludeExisting),
     enabled: false,
     retry: false,
   })
