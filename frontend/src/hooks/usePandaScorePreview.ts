@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchPandaScoreMatchPreview, importPandaScoreMatches } from '../api/admin'
-import type { TeamLeagueCode } from '../constants/teamLeagues'
+import type { MatchLeagueFilterCode } from '../constants/teamLeagues'
 import type { PandaScoreMatchPreviewType } from '../types/domain'
 
 export function usePandaScoreMatchPreview(
-  leagueCodes: TeamLeagueCode[],
+  leagueCodes: MatchLeagueFilterCode[],
   type: PandaScoreMatchPreviewType,
   sinceDate?: string,
   excludeExisting = false,
@@ -27,7 +27,7 @@ export function usePandaScoreMatchImport() {
       type,
     }: {
       externalIds: string[]
-      leagueCodes: TeamLeagueCode[]
+      leagueCodes: MatchLeagueFilterCode[]
       type: PandaScoreMatchPreviewType
     }) => importPandaScoreMatches(externalIds, leagueCodes, type),
     onSuccess: () => {

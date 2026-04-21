@@ -69,8 +69,9 @@ public class PandaScoreMatchImportService {
                 ));
 
         List<TeamLeague> leagues = TeamLeague.fromCodes(request.leagueCodes());
+        boolean includeInternational = TeamLeague.includesInternational(request.leagueCodes());
         List<PandaScoreMatchPreviewResponse> previews = isCompletedImport(request.type())
-                ? previewService.previewCompletedLolMatches(leagues)
+                ? previewService.previewCompletedLolMatches(leagues, includeInternational, null, false)
                 : previewService.previewUpcomingLolMatches(leagues);
 
         Map<String, PandaScoreMatchPreviewResponse> previewByExternalId = previews.stream()

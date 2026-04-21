@@ -19,6 +19,7 @@ public enum TeamLeague {
     LCP("LCP", 5351L),
     CBLOL("CBLOL", 302L),
     LCK_CL("LCK CL", 4553L);
+    public static final String INTERNATIONAL_CODE = "INTERNATIONAL";
 
     private static final Map<String, TeamLeague> BY_CODE = Arrays.stream(values())
             .collect(Collectors.toUnmodifiableMap(TeamLeague::getCode, Function.identity()));
@@ -71,14 +72,34 @@ public enum TeamLeague {
             return supportedLeagues();
         }
 
-        return codes.stream()
+        List<String> normalizedCodes = codes.stream()
                 .flatMap(code -> Arrays.stream(code.split(",")))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
+                .filter(value -> !INTERNATIONAL_CODE.equalsIgnoreCase(value))
+                .toList();
+
+        if (normalizedCodes.isEmpty()) {
+            return List.of();
+        }
+
+        return normalizedCodes.stream()
                 .map(TeamLeague::fromCode)
                 .collect(Collectors.collectingAndThen(
                         Collectors.toCollection(LinkedHashSet::new),
                         List::copyOf
                 ));
+    }
+
+    public static boolean includesInternational(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return true;
+        }
+
+        return codes.stream()
+                .flatMap(code -> Arrays.stream(code.split(",")))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .anyMatch(value -> INTERNATIONAL_CODE.equalsIgnoreCase(value));
     }
 }

@@ -19,7 +19,7 @@ import type {
   TeamFormValues,
   PlayerFormValues,
 } from '../types/adminForms'
-import type { TeamLeagueCode } from '../constants/teamLeagues'
+import type { MatchLeagueFilterCode, TeamLeagueCode } from '../constants/teamLeagues'
 
 function toIso(dateTimeLocal: string): string {
   return new Date(dateTimeLocal).toISOString()
@@ -180,7 +180,7 @@ export async function deleteAdminPlayer(id: number): Promise<void> {
 }
 
 export async function fetchPandaScoreMatchPreview(
-  leagueCodes: TeamLeagueCode[],
+  leagueCodes: MatchLeagueFilterCode[],
   type: PandaScoreMatchPreviewType = 'upcoming',
   sinceDate?: string,
   excludeExisting = false,
@@ -203,7 +203,7 @@ export async function fetchPandaScoreMatchPreview(
 
 export async function importPandaScoreMatches(
   externalIds: string[],
-  leagueCodes: TeamLeagueCode[],
+  leagueCodes: MatchLeagueFilterCode[],
   type: PandaScoreMatchPreviewType = 'upcoming',
 ): Promise<PandaScoreMatchImportResponse> {
   const res = await apiClient.post<ApiResponse<PandaScoreMatchImportResponse>>(

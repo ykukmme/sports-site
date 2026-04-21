@@ -10,7 +10,11 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
-import { TEAM_LEAGUES, getTeamLeagueLabel, type TeamLeagueCode } from '../../../constants/teamLeagues'
+import {
+  MATCH_LEAGUE_FILTERS,
+  getTeamLeagueLabel,
+  type MatchLeagueFilterCode,
+} from '../../../constants/teamLeagues'
 import {
   usePandaScoreMatchImport,
   usePandaScoreMatchPreview,
@@ -58,11 +62,11 @@ const IMPORT_RESULT_VARIANTS: Record<
   SKIPPED: 'destructive',
 }
 
-const DEFAULT_LEAGUES = TEAM_LEAGUES.map((league) => league.code)
+const DEFAULT_LEAGUES = MATCH_LEAGUE_FILTERS.map((league) => league.code)
 const IMPORT_BATCH_SIZE = 50
 
 export function AdminPandaScorePreviewPage() {
-  const [selectedLeagueCodes, setSelectedLeagueCodes] = useState<TeamLeagueCode[]>(DEFAULT_LEAGUES)
+  const [selectedLeagueCodes, setSelectedLeagueCodes] = useState<MatchLeagueFilterCode[]>(DEFAULT_LEAGUES)
   const [selectedExternalIds, setSelectedExternalIds] = useState<string[]>([])
   const [previewType, setPreviewType] = useState<PandaScoreMatchPreviewType>('upcoming')
   const [sinceDate, setSinceDate] = useState<string>('')
@@ -100,7 +104,7 @@ export function AdminPandaScorePreviewPage() {
         ? importMutation.error.message
         : null
 
-  function toggleLeague(code: TeamLeagueCode) {
+  function toggleLeague(code: MatchLeagueFilterCode) {
     setSelectedLeagueCodes((prev) =>
       prev.includes(code) ? prev.filter((value) => value !== code) : [...prev, code],
     )
@@ -249,7 +253,7 @@ export function AdminPandaScorePreviewPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {TEAM_LEAGUES.map((league) => {
+        {MATCH_LEAGUE_FILTERS.map((league) => {
           const isSelected = selectedLeagueCodes.includes(league.code)
           return (
             <Button

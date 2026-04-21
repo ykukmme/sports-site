@@ -3,6 +3,9 @@ package com.esports.domain.match;
 import com.esports.common.exception.BusinessException;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.team.TeamLeague;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -51,11 +54,15 @@ public class MatchQueryService {
         }
         if (league != null && !league.isBlank()) {
             String normalizedLeague = league.trim().toUpperCase();
-            spec = spec.and((root, query, cb) ->
-                    cb.or(
-                            cb.equal(cb.upper(root.get("teamA").get("league")), normalizedLeague),
-                            cb.equal(cb.upper(root.get("teamB").get("league")), normalizedLeague)
-                    ));
+            if (TeamLeague.INTERNATIONAL_CODE.equals(normalizedLeague)) {
+                spec = spec.and((root, query, cb) -> internationalCompetitionPredicate(cb, root.get("tournamentName"), root.get("stage")));
+            } else {
+                spec = spec.and((root, query, cb) ->
+                        cb.or(
+                                cb.equal(cb.upper(root.get("teamA").get("league")), normalizedLeague),
+                                cb.equal(cb.upper(root.get("teamB").get("league")), normalizedLeague)
+                        ));
+            }
         }
         if (teamId != null) {
             spec = spec.and((root, query, cb) ->
@@ -143,5 +150,30 @@ public class MatchQueryService {
         return result != null
                 ? MatchResponse.withResult(match, result)
                 : MatchResponse.from(match);
+    }
+
+    private static jakarta.persistence.criteria.Predicate internationalCompetitionPredicate(
+            CriteriaBuilder cb,
+            Expression<String> tournamentName,
+            Expression<String> stage
+    ) {
+        Expression<String> tournamentLower = cb.lower(cb.coalesce(tournamentName, ""));
+        Expression<String> stageLower = cb.lower(cb.coalesce(stage, ""));
+
+        return cb.or(
+                containsAny(cb, tournamentLower),
+                containsAny(cb, stageLower)
+        );
+    }
+
+    private static jakarta.persistence.criteria.Predicate containsAny(CriteriaBuilder cb, Expression<String> value) {
+        return cb.or(
+                cb.like(value, "%first stand%"),
+                cb.like(value, "%mid season invitational%"),
+                cb.like(value, "%msi%"),
+                cb.like(value, "%league of legends world championship%"),
+                cb.like(value, "%world championship%"),
+                cb.like(value, "%worlds%")
+        );
     }
 }

@@ -30,7 +30,7 @@ public class PandaScoreMatchPreviewService {
 
     private static final String SOURCE = "PANDASCORE";
     private static final int COMPLETED_PREVIEW_YEAR = 2026;
-    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 2;
+    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 10;
 
     private final PandaScoreApiClient apiClient;
     private final PandaScoreProperties properties;
@@ -61,7 +61,7 @@ public class PandaScoreMatchPreviewService {
     public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches(List<TeamLeague> leagues,
                                                                           LocalDate sinceDate,
                                                                           boolean excludeExisting) {
-        return previewLolMatches(leagues, false, sinceDate, excludeExisting);
+        return previewLolMatches(leagues, false, false, sinceDate, excludeExisting);
     }
 
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches() {
@@ -75,11 +75,19 @@ public class PandaScoreMatchPreviewService {
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues,
                                                                            LocalDate sinceDate,
                                                                            boolean excludeExisting) {
-        return previewLolMatches(leagues, true, sinceDate, excludeExisting);
+        return previewCompletedLolMatches(leagues, true, sinceDate, excludeExisting);
+    }
+
+    public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues,
+                                                                           boolean includeInternational,
+                                                                           LocalDate sinceDate,
+                                                                           boolean excludeExisting) {
+        return previewLolMatches(leagues, true, includeInternational, sinceDate, excludeExisting);
     }
 
     private List<PandaScoreMatchPreviewResponse> previewLolMatches(List<TeamLeague> leagues,
                                                                    boolean completed,
+                                                                   boolean includeInternational,
                                                                    LocalDate sinceDate,
                                                                    boolean excludeExisting) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
@@ -100,7 +108,7 @@ public class PandaScoreMatchPreviewService {
         List<PandaScoreApiClient.PandaScoreMatch> matches;
         try {
             matches = completed
-                    ? getCompletedPreviewMatches(leagues)
+                    ? getCompletedPreviewMatches(leagues, includeInternational)
                     : apiClient.getUpcomingLolMatchesByLeagues(leagues);
         } catch (RestClientException e) {
             throw new BusinessException(
@@ -128,11 +136,10 @@ public class PandaScoreMatchPreviewService {
                 .toList();
     }
 
-    private List<PandaScoreApiClient.PandaScoreMatch> getCompletedPreviewMatches(List<TeamLeague> leagues) {
+    private List<PandaScoreApiClient.PandaScoreMatch> getCompletedPreviewMatches(List<TeamLeague> leagues,
+                                                                                  boolean includeInternational) {
         Map<Long, PandaScoreApiClient.PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
-        List<TeamLeague> selectedLeagues = (leagues == null || leagues.isEmpty())
-                ? TeamLeague.supportedLeagues()
-                : leagues;
+        List<TeamLeague> selectedLeagues = leagues == null ? TeamLeague.supportedLeagues() : leagues;
 
         for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesByLeagues(leagues)) {
             if (shouldIncludeCompletedMatch(match, false, selectedLeagues) && match.id() != null) {
@@ -141,7 +148,7 @@ public class PandaScoreMatchPreviewService {
         }
 
         for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT)) {
-            if (shouldIncludeCompletedMatch(match, true, selectedLeagues) && match.id() != null) {
+            if (shouldIncludeCompletedMatch(match, includeInternational, selectedLeagues) && match.id() != null) {
                 dedupedMatches.put(match.id(), match);
             }
         }
@@ -163,9 +170,14 @@ public class PandaScoreMatchPreviewService {
         TeamLeague league = pandaMatch.league() != null
                 ? TeamLeague.fromPandaScoreLeagueId(pandaMatch.league().id())
                 : null;
-        String leagueCode = league != null ? league.getCode() : null;
+        boolean internationalCompetition = isSupportedInternationalCompetition(pandaMatch);
+        String leagueCode = league != null
+                ? league.getCode()
+                : internationalCompetition ? TeamLeague.INTERNATIONAL_CODE : null;
         String leagueName = league != null
                 ? league.getLabel()
+                : internationalCompetition
+                ? "국제전"
                 : pandaMatch.league() != null ? pandaMatch.league().name() : null;
 
         if (!rejectionReasons.isEmpty()) {

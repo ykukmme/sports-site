@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MatchList } from '../components/match/MatchList'
-import { TEAM_LEAGUES } from '../constants/teamLeagues'
+import { INTERNATIONAL_LEAGUE_CODE, MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
 import { useMatchResultsPage } from '../hooks/useMatches'
 import { useTeams } from '../hooks/useTeams'
 
@@ -19,16 +19,13 @@ export function MatchResultsPage() {
   const teamsInLeague = useMemo(() => {
     const source = teams ?? []
     const filtered =
-      selectedLeague === 'ALL'
+      selectedLeague === 'ALL' || selectedLeague === INTERNATIONAL_LEAGUE_CODE
         ? source
         : source.filter((team) => (team.league ?? '').toUpperCase() === selectedLeague)
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name))
   }, [teams, selectedLeague])
 
-  const availableLeagueCodes = useMemo(() => {
-    const codes = new Set((teams ?? []).map((team) => (team.league ?? '').toUpperCase()).filter(Boolean))
-    return TEAM_LEAGUES.filter((league) => codes.has(league.code))
-  }, [teams])
+  const availableLeagueCodes = useMemo(() => MATCH_LEAGUE_FILTERS, [])
 
   const handleLeagueChange = (league: string) => {
     setSelectedLeague(league)
@@ -41,7 +38,11 @@ export function MatchResultsPage() {
       setSelectedTeamId('ALL')
       return
     }
-    if (league !== 'ALL' && (selectedTeam.league ?? '').toUpperCase() !== league) {
+    if (
+      league !== 'ALL' &&
+      league !== INTERNATIONAL_LEAGUE_CODE &&
+      (selectedTeam.league ?? '').toUpperCase() !== league
+    ) {
       setSelectedTeamId('ALL')
     }
   }

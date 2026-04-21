@@ -48,6 +48,7 @@ public class PandaScorePreviewController {
         }
 
         List<TeamLeague> leagues = TeamLeague.fromCodes(leagueCodes);
+        boolean includeInternational = TeamLeague.includesInternational(leagueCodes);
         String normalizedType = type == null ? "upcoming" : type.trim().toLowerCase(Locale.ROOT);
 
         return switch (normalizedType) {
@@ -55,7 +56,12 @@ public class PandaScorePreviewController {
                     previewService.previewUpcomingLolMatches(leagues, sinceDate, excludeExisting)
             );
             case "completed", "past" -> ApiResponse.ok(
-                    previewService.previewCompletedLolMatches(leagues, sinceDate, excludeExisting)
+                    previewService.previewCompletedLolMatches(
+                            leagues,
+                            includeInternational,
+                            sinceDate,
+                            excludeExisting
+                    )
             );
             default -> throw new BusinessException(
                     "PANDASCORE_PREVIEW_UNSUPPORTED_SCOPE",
