@@ -10,15 +10,33 @@ export const TEAM_LEAGUES = [
 
 export type TeamLeagueCode = (typeof TEAM_LEAGUES)[number]['code']
 export const INTERNATIONAL_LEAGUE_CODE = 'INTERNATIONAL' as const
-export type MatchLeagueFilterCode = TeamLeagueCode | typeof INTERNATIONAL_LEAGUE_CODE
+export const INTERNATIONAL_FIRST_STAND_CODE = 'INTERNATIONAL_FIRST_STAND' as const
+export const INTERNATIONAL_MSI_CODE = 'INTERNATIONAL_MSI' as const
+export const INTERNATIONAL_WORLDS_CODE = 'INTERNATIONAL_WORLDS' as const
+
+export const INTERNATIONAL_LEAGUE_FILTERS = [
+  { code: INTERNATIONAL_LEAGUE_CODE, label: '국제전(전체)' },
+  { code: INTERNATIONAL_FIRST_STAND_CODE, label: 'FIRST STAND' },
+  { code: INTERNATIONAL_MSI_CODE, label: 'MSI' },
+  { code: INTERNATIONAL_WORLDS_CODE, label: 'WORLDS' },
+] as const
+
+export type InternationalLeagueCode = (typeof INTERNATIONAL_LEAGUE_FILTERS)[number]['code']
+export type MatchLeagueFilterCode = TeamLeagueCode | InternationalLeagueCode
 
 export const MATCH_LEAGUE_FILTERS = [
   ...TEAM_LEAGUES,
-  { code: INTERNATIONAL_LEAGUE_CODE, label: '국제전' },
+  ...INTERNATIONAL_LEAGUE_FILTERS,
 ] as const
+
+export function isInternationalLeagueCode(code: string | null | undefined): code is InternationalLeagueCode {
+  if (!code) return false
+  return INTERNATIONAL_LEAGUE_FILTERS.some((league) => league.code === code)
+}
 
 export function getTeamLeagueLabel(code: string | null | undefined): string {
   if (!code) return '-'
-  if (code === INTERNATIONAL_LEAGUE_CODE) return '국제전'
+  const internationalLabel = INTERNATIONAL_LEAGUE_FILTERS.find((league) => league.code === code)?.label
+  if (internationalLabel) return internationalLabel
   return TEAM_LEAGUES.find((league) => league.code === code)?.label ?? code
 }

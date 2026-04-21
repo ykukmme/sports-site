@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MatchList } from '../components/match/MatchList'
-import { INTERNATIONAL_LEAGUE_CODE, MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
+import { MATCH_LEAGUE_FILTERS, isInternationalLeagueCode } from '../constants/teamLeagues'
 import { useMatchResultsPage } from '../hooks/useMatches'
 import { useTeams } from '../hooks/useTeams'
 
@@ -19,7 +19,7 @@ export function MatchResultsPage() {
   const teamsInLeague = useMemo(() => {
     const source = teams ?? []
     const filtered =
-      selectedLeague === 'ALL' || selectedLeague === INTERNATIONAL_LEAGUE_CODE
+      selectedLeague === 'ALL' || isInternationalLeagueCode(selectedLeague)
         ? source
         : source.filter((team) => (team.league ?? '').toUpperCase() === selectedLeague)
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name))
@@ -40,7 +40,7 @@ export function MatchResultsPage() {
     }
     if (
       league !== 'ALL' &&
-      league !== INTERNATIONAL_LEAGUE_CODE &&
+      !isInternationalLeagueCode(league) &&
       (selectedTeam.league ?? '').toUpperCase() !== league
     ) {
       setSelectedTeamId('ALL')

@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table'
-import { INTERNATIONAL_LEAGUE_CODE, MATCH_LEAGUE_FILTERS } from '../../../constants/teamLeagues'
+import { MATCH_LEAGUE_FILTERS, isInternationalLeagueCode } from '../../../constants/teamLeagues'
 import { useAdminMatchList, useAdminDeleteMatch, usePandaScoreMatchResultSync } from '../../../hooks/useAdminMatches'
 import { useAdminTeamList } from '../../../hooks/useAdminTeams'
 import type { PandaScoreImportResultStatus, PandaScoreMatchResultSyncResponse } from '../../../types/domain'
@@ -50,7 +50,7 @@ export function AdminMatchListPage() {
   const teams = useMemo(() => {
     const source = teamsData ?? []
     const filtered =
-      leagueFilter === 'ALL' || leagueFilter === INTERNATIONAL_LEAGUE_CODE
+      leagueFilter === 'ALL' || isInternationalLeagueCode(leagueFilter)
         ? source
         : source.filter((team) => (team.league ?? '').toUpperCase() === leagueFilter)
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name))

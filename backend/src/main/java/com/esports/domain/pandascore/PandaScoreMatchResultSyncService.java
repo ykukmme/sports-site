@@ -2,6 +2,7 @@ package com.esports.domain.pandascore;
 
 import com.esports.common.exception.BusinessException;
 import com.esports.config.PandaScoreProperties;
+import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchExternalSource;
 import com.esports.domain.match.MatchRepository;
@@ -21,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -49,11 +49,19 @@ public class PandaScoreMatchResultSyncService {
     }
 
     public PandaScoreMatchResultSyncResponse syncCompletedLolMatchResults(List<TeamLeague> leagues) {
-        return syncCompletedLolMatchResults(leagues, false);
+        return syncCompletedLolMatchResults(leagues, List.of());
     }
 
     public PandaScoreMatchResultSyncResponse syncCompletedLolMatchResults(List<TeamLeague> leagues,
                                                                           boolean includeInternational) {
+        List<InternationalCompetitionType> internationalTypes = includeInternational
+                ? List.of(InternationalCompetitionType.values())
+                : List.of();
+        return syncCompletedLolMatchResults(leagues, internationalTypes);
+    }
+
+    public PandaScoreMatchResultSyncResponse syncCompletedLolMatchResults(List<TeamLeague> leagues,
+                                                                          List<InternationalCompetitionType> internationalTypes) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BusinessException(
                     "PANDASCORE_NOT_CONFIGURED",
@@ -64,7 +72,7 @@ public class PandaScoreMatchResultSyncService {
 
         List<PandaScoreApiClient.PandaScoreMatch> matches;
         try {
-            matches = collectPastCompletedMatches(leagues, includeInternational);
+            matches = collectPastCompletedMatches(leagues, internationalTypes);
         } catch (RestClientException e) {
             throw new BusinessException(
                     "PANDASCORE_RESULT_FETCH_FAILED",
@@ -175,9 +183,12 @@ public class PandaScoreMatchResultSyncService {
     }
 
     private List<PandaScoreApiClient.PandaScoreMatch> collectPastCompletedMatches(List<TeamLeague> leagues,
-                                                                                   boolean includeInternational) {
+                                                                                   List<InternationalCompetitionType> internationalTypes) {
         Map<Long, PandaScoreApiClient.PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
         List<TeamLeague> selectedLeagues = leagues == null ? TeamLeague.supportedLeagues() : leagues;
+        List<InternationalCompetitionType> selectedInternationalTypes = internationalTypes == null
+                ? List.of()
+                : internationalTypes;
 
         List<PandaScoreApiClient.PandaScoreMatch> regionalMatches = apiClient.getPastLolMatchesByLeagues(leagues);
         if (regionalMatches != null) {
@@ -188,12 +199,14 @@ public class PandaScoreMatchResultSyncService {
             }
         }
 
-        if (includeInternational) {
+        if (!selectedInternationalTypes.isEmpty()) {
             List<PandaScoreApiClient.PandaScoreMatch> globalMatches =
                     apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT);
             if (globalMatches != null) {
                 for (PandaScoreApiClient.PandaScoreMatch match : globalMatches) {
-                    if (match.id() != null && isSupportedInternationalCompetition(match)) {
+                    if (match.id() != null && detectInternationalCompetitionType(match)
+                            .map(selectedInternationalTypes::contains)
+                            .orElse(false)) {
                         dedupedMatches.put(match.id(), match);
                     }
                 }
@@ -303,33 +316,14 @@ public class PandaScoreMatchResultSyncService {
         return null;
     }
 
-    private boolean isSupportedInternationalCompetition(PandaScoreApiClient.PandaScoreMatch match) {
-        String combined = String.join(
-                " ",
-                normalize(match.name()),
-                match.league() != null ? normalize(match.league().name()) : "",
-                match.league() != null ? normalize(match.league().slug()) : "",
-                match.tournament() != null ? normalize(match.tournament().name()) : "",
-                match.tournament() != null ? normalize(match.tournament().slug()) : ""
+    private java.util.Optional<InternationalCompetitionType> detectInternationalCompetitionType(PandaScoreApiClient.PandaScoreMatch match) {
+        return InternationalCompetitionType.detect(
+                match.name(),
+                match.league() != null ? match.league().name() : null,
+                match.league() != null ? match.league().slug() : null,
+                match.tournament() != null ? match.tournament().name() : null,
+                match.tournament() != null ? match.tournament().slug() : null
         );
-
-        return combined.contains("first stand")
-                || combined.contains("mid season invitational")
-                || combined.matches(".*\\bmsi\\b.*")
-                || combined.contains("league of legends world championship")
-                || combined.matches(".*\\bworlds\\b.*")
-                || combined.contains("world championship");
-    }
-
-    private String normalize(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.trim()
-                .replace('-', ' ')
-                .replace('_', ' ')
-                .replaceAll("\\s+", " ")
-                .toLowerCase(Locale.ROOT);
     }
 
     private record ScoreLine(

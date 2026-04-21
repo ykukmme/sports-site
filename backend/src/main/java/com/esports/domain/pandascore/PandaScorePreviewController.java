@@ -2,6 +2,7 @@ package com.esports.domain.pandascore;
 
 import com.esports.common.ApiResponse;
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.team.TeamLeague;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -48,7 +49,7 @@ public class PandaScorePreviewController {
         }
 
         List<TeamLeague> leagues = TeamLeague.fromCodes(leagueCodes);
-        boolean includeInternational = TeamLeague.includesInternational(leagueCodes);
+        List<InternationalCompetitionType> internationalTypes = InternationalCompetitionType.selectedTypes(leagueCodes);
         String normalizedType = type == null ? "upcoming" : type.trim().toLowerCase(Locale.ROOT);
 
         return switch (normalizedType) {
@@ -58,7 +59,7 @@ public class PandaScorePreviewController {
             case "completed", "past" -> ApiResponse.ok(
                     previewService.previewCompletedLolMatches(
                             leagues,
-                            includeInternational,
+                            internationalTypes,
                             sinceDate,
                             excludeExisting
                     )
@@ -84,7 +85,7 @@ public class PandaScorePreviewController {
         return ApiResponse.ok(
                 resultSyncService.syncCompletedLolMatchResults(
                         TeamLeague.fromCodes(leagueCodes),
-                        TeamLeague.includesInternational(leagueCodes)
+                        InternationalCompetitionType.selectedTypes(leagueCodes)
                 )
         );
     }

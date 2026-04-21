@@ -20,7 +20,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -110,7 +112,7 @@ class PandaScoreMatchImportServiceTest {
         Match saved = mock(Match.class);
 
         when(gameRepository.findByName("League of Legends")).thenReturn(Optional.of(game));
-        when(previewService.previewCompletedLolMatches(anyList())).thenReturn(List.of(
+        when(previewService.previewCompletedLolMatches(anyList(), anyList(), isNull(), anyBoolean())).thenReturn(List.of(
                 preview("2026001", PandaScorePreviewStatus.NEW, 11L, 22L, null, "finished")
         ));
         when(teamA.getId()).thenReturn(11L);

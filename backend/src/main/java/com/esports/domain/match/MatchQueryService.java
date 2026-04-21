@@ -3,7 +3,6 @@ package com.esports.domain.match;
 import com.esports.common.exception.BusinessException;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
-import com.esports.domain.team.TeamLeague;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import org.springframework.data.domain.Page;
@@ -54,8 +53,11 @@ public class MatchQueryService {
         }
         if (league != null && !league.isBlank()) {
             String normalizedLeague = league.trim().toUpperCase();
-            if (TeamLeague.INTERNATIONAL_CODE.equals(normalizedLeague)) {
-                spec = spec.and((root, query, cb) -> internationalCompetitionPredicate(cb, root.get("tournamentName"), root.get("stage")));
+            if (InternationalCompetitionType.isInternationalLeagueCode(normalizedLeague)) {
+                InternationalCompetitionType competitionType = InternationalCompetitionType.fromLeagueCode(normalizedLeague)
+                        .orElse(null);
+                spec = spec.and((root, query, cb) ->
+                        internationalCompetitionPredicate(cb, root.get("tournamentName"), root.get("stage"), competitionType));
             } else {
                 spec = spec.and((root, query, cb) ->
                         cb.or(
@@ -155,10 +157,17 @@ public class MatchQueryService {
     private static jakarta.persistence.criteria.Predicate internationalCompetitionPredicate(
             CriteriaBuilder cb,
             Expression<String> tournamentName,
-            Expression<String> stage
+            Expression<String> stage,
+            InternationalCompetitionType competitionType
     ) {
         Expression<String> tournamentNormalized = normalizeForInternationalMatch(cb, tournamentName);
         Expression<String> stageNormalized = normalizeForInternationalMatch(cb, stage);
+        if (competitionType != null) {
+            return cb.or(
+                    containsInternationalKeyword(cb, tournamentNormalized, competitionType),
+                    containsInternationalKeyword(cb, stageNormalized, competitionType)
+            );
+        }
 
         return cb.or(
                 containsAnyInternationalKeyword(cb, tournamentNormalized),
@@ -188,5 +197,24 @@ public class MatchQueryService {
                 cb.like(value, "%world championship%"),
                 cb.like(value, "%worlds%")
         );
+    }
+
+    private static jakarta.persistence.criteria.Predicate containsInternationalKeyword(
+            CriteriaBuilder cb,
+            Expression<String> value,
+            InternationalCompetitionType competitionType
+    ) {
+        return switch (competitionType) {
+            case FIRST_STAND -> cb.like(value, "%first stand%");
+            case MSI -> cb.or(
+                    cb.like(value, "%mid season invitational%"),
+                    cb.like(value, "%msi%")
+            );
+            case WORLDS -> cb.or(
+                    cb.like(value, "%league of legends world championship%"),
+                    cb.like(value, "%world championship%"),
+                    cb.like(value, "%worlds%")
+            );
+        };
     }
 }

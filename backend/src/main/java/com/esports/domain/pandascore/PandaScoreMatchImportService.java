@@ -3,6 +3,7 @@ package com.esports.domain.pandascore;
 import com.esports.common.exception.BusinessException;
 import com.esports.domain.game.Game;
 import com.esports.domain.game.GameRepository;
+import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchExternalSource;
 import com.esports.domain.match.MatchRepository;
@@ -69,9 +70,9 @@ public class PandaScoreMatchImportService {
                 ));
 
         List<TeamLeague> leagues = TeamLeague.fromCodes(request.leagueCodes());
-        boolean includeInternational = TeamLeague.includesInternational(request.leagueCodes());
+        List<InternationalCompetitionType> internationalTypes = InternationalCompetitionType.selectedTypes(request.leagueCodes());
         List<PandaScoreMatchPreviewResponse> previews = isCompletedImport(request.type())
-                ? previewService.previewCompletedLolMatches(leagues, includeInternational, null, false)
+                ? previewService.previewCompletedLolMatches(leagues, internationalTypes, null, false)
                 : previewService.previewUpcomingLolMatches(leagues);
 
         Map<String, PandaScoreMatchPreviewResponse> previewByExternalId = previews.stream()

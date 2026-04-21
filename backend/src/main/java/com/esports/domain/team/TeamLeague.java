@@ -19,7 +19,11 @@ public enum TeamLeague {
     LCP("LCP", 5351L),
     CBLOL("CBLOL", 302L),
     LCK_CL("LCK CL", 4553L);
+
     public static final String INTERNATIONAL_CODE = "INTERNATIONAL";
+    public static final String INTERNATIONAL_FIRST_STAND_CODE = "INTERNATIONAL_FIRST_STAND";
+    public static final String INTERNATIONAL_MSI_CODE = "INTERNATIONAL_MSI";
+    public static final String INTERNATIONAL_WORLDS_CODE = "INTERNATIONAL_WORLDS";
 
     private static final Map<String, TeamLeague> BY_CODE = Arrays.stream(values())
             .collect(Collectors.toUnmodifiableMap(TeamLeague::getCode, Function.identity()));
@@ -76,7 +80,7 @@ public enum TeamLeague {
                 .flatMap(code -> Arrays.stream(code.split(",")))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
-                .filter(value -> !INTERNATIONAL_CODE.equalsIgnoreCase(value))
+                .filter(value -> !isInternationalCode(value))
                 .toList();
 
         if (normalizedCodes.isEmpty()) {
@@ -100,6 +104,18 @@ public enum TeamLeague {
                 .flatMap(code -> Arrays.stream(code.split(",")))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
-                .anyMatch(value -> INTERNATIONAL_CODE.equalsIgnoreCase(value));
+                .anyMatch(TeamLeague::isInternationalCode);
+    }
+
+    public static boolean isInternationalCode(String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
+
+        String normalized = code.trim().toUpperCase(Locale.ROOT);
+        return INTERNATIONAL_CODE.equals(normalized)
+                || INTERNATIONAL_FIRST_STAND_CODE.equals(normalized)
+                || INTERNATIONAL_MSI_CODE.equals(normalized)
+                || INTERNATIONAL_WORLDS_CODE.equals(normalized);
     }
 }

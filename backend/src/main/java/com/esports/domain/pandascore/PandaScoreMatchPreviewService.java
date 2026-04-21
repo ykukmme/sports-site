@@ -4,6 +4,7 @@ import com.esports.common.exception.BusinessException;
 import com.esports.config.PandaScoreProperties;
 import com.esports.domain.game.Game;
 import com.esports.domain.game.GameRepository;
+import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.team.TeamLeague;
@@ -61,7 +62,7 @@ public class PandaScoreMatchPreviewService {
     public List<PandaScoreMatchPreviewResponse> previewUpcomingLolMatches(List<TeamLeague> leagues,
                                                                           LocalDate sinceDate,
                                                                           boolean excludeExisting) {
-        return previewLolMatches(leagues, false, false, sinceDate, excludeExisting);
+        return previewLolMatches(leagues, false, List.of(), sinceDate, excludeExisting);
     }
 
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches() {
@@ -75,19 +76,29 @@ public class PandaScoreMatchPreviewService {
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues,
                                                                            LocalDate sinceDate,
                                                                            boolean excludeExisting) {
-        return previewCompletedLolMatches(leagues, true, sinceDate, excludeExisting);
+        return previewCompletedLolMatches(leagues, List.of(InternationalCompetitionType.values()), sinceDate, excludeExisting);
     }
 
     public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues,
                                                                            boolean includeInternational,
                                                                            LocalDate sinceDate,
                                                                            boolean excludeExisting) {
-        return previewLolMatches(leagues, true, includeInternational, sinceDate, excludeExisting);
+        List<InternationalCompetitionType> internationalTypes = includeInternational
+                ? List.of(InternationalCompetitionType.values())
+                : List.of();
+        return previewLolMatches(leagues, true, internationalTypes, sinceDate, excludeExisting);
+    }
+
+    public List<PandaScoreMatchPreviewResponse> previewCompletedLolMatches(List<TeamLeague> leagues,
+                                                                           List<InternationalCompetitionType> internationalTypes,
+                                                                           LocalDate sinceDate,
+                                                                           boolean excludeExisting) {
+        return previewLolMatches(leagues, true, internationalTypes, sinceDate, excludeExisting);
     }
 
     private List<PandaScoreMatchPreviewResponse> previewLolMatches(List<TeamLeague> leagues,
                                                                    boolean completed,
-                                                                   boolean includeInternational,
+                                                                   List<InternationalCompetitionType> internationalTypes,
                                                                    LocalDate sinceDate,
                                                                    boolean excludeExisting) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
@@ -108,7 +119,7 @@ public class PandaScoreMatchPreviewService {
         List<PandaScoreApiClient.PandaScoreMatch> matches;
         try {
             matches = completed
-                    ? getCompletedPreviewMatches(leagues, includeInternational)
+                    ? getCompletedPreviewMatches(leagues, internationalTypes)
                     : apiClient.getUpcomingLolMatchesByLeagues(leagues);
         } catch (RestClientException e) {
             throw new BusinessException(
@@ -137,18 +148,21 @@ public class PandaScoreMatchPreviewService {
     }
 
     private List<PandaScoreApiClient.PandaScoreMatch> getCompletedPreviewMatches(List<TeamLeague> leagues,
-                                                                                  boolean includeInternational) {
+                                                                                  List<InternationalCompetitionType> internationalTypes) {
         Map<Long, PandaScoreApiClient.PandaScoreMatch> dedupedMatches = new LinkedHashMap<>();
         List<TeamLeague> selectedLeagues = leagues == null ? TeamLeague.supportedLeagues() : leagues;
+        List<InternationalCompetitionType> selectedInternationalTypes = internationalTypes == null
+                ? List.of()
+                : internationalTypes;
 
         for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesByLeagues(leagues)) {
-            if (shouldIncludeCompletedMatch(match, false, selectedLeagues) && match.id() != null) {
+            if (shouldIncludeCompletedMatch(match, selectedLeagues, selectedInternationalTypes) && match.id() != null) {
                 dedupedMatches.put(match.id(), match);
             }
         }
 
         for (PandaScoreApiClient.PandaScoreMatch match : apiClient.getPastLolMatchesPages(COMPLETED_GLOBAL_PAGE_LIMIT)) {
-            if (shouldIncludeCompletedMatch(match, includeInternational, selectedLeagues) && match.id() != null) {
+            if (shouldIncludeCompletedMatch(match, selectedLeagues, selectedInternationalTypes) && match.id() != null) {
                 dedupedMatches.put(match.id(), match);
             }
         }
@@ -170,7 +184,7 @@ public class PandaScoreMatchPreviewService {
         TeamLeague league = pandaMatch.league() != null
                 ? TeamLeague.fromPandaScoreLeagueId(pandaMatch.league().id())
                 : null;
-        boolean internationalCompetition = isSupportedInternationalCompetition(pandaMatch);
+        boolean internationalCompetition = detectInternationalCompetitionType(pandaMatch).isPresent();
         String leagueCode = league != null
                 ? league.getCode()
                 : internationalCompetition ? TeamLeague.INTERNATIONAL_CODE : null;
@@ -179,6 +193,11 @@ public class PandaScoreMatchPreviewService {
                 : internationalCompetition
                 ? "국제전"
                 : pandaMatch.league() != null ? pandaMatch.league().name() : null;
+        InternationalCompetitionType internationalCompetitionType = detectInternationalCompetitionType(pandaMatch).orElse(null);
+        if (league == null && internationalCompetitionType != null) {
+            leagueCode = internationalCompetitionType.getFilterCode();
+            leagueName = internationalCompetitionType.getLabel();
+        }
 
         if (!rejectionReasons.isEmpty()) {
             return new PandaScoreMatchPreviewResponse(
@@ -392,8 +411,8 @@ public class PandaScoreMatchPreviewService {
     }
 
     private boolean shouldIncludeCompletedMatch(PandaScoreApiClient.PandaScoreMatch match,
-                                                boolean allowInternational,
-                                                List<TeamLeague> selectedLeagues) {
+                                                List<TeamLeague> selectedLeagues,
+                                                List<InternationalCompetitionType> selectedInternationalTypes) {
         OffsetDateTime referenceTime = resolveMatchDateTime(match);
         if (referenceTime == null || referenceTime.getYear() != COMPLETED_PREVIEW_YEAR) {
             return false;
@@ -411,25 +430,19 @@ public class PandaScoreMatchPreviewService {
             }
         }
 
-        return allowInternational && isSupportedInternationalCompetition(match);
+        return detectInternationalCompetitionType(match)
+                .map(selectedInternationalTypes::contains)
+                .orElse(false);
     }
 
-    private boolean isSupportedInternationalCompetition(PandaScoreApiClient.PandaScoreMatch match) {
-        String combined = String.join(
-                " ",
-                normalize(match.name()),
-                match.league() != null ? normalize(match.league().name()) : "",
-                match.league() != null ? normalize(match.league().slug()) : "",
-                match.tournament() != null ? normalize(match.tournament().name()) : "",
-                match.tournament() != null ? normalize(match.tournament().slug()) : ""
+    private java.util.Optional<InternationalCompetitionType> detectInternationalCompetitionType(PandaScoreApiClient.PandaScoreMatch match) {
+        return InternationalCompetitionType.detect(
+                match.name(),
+                match.league() != null ? match.league().name() : null,
+                match.league() != null ? match.league().slug() : null,
+                match.tournament() != null ? match.tournament().name() : null,
+                match.tournament() != null ? match.tournament().slug() : null
         );
-
-        return combined.contains("first stand")
-                || combined.contains("mid season invitational")
-                || combined.matches(".*\\bmsi\\b.*")
-                || combined.contains("league of legends world championship")
-                || combined.matches(".*\\bworlds\\b.*")
-                || combined.contains("world championship");
     }
 
     private Comparator<PandaScoreApiClient.PandaScoreMatch> upcomingMatchComparator() {
