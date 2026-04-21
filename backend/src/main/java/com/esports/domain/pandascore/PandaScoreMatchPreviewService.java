@@ -28,7 +28,7 @@ public class PandaScoreMatchPreviewService {
 
     private static final String SOURCE = "PANDASCORE";
     private static final int COMPLETED_PREVIEW_YEAR = 2026;
-    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 5;
+    private static final int COMPLETED_GLOBAL_PAGE_LIMIT = 2;
     private static final int COMPLETED_PREVIEW_RESULT_LIMIT = 80;
 
     private final PandaScoreApiClient apiClient;

@@ -181,6 +181,7 @@ export async function fetchPandaScoreMatchPreview(
     '/api/admin/pandascore/matches/preview',
     {
       params: { game: 'lol', type, leagueCodes: leagueCodes.join(',') },
+      timeout: 60_000,
     },
   )
   return res.data.data ?? []
