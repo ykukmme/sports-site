@@ -129,6 +129,8 @@ public class PandaScoreMatchResultSyncService {
                 continue;
             }
 
+            detectInternationalCompetitionType(pandaMatch)
+                    .ifPresent(type -> match.setStage(type.getLabel()));
             match.setStatus(MatchStatus.COMPLETED);
             match.setExternalSource(MatchExternalSource.PANDASCORE);
             match.setLastSyncedAt(OffsetDateTime.now());
