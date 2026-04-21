@@ -157,16 +157,29 @@ public class MatchQueryService {
             Expression<String> tournamentName,
             Expression<String> stage
     ) {
-        Expression<String> tournamentLower = cb.lower(cb.coalesce(tournamentName, ""));
-        Expression<String> stageLower = cb.lower(cb.coalesce(stage, ""));
+        Expression<String> tournamentNormalized = normalizeForInternationalMatch(cb, tournamentName);
+        Expression<String> stageNormalized = normalizeForInternationalMatch(cb, stage);
 
         return cb.or(
-                containsAny(cb, tournamentLower),
-                containsAny(cb, stageLower)
+                containsAnyInternationalKeyword(cb, tournamentNormalized),
+                containsAnyInternationalKeyword(cb, stageNormalized),
+                cb.equal(stageNormalized, "국제전"),
+                cb.equal(stageNormalized, "international")
         );
     }
 
-    private static jakarta.persistence.criteria.Predicate containsAny(CriteriaBuilder cb, Expression<String> value) {
+    private static Expression<String> normalizeForInternationalMatch(CriteriaBuilder cb, Expression<String> value) {
+        Expression<String> normalized = cb.lower(cb.coalesce(value, ""));
+        normalized = cb.function("replace", String.class, normalized, cb.literal("-"), cb.literal(" "));
+        normalized = cb.function("replace", String.class, normalized, cb.literal("_"), cb.literal(" "));
+        normalized = cb.function("replace", String.class, normalized, cb.literal(":"), cb.literal(" "));
+        return cb.function("replace", String.class, normalized, cb.literal("  "), cb.literal(" "));
+    }
+
+    private static jakarta.persistence.criteria.Predicate containsAnyInternationalKeyword(
+            CriteriaBuilder cb,
+            Expression<String> value
+    ) {
         return cb.or(
                 cb.like(value, "%first stand%"),
                 cb.like(value, "%mid season invitational%"),
