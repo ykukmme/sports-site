@@ -57,7 +57,13 @@ public class MatchQueryService {
                 InternationalCompetitionType competitionType = InternationalCompetitionType.fromLeagueCode(normalizedLeague)
                         .orElse(null);
                 spec = spec.and((root, query, cb) ->
-                        internationalCompetitionPredicate(cb, root.get("tournamentName"), root.get("stage"), competitionType));
+                        internationalCompetitionPredicate(
+                                cb,
+                                root.get("tournamentName"),
+                                root.get("stage"),
+                                cb.upper(cb.coalesce(root.get("internationalCompetitionCode"), "")),
+                                competitionType
+                        ));
             } else {
                 spec = spec.and((root, query, cb) ->
                         cb.or(
@@ -158,18 +164,21 @@ public class MatchQueryService {
             CriteriaBuilder cb,
             Expression<String> tournamentName,
             Expression<String> stage,
+            Expression<String> internationalCompetitionCode,
             InternationalCompetitionType competitionType
     ) {
         Expression<String> tournamentNormalized = normalizeForInternationalMatch(cb, tournamentName);
         Expression<String> stageNormalized = normalizeForInternationalMatch(cb, stage);
         if (competitionType != null) {
             return cb.or(
+                    cb.equal(internationalCompetitionCode, competitionType.getFilterCode()),
                     containsInternationalKeyword(cb, tournamentNormalized, competitionType),
                     containsInternationalKeyword(cb, stageNormalized, competitionType)
             );
         }
 
         return cb.or(
+                cb.notEqual(internationalCompetitionCode, ""),
                 containsAnyInternationalKeyword(cb, tournamentNormalized),
                 containsAnyInternationalKeyword(cb, stageNormalized),
                 cb.equal(stageNormalized, "국제전"),

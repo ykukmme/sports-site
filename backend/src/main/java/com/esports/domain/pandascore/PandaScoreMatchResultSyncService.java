@@ -129,8 +129,13 @@ public class PandaScoreMatchResultSyncService {
                 continue;
             }
 
-            detectInternationalCompetitionType(pandaMatch)
-                    .ifPresent(type -> match.setStage(type.getLabel()));
+            InternationalCompetitionType competitionType = detectInternationalCompetitionType(pandaMatch).orElse(null);
+            if (competitionType != null) {
+                match.setStage(competitionType.getLabel());
+                match.setInternationalCompetitionCode(competitionType.getFilterCode());
+            } else {
+                match.setInternationalCompetitionCode(null);
+            }
             match.setStatus(MatchStatus.COMPLETED);
             match.setExternalSource(MatchExternalSource.PANDASCORE);
             match.setLastSyncedAt(OffsetDateTime.now());

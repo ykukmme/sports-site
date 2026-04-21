@@ -136,7 +136,39 @@ class PandaScoreMatchImportServiceTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(MatchStatus.COMPLETED);
     }
 
+    @Test
+    void storesInternationalCompetitionCodeForInternationalPreviewMatch() {
+        Game game = mock(Game.class);
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+        Match saved = mock(Match.class);
+
+        when(gameRepository.findByName("League of Legends")).thenReturn(Optional.of(game));
+        when(previewService.previewCompletedLolMatches(anyList(), anyList(), isNull(), anyBoolean())).thenReturn(List.of(
+                preview("2026002", "INTERNATIONAL_FIRST_STAND", "FIRST STAND", PandaScorePreviewStatus.NEW, 11L, 22L, null, "finished")
+        ));
+        when(teamA.getId()).thenReturn(11L);
+        when(teamB.getId()).thenReturn(22L);
+        when(teamRepository.findById(11L)).thenReturn(Optional.of(teamA));
+        when(teamRepository.findById(22L)).thenReturn(Optional.of(teamB));
+        when(matchRepository.findByExternalId("2026002")).thenReturn(Optional.empty());
+        when(matchRepository.save(any(Match.class))).thenReturn(saved);
+        when(saved.getId()).thenReturn(89L);
+
+        PandaScoreMatchImportResponse response = service.importLolMatches(
+                new PandaScoreMatchImportRequest(List.of("2026002"), List.of("INTERNATIONAL_FIRST_STAND"), "completed")
+        );
+
+        assertThat(response.createdCount()).isEqualTo(1);
+        ArgumentCaptor<Match> captor = ArgumentCaptor.forClass(Match.class);
+        verify(matchRepository).save(captor.capture());
+        assertThat(captor.getValue().getInternationalCompetitionCode()).isEqualTo("INTERNATIONAL_FIRST_STAND");
+        assertThat(captor.getValue().getStage()).isEqualTo("FIRST STAND");
+    }
+
     private PandaScoreMatchPreviewResponse preview(String externalId,
+                                                   String leagueCode,
+                                                   String leagueName,
                                                    PandaScorePreviewStatus status,
                                                    Long teamAId,
                                                    Long teamBId,
@@ -159,8 +191,8 @@ class PandaScoreMatchImportServiceTest {
         return new PandaScoreMatchPreviewResponse(
                 externalId,
                 "PANDASCORE",
-                "LCK",
-                "LCK",
+                leagueCode,
+                leagueName,
                 status,
                 "LCK Spring",
                 OffsetDateTime.parse("2026-05-01T10:00:00Z"),
@@ -172,5 +204,14 @@ class PandaScoreMatchImportServiceTest {
                         ? List.of("A team match failed")
                         : List.of()
         );
+    }
+
+    private PandaScoreMatchPreviewResponse preview(String externalId,
+                                                   PandaScorePreviewStatus status,
+                                                   Long teamAId,
+                                                   Long teamBId,
+                                                   Long existingMatchId,
+                                                   String pandaStatus) {
+        return preview(externalId, "LCK", "LCK", status, teamAId, teamBId, existingMatchId, pandaStatus);
     }
 }

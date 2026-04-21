@@ -36,6 +36,9 @@ public class Match {
     @Column(length = 100)
     private String stage;
 
+    @Column(name = "international_competition_code", length = 50)
+    private String internationalCompetitionCode;
+
     @Column(name = "scheduled_at", nullable = false)
     private OffsetDateTime scheduledAt;
 
@@ -106,6 +109,7 @@ public class Match {
     public Team getTeamB() { return teamB; }
     public String getTournamentName() { return tournamentName; }
     public String getStage() { return stage; }
+    public String getInternationalCompetitionCode() { return internationalCompetitionCode; }
     public OffsetDateTime getScheduledAt() { return scheduledAt; }
     public MatchStatus getStatus() { return status; }
     public String getExternalId() { return externalId; }
@@ -116,6 +120,7 @@ public class Match {
 
     public void setTournamentName(String tournamentName) { this.tournamentName = tournamentName; }
     public void setStage(String stage) { this.stage = stage; }
+    public void setInternationalCompetitionCode(String internationalCompetitionCode) { this.internationalCompetitionCode = internationalCompetitionCode; }
     public void setScheduledAt(OffsetDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
     public void setStatus(MatchStatus status) { this.status = status; }
     public void setExternalId(String externalId) { this.externalId = externalId; }

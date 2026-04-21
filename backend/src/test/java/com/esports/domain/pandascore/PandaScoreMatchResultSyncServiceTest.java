@@ -129,6 +129,7 @@ class PandaScoreMatchResultSyncServiceTest {
 
         assertThat(response.createdCount()).isEqualTo(1);
         verify(match).setStage("FIRST STAND");
+        verify(match).setInternationalCompetitionCode("INTERNATIONAL_FIRST_STAND");
     }
 
     private Team team(String externalId) {

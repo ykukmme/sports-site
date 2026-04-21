@@ -114,6 +114,7 @@ public class PandaScoreMatchImportService {
             Match match = matchRepository.findByExternalId(externalId).orElse(null);
             OffsetDateTime now = OffsetDateTime.now();
             MatchStatus status = toMatchStatus(preview.pandaStatus());
+            String internationalCompetitionCode = resolveInternationalCompetitionCode(preview);
 
             if (match == null) {
                 Match createdMatch = new Match(
@@ -124,6 +125,7 @@ public class PandaScoreMatchImportService {
                         preview.scheduledAt()
                 );
                 createdMatch.setStage(safeStage(preview));
+                createdMatch.setInternationalCompetitionCode(internationalCompetitionCode);
                 createdMatch.setStatus(status);
                 createdMatch.setExternalId(externalId);
                 createdMatch.setExternalSource(MatchExternalSource.PANDASCORE);
@@ -142,6 +144,7 @@ public class PandaScoreMatchImportService {
 
             match.setTournamentName(safeTournamentName(preview));
             match.setStage(safeStage(preview));
+            match.setInternationalCompetitionCode(internationalCompetitionCode);
             match.setScheduledAt(preview.scheduledAt());
             match.setStatus(status);
             match.setExternalSource(MatchExternalSource.PANDASCORE);
@@ -234,6 +237,13 @@ public class PandaScoreMatchImportService {
             return preview.leagueName().trim();
         }
         return null;
+    }
+
+    private String resolveInternationalCompetitionCode(PandaScoreMatchPreviewResponse preview) {
+        return InternationalCompetitionType.fromLeagueCode(preview.leagueCode())
+                .or(() -> InternationalCompetitionType.detect(preview.tournamentName(), preview.leagueName()))
+                .map(InternationalCompetitionType::getFilterCode)
+                .orElse(null);
     }
 
     private MatchStatus toMatchStatus(String pandaStatus) {
