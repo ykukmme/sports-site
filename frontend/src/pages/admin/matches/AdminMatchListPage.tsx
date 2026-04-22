@@ -17,6 +17,7 @@ import { MATCH_LEAGUE_FILTERS, isInternationalLeagueCode } from '../../../consta
 import {
   useAdminDeleteMatch,
   useAdminMatchList,
+  useBindMatchExternalDetailSource,
   usePandaScoreMatchResultSync,
   useSyncMatchExternalDetail,
   useSyncMatchExternalDetailsBatch,
@@ -72,7 +73,9 @@ export function AdminMatchListPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
+  const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
+  const [bindSourceInputs, setBindSourceInputs] = useState<Record<number, string>>({})
 
   const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
   const league = leagueFilter === 'ALL' ? undefined : leagueFilter
@@ -88,6 +91,7 @@ export function AdminMatchListPage() {
   const { data: teamsData } = useAdminTeamList()
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
+  const bindSourceMutation = useBindMatchExternalDetailSource()
   const detailSyncMutation = useSyncMatchExternalDetail()
   const detailSyncBatchMutation = useSyncMatchExternalDetailsBatch()
 
@@ -140,6 +144,30 @@ export function AdminMatchListPage() {
     })
   }
 
+  function getBindInputValue(matchId: number, sourceUrl?: string | null) {
+    const inputValue = bindSourceInputs[matchId]
+    if (typeof inputValue === 'string') return inputValue
+    return sourceUrl ?? ''
+  }
+
+  function setBindInputValue(matchId: number, value: string) {
+    setBindSourceInputs((prev) => ({ ...prev, [matchId]: value }))
+  }
+
+  function runBindSourceUrl(matchId: number, sourceUrl: string) {
+    const trimmed = sourceUrl.trim()
+    if (!trimmed) return
+    bindSourceMutation.mutate(
+      { matchId, sourceUrl: trimmed },
+      {
+        onSuccess: () => {
+          setBindResultMessage(`matchId ${matchId} sourceUrl 바인딩 완료`)
+          setBindInputValue(matchId, trimmed)
+        },
+      },
+    )
+  }
+
   function runSingleDetailSync(matchId: number) {
     detailSyncMutation.mutate(matchId, {
       onSuccess: (item) => {
@@ -175,6 +203,10 @@ export function AdminMatchListPage() {
       : detailSyncBatchMutation.error instanceof ApiError
         ? detailSyncBatchMutation.error.message
         : detailSyncMutation.error?.message ?? detailSyncBatchMutation.error?.message
+  const bindSourceErrorMessage =
+    bindSourceMutation.error instanceof ApiError
+      ? bindSourceMutation.error.message
+      : bindSourceMutation.error?.message
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
@@ -317,6 +349,18 @@ export function AdminMatchListPage() {
         </div>
       )}
 
+      {bindSourceErrorMessage && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {bindSourceErrorMessage}
+        </div>
+      )}
+
+      {bindResultMessage && (
+        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
+          {bindResultMessage}
+        </div>
+      )}
+
       {resultSyncResult && (
         <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
           <div className="font-medium">PandaScore 결과 동기화 요약</div>
@@ -421,6 +465,10 @@ export function AdminMatchListPage() {
               matches.map((match) => {
                 const detailSummary = match.detailSummary
                 const detailStatus = detailSummary?.status
+                const effectiveSourceUrl = detailSummary?.sourceUrl ?? null
+                const bindInputValue = getBindInputValue(match.id, effectiveSourceUrl)
+                const canBind = bindInputValue.trim().length > 0
+                const canSync = Boolean(effectiveSourceUrl)
 
                 return (
                   <TableRow key={match.id}>
@@ -444,29 +492,60 @@ export function AdminMatchListPage() {
                       <AdminStatusBadge status={match.status} />
                     </TableCell>
                     <TableCell>
-                      {!detailStatus ? (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      ) : (
-                        <div className="flex flex-col gap-1">
-                          <Badge variant={DETAIL_SYNC_STATUS_VARIANTS[detailStatus]}>
-                            {DETAIL_SYNC_STATUS_LABELS[detailStatus]}
-                          </Badge>
-                          {detailSummary?.confidence != null && (
-                            <span className="text-xs text-muted-foreground">신뢰도 {detailSummary.confidence}</span>
-                          )}
-                          {detailSummary?.errorMessage && (
-                            <span className="text-xs text-destructive">{detailSummary.errorMessage}</span>
-                          )}
+                      <div className="flex flex-col gap-2">
+                        {!detailStatus ? (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        ) : (
+                          <>
+                            <Badge variant={DETAIL_SYNC_STATUS_VARIANTS[detailStatus]}>
+                              {DETAIL_SYNC_STATUS_LABELS[detailStatus]}
+                            </Badge>
+                            {detailSummary?.confidence != null && (
+                              <span className="text-xs text-muted-foreground">신뢰도 {detailSummary.confidence}</span>
+                            )}
+                            {detailSummary?.errorMessage && (
+                              <span className="text-xs text-destructive">{detailSummary.errorMessage}</span>
+                            )}
+                          </>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            className="h-8 w-full min-w-[240px] rounded-md border border-input bg-card px-2 text-xs"
+                            placeholder="https://gol.gg/game/stats/.../page-summary/"
+                            value={bindInputValue}
+                            onChange={(event) => setBindInputValue(match.id, event.target.value)}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!canBind || bindSourceMutation.isPending}
+                            onClick={() => runBindSourceUrl(match.id, bindInputValue)}
+                          >
+                            바인딩
+                          </Button>
                         </div>
-                      )}
+                        {effectiveSourceUrl && (
+                          <a
+                            href={effectiveSourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="max-w-[320px] truncate text-xs text-primary underline-offset-4 hover:underline"
+                            title={effectiveSourceUrl}
+                          >
+                            {effectiveSourceUrl}
+                          </a>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={detailSyncMutation.isPending}
+                          disabled={!canSync || detailSyncMutation.isPending}
                           onClick={() => runSingleDetailSync(match.id)}
+                          title={canSync ? 'Gol.gg 상세 동기화' : '먼저 sourceUrl을 바인딩하세요'}
                         >
                           상세 동기화
                         </Button>
