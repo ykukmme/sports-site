@@ -2,6 +2,9 @@ import apiClient from './client'
 import type { ApiResponse, PageResponse } from '../types/api'
 import type {
   MatchResponse,
+  MatchExternalDetailBatchSyncResponse,
+  MatchExternalDetailSummaryResponse,
+  MatchExternalDetailSyncItemResponse,
   TeamResponse,
   PlayerResponse,
   MatchStatus,
@@ -229,6 +232,37 @@ export async function syncPandaScoreMatchResults(
     {
       leagueCodes,
     },
+    {
+      timeout: 120_000,
+    },
+  )
+  return res.data.data!
+}
+
+export async function bindMatchExternalDetailSource(
+  matchId: number,
+  sourceUrl: string,
+): Promise<MatchExternalDetailSummaryResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailSummaryResponse>>(
+    `/api/admin/matches/${matchId}/details/bind`,
+    { sourceUrl },
+  )
+  return res.data.data!
+}
+
+export async function syncMatchExternalDetail(matchId: number): Promise<MatchExternalDetailSyncItemResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailSyncItemResponse>>(
+    `/api/admin/matches/${matchId}/details/sync`,
+  )
+  return res.data.data!
+}
+
+export async function syncMatchExternalDetailsBatch(
+  matchIds: number[],
+): Promise<MatchExternalDetailBatchSyncResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailBatchSyncResponse>>(
+    '/api/admin/matches/details/sync',
+    { matchIds },
     {
       timeout: 120_000,
     },

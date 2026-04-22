@@ -33,6 +33,30 @@ export type MatchStatus = 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
 export type MatchExternalSource = 'MANUAL' | 'PANDASCORE'
 export type PlayerStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED'
 export type PlayerExternalSource = 'MANUAL' | 'PANDASCORE'
+export type MatchExternalDetailStatus = 'PENDING' | 'SYNCED' | 'FAILED' | 'NEEDS_REVIEW'
+
+export interface MatchExternalDetailSummaryResponse {
+  provider: string | null
+  status: MatchExternalDetailStatus | null
+  sourceUrl: string | null
+  confidence: number | null
+  lastSyncedAt: string | null
+  errorMessage: string | null
+}
+
+export interface MatchExternalDetailSyncItemResponse {
+  matchId: number
+  status: MatchExternalDetailStatus | 'FAILED'
+  message: string
+  detailSummary: MatchExternalDetailSummaryResponse | null
+}
+
+export interface MatchExternalDetailBatchSyncResponse {
+  requestedCount: number
+  syncedCount: number
+  failedCount: number
+  items: MatchExternalDetailSyncItemResponse[]
+}
 
 export interface MatchResponse {
   id: number
@@ -46,6 +70,7 @@ export interface MatchResponse {
   externalId: string | null
   externalSource: MatchExternalSource
   lastSyncedAt: string | null
+  detailSummary: MatchExternalDetailSummaryResponse | null
   result: MatchResultResponse | null
 }
 

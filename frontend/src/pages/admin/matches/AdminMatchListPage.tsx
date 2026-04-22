@@ -14,9 +14,20 @@ import {
   TableRow,
 } from '../../../components/ui/table'
 import { MATCH_LEAGUE_FILTERS, isInternationalLeagueCode } from '../../../constants/teamLeagues'
-import { useAdminMatchList, useAdminDeleteMatch, usePandaScoreMatchResultSync } from '../../../hooks/useAdminMatches'
+import {
+  useAdminDeleteMatch,
+  useAdminMatchList,
+  usePandaScoreMatchResultSync,
+  useSyncMatchExternalDetail,
+  useSyncMatchExternalDetailsBatch,
+} from '../../../hooks/useAdminMatches'
 import { useAdminTeamList } from '../../../hooks/useAdminTeams'
-import type { PandaScoreImportResultStatus, PandaScoreMatchResultSyncResponse } from '../../../types/domain'
+import type {
+  MatchExternalDetailBatchSyncResponse,
+  MatchExternalDetailStatus,
+  PandaScoreImportResultStatus,
+  PandaScoreMatchResultSyncResponse,
+} from '../../../types/domain'
 
 const RESULT_SYNC_LABELS: Record<PandaScoreImportResultStatus, string> = {
   CREATED: '결과 생성',
@@ -30,6 +41,27 @@ const RESULT_SYNC_VARIANTS: Record<PandaScoreImportResultStatus, 'default' | 'se
   SKIPPED: 'destructive',
 }
 
+const DETAIL_SYNC_STATUS_LABELS: Record<MatchExternalDetailStatus, string> = {
+  PENDING: '대기',
+  SYNCED: '동기화 완료',
+  FAILED: '실패',
+  NEEDS_REVIEW: '검토 필요',
+}
+
+const DETAIL_SYNC_STATUS_VARIANTS: Record<
+  MatchExternalDetailStatus,
+  'default' | 'secondary' | 'destructive' | 'outline'
+> = {
+  PENDING: 'outline',
+  SYNCED: 'default',
+  FAILED: 'destructive',
+  NEEDS_REVIEW: 'secondary',
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString('ko-KR')
+}
+
 export function AdminMatchListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
@@ -39,6 +71,8 @@ export function AdminMatchListPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
+  const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
+  const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
 
   const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
   const league = leagueFilter === 'ALL' ? undefined : leagueFilter
@@ -54,6 +88,8 @@ export function AdminMatchListPage() {
   const { data: teamsData } = useAdminTeamList()
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
+  const detailSyncMutation = useSyncMatchExternalDetail()
+  const detailSyncBatchMutation = useSyncMatchExternalDetailsBatch()
 
   const teams = useMemo(() => {
     const source = teamsData ?? []
@@ -87,6 +123,44 @@ export function AdminMatchListPage() {
     setSinceDate('')
     setSortDirection('desc')
     setPage(0)
+    setSelectedMatchIds([])
+  }
+
+  function handleToggleMatchSelection(matchId: number, checked: boolean) {
+    setSelectedMatchIds((prev) => {
+      if (checked) return prev.includes(matchId) ? prev : [...prev, matchId]
+      return prev.filter((id) => id !== matchId)
+    })
+  }
+
+  function handleToggleAllCurrentPage(matchIds: number[], checked: boolean) {
+    setSelectedMatchIds((prev) => {
+      if (!checked) return prev.filter((id) => !matchIds.includes(id))
+      return Array.from(new Set([...prev, ...matchIds]))
+    })
+  }
+
+  function runSingleDetailSync(matchId: number) {
+    detailSyncMutation.mutate(matchId, {
+      onSuccess: (item) => {
+        setDetailSyncResult({
+          requestedCount: 1,
+          syncedCount: item.status === 'FAILED' ? 0 : 1,
+          failedCount: item.status === 'FAILED' ? 1 : 0,
+          items: [item],
+        })
+      },
+    })
+  }
+
+  function runBatchDetailSync() {
+    if (selectedMatchIds.length === 0) return
+    detailSyncBatchMutation.mutate(selectedMatchIds, {
+      onSuccess: (result) => {
+        setDetailSyncResult(result)
+        setSelectedMatchIds([])
+      },
+    })
   }
 
   const deleteErrorMessage =
@@ -95,6 +169,12 @@ export function AdminMatchListPage() {
     resultSyncMutation.error instanceof ApiError
       ? resultSyncMutation.error.message
       : resultSyncMutation.error?.message
+  const detailSyncErrorMessage =
+    detailSyncMutation.error instanceof ApiError
+      ? detailSyncMutation.error.message
+      : detailSyncBatchMutation.error instanceof ApiError
+        ? detailSyncBatchMutation.error.message
+        : detailSyncMutation.error?.message ?? detailSyncBatchMutation.error?.message
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
@@ -104,6 +184,9 @@ export function AdminMatchListPage() {
   }
 
   const matches = data?.content ?? []
+  const currentPageMatchIds = matches.map((match) => match.id)
+  const selectedCountOnPage = currentPageMatchIds.filter((id) => selectedMatchIds.includes(id)).length
+  const isAllCurrentPageSelected = currentPageMatchIds.length > 0 && selectedCountOnPage === currentPageMatchIds.length
 
   return (
     <div className="flex flex-col gap-4">
@@ -127,6 +210,16 @@ export function AdminMatchListPage() {
           >
             {resultSyncMutation.isPending ? '결과 동기화 중...' : 'PandaScore 결과 동기화'}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={selectedMatchIds.length === 0 || detailSyncBatchMutation.isPending}
+            onClick={runBatchDetailSync}
+          >
+            {detailSyncBatchMutation.isPending
+              ? '상세 동기화 중...'
+              : `선택 상세 동기화 (${selectedMatchIds.length})`}
+          </Button>
           <Button size="sm" onClick={() => navigate('/admin/matches/new')}>
             경기 등록
           </Button>
@@ -143,6 +236,7 @@ export function AdminMatchListPage() {
               setLeagueFilter(event.target.value)
               setTeamFilter('ALL')
               setPage(0)
+              setSelectedMatchIds([])
             }}
           >
             <option value="ALL">전체</option>
@@ -162,6 +256,7 @@ export function AdminMatchListPage() {
             onChange={(event) => {
               setTeamFilter(event.target.value)
               setPage(0)
+              setSelectedMatchIds([])
             }}
           >
             <option value="ALL">전체</option>
@@ -182,6 +277,7 @@ export function AdminMatchListPage() {
             onChange={(event) => {
               setSinceDate(event.target.value)
               setPage(0)
+              setSelectedMatchIds([])
             }}
           />
         </label>
@@ -194,6 +290,7 @@ export function AdminMatchListPage() {
             onChange={(event) => {
               setSortDirection(event.target.value as 'asc' | 'desc')
               setPage(0)
+              setSelectedMatchIds([])
             }}
           >
             <option value="desc">최신순</option>
@@ -208,15 +305,21 @@ export function AdminMatchListPage() {
         </div>
       </div>
 
-      {(resultSyncMutation.isError || resultSyncErrorMessage) && (
+      {resultSyncErrorMessage && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {resultSyncErrorMessage}
         </div>
       )}
 
+      {detailSyncErrorMessage && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {detailSyncErrorMessage}
+        </div>
+      )}
+
       {resultSyncResult && (
         <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
-          <div className="font-medium">결과 동기화 요약</div>
+          <div className="font-medium">PandaScore 결과 동기화 요약</div>
           <div className="mt-1 text-muted-foreground">
             요청 {resultSyncResult.requestedCount}건 / 신규 {resultSyncResult.createdCount}건 / 업데이트{' '}
             {resultSyncResult.updatedCount}건 / 스킵 {resultSyncResult.skippedCount}건
@@ -245,69 +348,156 @@ export function AdminMatchListPage() {
         </div>
       )}
 
+      {detailSyncResult && (
+        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
+          <div className="font-medium">Gol.gg 상세 동기화 요약</div>
+          <div className="mt-1 text-muted-foreground">
+            요청 {detailSyncResult.requestedCount}건 / 성공 {detailSyncResult.syncedCount}건 / 실패{' '}
+            {detailSyncResult.failedCount}건
+          </div>
+          {detailSyncResult.items.length > 0 && (
+            <div className="mt-3 grid gap-2">
+              {detailSyncResult.items.map((item) => (
+                <div
+                  key={`${item.matchId}-${item.status}-${item.detailSummary?.lastSyncedAt ?? 'na'}`}
+                  className="flex flex-col gap-2 rounded-lg border border-border px-3 py-3 md:flex-row md:items-start md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="font-mono text-xs text-muted-foreground">matchId {item.matchId}</div>
+                    <div className="mt-1 text-sm text-foreground">{item.message}</div>
+                    {item.detailSummary?.sourceUrl && (
+                      <a
+                        className="mt-1 inline-block text-xs text-primary underline-offset-4 hover:underline"
+                        href={item.detailSummary.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {item.detailSummary.sourceUrl}
+                      </a>
+                    )}
+                  </div>
+                  <Badge
+                    variant={DETAIL_SYNC_STATUS_VARIANTS[item.status as MatchExternalDetailStatus] ?? 'outline'}
+                  >
+                    {DETAIL_SYNC_STATUS_LABELS[item.status as MatchExternalDetailStatus] ?? item.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[56px] text-center">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={isAllCurrentPageSelected}
+                  onChange={(event) => handleToggleAllCurrentPage(currentPageMatchIds, event.target.checked)}
+                  aria-label="현재 페이지 전체 선택"
+                />
+              </TableHead>
               <TableHead>대회명</TableHead>
               <TableHead>팀 A</TableHead>
               <TableHead>팀 B</TableHead>
               <TableHead>일정</TableHead>
               <TableHead>상태</TableHead>
+              <TableHead>상세 상태</TableHead>
               <TableHead className="text-right">액션</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {matches.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 경기가 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              matches.map((match) => (
-                <TableRow key={match.id}>
-                  <TableCell>
-                    <div className="font-medium">{match.tournamentName}</div>
-                    {match.stage && <div className="text-xs text-muted-foreground">{match.stage}</div>}
-                  </TableCell>
-                  <TableCell>{match.teamA.name}</TableCell>
-                  <TableCell>{match.teamB.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(match.scheduledAt).toLocaleString('ko-KR')}
-                  </TableCell>
-                  <TableCell>
-                    <AdminStatusBadge status={match.status} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/admin/matches/${match.id}/edit`)}
-                      >
-                        수정
-                      </Button>
-                      {match.status !== 'CANCELLED' && (
+              matches.map((match) => {
+                const detailSummary = match.detailSummary
+                const detailStatus = detailSummary?.status
+
+                return (
+                  <TableRow key={match.id}>
+                    <TableCell className="text-center">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={selectedMatchIds.includes(match.id)}
+                        onChange={(event) => handleToggleMatchSelection(match.id, event.target.checked)}
+                        aria-label={`match-${match.id}-select`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{match.tournamentName}</div>
+                      {match.stage && <div className="text-xs text-muted-foreground">{match.stage}</div>}
+                    </TableCell>
+                    <TableCell>{match.teamA.name}</TableCell>
+                    <TableCell>{match.teamB.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(match.scheduledAt)}</TableCell>
+                    <TableCell>
+                      <AdminStatusBadge status={match.status} />
+                    </TableCell>
+                    <TableCell>
+                      {!detailStatus ? (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={DETAIL_SYNC_STATUS_VARIANTS[detailStatus]}>
+                            {DETAIL_SYNC_STATUS_LABELS[detailStatus]}
+                          </Badge>
+                          {detailSummary?.confidence != null && (
+                            <span className="text-xs text-muted-foreground">신뢰도 {detailSummary.confidence}</span>
+                          )}
+                          {detailSummary?.errorMessage && (
+                            <span className="text-xs text-destructive">{detailSummary.errorMessage}</span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/admin/matches/${match.id}/result`)}
+                          disabled={detailSyncMutation.isPending}
+                          onClick={() => runSingleDetailSync(match.id)}
                         >
-                          결과
+                          상세 동기화
                         </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openDeleteDialog(match.id)}
-                      >
-                        삭제
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/admin/matches/${match.id}/edit`)}
+                        >
+                          수정
+                        </Button>
+                        {match.status !== 'CANCELLED' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/matches/${match.id}/result`)}
+                          >
+                            결과
+                          </Button>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openDeleteDialog(match.id)}
+                        >
+                          삭제
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -318,7 +508,10 @@ export function AdminMatchListPage() {
           variant="outline"
           size="sm"
           disabled={data?.first ?? true}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          onClick={() => {
+            setPage((p) => Math.max(0, p - 1))
+            setSelectedMatchIds([])
+          }}
         >
           이전
         </Button>
@@ -329,7 +522,10 @@ export function AdminMatchListPage() {
           variant="outline"
           size="sm"
           disabled={data?.last ?? true}
-          onClick={() => setPage((p) => p + 1)}
+          onClick={() => {
+            setPage((p) => p + 1)
+            setSelectedMatchIds([])
+          }}
         >
           다음
         </Button>
