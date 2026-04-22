@@ -46,18 +46,8 @@ public class GolGgClient {
         String normalizedUrl = normalizeUrl(sourceUrl);
         String html = fetchHtml(normalizedUrl);
 
-        Set<String> detectedIds = new LinkedHashSet<>();
-        if (boundProviderGameIds != null) {
-            detectedIds.addAll(boundProviderGameIds.stream()
-                    .filter(value -> value != null && !value.isBlank())
-                    .map(String::trim)
-                    .toList());
-        }
-        detectedIds.addAll(findMatches(URL_GAME_ID_PATTERN, normalizedUrl));
-        detectedIds.addAll(findMatches(URL_GAME_ID_PATTERN, html));
-        detectedIds.addAll(findMatches(INLINE_GAME_ID_PATTERN, html));
-
-        List<String> providerGameIds = new ArrayList<>(detectedIds);
+        ResolvedProviderGameIds resolved = resolveProviderGameIds(normalizedUrl, html, boundProviderGameIds);
+        List<String> providerGameIds = resolved.providerGameIds();
         ArrayNode providerGameIdsJson = objectMapper.createArrayNode();
         providerGameIds.forEach(providerGameIdsJson::add);
 
@@ -78,18 +68,43 @@ public class GolGgClient {
             games.add(new GolGgParsedGame(i + 1, providerGameIds.get(i)));
         }
 
-        boolean needsReview = providerGameIds.size() > 1;
-        int confidence = providerGameIds.isEmpty() ? 45 : (needsReview ? 70 : 90);
-
         return new GolGgParsedDetail(
                 normalizedUrl,
                 providerGameIds,
                 summary,
                 raw,
                 games,
-                confidence,
-                needsReview
+                resolved.confidence(),
+                resolved.needsReview()
         );
+    }
+
+    ResolvedProviderGameIds resolveProviderGameIds(String normalizedUrl,
+                                                   String html,
+                                                   List<String> boundProviderGameIds) {
+        List<String> urlIds = deduplicate(findMatches(URL_GAME_ID_PATTERN, normalizedUrl));
+        List<String> htmlUrlIds = deduplicate(findMatches(URL_GAME_ID_PATTERN, html));
+        List<String> inlineIds = deduplicate(findMatches(INLINE_GAME_ID_PATTERN, html));
+        List<String> boundIds = deduplicate(normalizeValues(boundProviderGameIds));
+
+        if (urlIds.size() > 1) {
+            return new ResolvedProviderGameIds(urlIds, true, 60);
+        }
+
+        if (urlIds.size() == 1) {
+            String primary = urlIds.get(0);
+            boolean hasBoundConflict = !boundIds.isEmpty() && !boundIds.contains(primary);
+            if (hasBoundConflict) {
+                List<String> merged = mergeInOrder(List.of(primary), boundIds, htmlUrlIds, inlineIds);
+                return new ResolvedProviderGameIds(merged, true, 65);
+            }
+            return new ResolvedProviderGameIds(List.of(primary), false, 95);
+        }
+
+        List<String> merged = mergeInOrder(boundIds, htmlUrlIds, inlineIds);
+        boolean needsReview = merged.size() > 1;
+        int confidence = merged.isEmpty() ? 45 : (needsReview ? 70 : 90);
+        return new ResolvedProviderGameIds(merged, needsReview, confidence);
     }
 
     private String fetchHtml(String normalizedUrl) {
@@ -133,6 +148,39 @@ public class GolGgClient {
         return matches;
     }
 
+    private List<String> normalizeValues(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .toList();
+    }
+
+    private List<String> deduplicate(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return new ArrayList<>(new LinkedHashSet<>(values));
+    }
+
+    @SafeVarargs
+    private List<String> mergeInOrder(List<String>... groups) {
+        Set<String> merged = new LinkedHashSet<>();
+        for (List<String> group : groups) {
+            if (group == null) {
+                continue;
+            }
+            for (String value : group) {
+                if (value != null && !value.isBlank()) {
+                    merged.add(value.trim());
+                }
+            }
+        }
+        return new ArrayList<>(merged);
+    }
+
     private String extractTitle(String html) {
         Matcher matcher = TITLE_PATTERN.matcher(html);
         if (matcher.find()) {
@@ -155,6 +203,13 @@ public class GolGgClient {
     public record GolGgParsedGame(
             int gameNo,
             String providerGameId
+    ) {
+    }
+
+    record ResolvedProviderGameIds(
+            List<String> providerGameIds,
+            boolean needsReview,
+            int confidence
     ) {
     }
 }
