@@ -6,6 +6,7 @@ import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,16 +93,24 @@ public class GolDetailEnrichmentService {
                     ? ExternalDetailStatus.NEEDS_REVIEW
                     : ExternalDetailStatus.SYNCED);
 
-            detail.replaceGames(parsed.games().stream()
+            List<MatchExternalDetailGame> refreshedGames = parsed.games().stream()
                     .map(game -> {
                         MatchExternalDetailGame item = new MatchExternalDetailGame();
                         item.setGameNo(game.gameNo());
                         item.setProviderGameId(game.providerGameId());
                         return item;
                     })
-                    .toList());
+                    .toList();
 
-            MatchExternalDetail saved = detailRepository.save(detail);
+            // Clear + flush first to avoid unique-key collisions on (detail_id, game_no)
+            // when replacing existing child rows inside the same transaction.
+            if (!detail.getGames().isEmpty()) {
+                detail.replaceGames(List.of());
+                detailRepository.saveAndFlush(detail);
+            }
+
+            detail.replaceGames(refreshedGames);
+            MatchExternalDetail saved = detailRepository.saveAndFlush(detail);
             String message = parsed.needsReview()
                     ? "Multiple game ids detected. review needed."
                     : "Synced";
@@ -109,8 +118,12 @@ public class GolDetailEnrichmentService {
                     matchId,
                     saved.getStatus().name(),
                     message,
-                    MatchExternalDetailSummaryResponse.from(saved)
+                MatchExternalDetailSummaryResponse.from(saved)
             );
+        } catch (DataIntegrityViolationException e) {
+            String message = "Failed to persist gol.gg detail games: data conflict";
+            markFailed(detail, message);
+            return failedItem(matchId, detail, message);
         } catch (IllegalArgumentException | RestClientException e) {
             markFailed(detail, e.getMessage());
             return failedItem(matchId, detail, e.getMessage());

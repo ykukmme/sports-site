@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.atLeastOnce;
 
 @ExtendWith(MockitoExtension.class)
 class GolDetailEnrichmentServiceTest {
@@ -83,13 +84,13 @@ class GolDetailEnrichmentServiceTest {
                 90,
                 false
         ));
-        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(detailRepository.saveAndFlush(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MatchExternalDetailSyncItemResponse response = service.syncOne(1L);
 
         assertThat(response.status()).isEqualTo("SYNCED");
         ArgumentCaptor<MatchExternalDetail> captor = ArgumentCaptor.forClass(MatchExternalDetail.class);
-        verify(detailRepository).save(captor.capture());
+        verify(detailRepository, atLeastOnce()).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(ExternalDetailStatus.SYNCED);
     }
 }
