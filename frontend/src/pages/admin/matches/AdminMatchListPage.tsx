@@ -78,6 +78,7 @@ export function AdminMatchListPage() {
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
   const [candidateMap, setCandidateMap] = useState<Record<number, MatchExternalDetailCandidatesResponse>>({})
+  const [selectedCandidateSourceMap, setSelectedCandidateSourceMap] = useState<Record<number, string>>({})
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
   const [bindSourceInputs, setBindSourceInputs] = useState<Record<number, string>>({})
 
@@ -191,8 +192,13 @@ export function AdminMatchListPage() {
     findCandidatesMutation.mutate(matchId, {
       onSuccess: (result) => {
         setCandidateMap((prev) => ({ ...prev, [matchId]: result }))
-        if (result.autoSelectedSourceUrl) {
-          setBindInputValue(matchId, result.autoSelectedSourceUrl)
+        const selectedSourceUrl = result.autoSelectedSourceUrl ?? result.candidates[0]?.sourceUrl ?? ''
+        setSelectedCandidateSourceMap((prev) => ({
+          ...prev,
+          [matchId]: selectedSourceUrl,
+        }))
+        if (selectedSourceUrl) {
+          setBindInputValue(matchId, selectedSourceUrl)
         }
       },
     })
@@ -521,6 +527,9 @@ export function AdminMatchListPage() {
                 const canBind = bindInputValue.trim().length > 0
                 const canSync = Boolean(effectiveSourceUrl)
                 const candidateResult = candidateMap[match.id]
+                const selectedCandidateSourceUrl =
+                  selectedCandidateSourceMap[match.id] ?? candidateResult?.autoSelectedSourceUrl ?? ''
+                const canResolveCandidate = selectedCandidateSourceUrl.trim().length > 0
 
                 return (
                   <TableRow key={match.id}>
@@ -608,6 +617,36 @@ export function AdminMatchListPage() {
                           </div>
                         )}
                       </div>
+                      {candidateResult?.candidates?.length ? (
+                        <div className="mt-2 flex items-center gap-2">
+                          <select
+                            className="h-9 max-w-[280px] rounded-md border border-input bg-card px-2 text-xs"
+                            value={selectedCandidateSourceUrl}
+                            onChange={(event) => {
+                              const sourceUrl = event.target.value
+                              setSelectedCandidateSourceMap((prev) => ({
+                                ...prev,
+                                [match.id]: sourceUrl,
+                              }))
+                              setBindInputValue(match.id, sourceUrl)
+                            }}
+                          >
+                            {candidateResult.candidates.map((candidate) => (
+                              <option key={candidate.providerGameId} value={candidate.sourceUrl}>
+                                {`#${candidate.providerGameId} / score ${candidate.score}`}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!canResolveCandidate || resolveSourceMutation.isPending}
+                            onClick={() => runResolveSourceUrl(match.id, selectedCandidateSourceUrl)}
+                          >
+                            후보 확정
+                          </Button>
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
