@@ -74,4 +74,23 @@ class GolGgClientTest {
         assertThat(resolved.needsReview()).isTrue();
         assertThat(resolved.confidence()).isEqualTo(70);
     }
+
+    @Test
+    void resolvesGameIdsFromRelativeLinksWithoutLeadingSlash() {
+        String sourceUrl = "https://gol.gg/tournament/tournament-matchlist/LCK%202026/";
+        String html = """
+                <html>
+                  <body>
+                    <a href="game/stats/76055/page-summary/">match</a>
+                  </body>
+                </html>
+                """;
+
+        GolGgClient.ResolvedProviderGameIds resolved =
+                client.resolveProviderGameIds(sourceUrl, html, List.of());
+
+        assertThat(resolved.providerGameIds()).containsExactly("76055");
+        assertThat(resolved.needsReview()).isFalse();
+        assertThat(resolved.confidence()).isEqualTo(90);
+    }
 }

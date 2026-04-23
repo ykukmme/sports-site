@@ -26,10 +26,10 @@ import java.util.regex.Pattern;
 public class GolGgClient {
 
     private static final Pattern TITLE_PATTERN = Pattern.compile("<title>(.*?)</title>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    private static final Pattern URL_GAME_ID_PATTERN = Pattern.compile("/game/stats/(\\d+)");
+    private static final Pattern URL_GAME_ID_PATTERN = Pattern.compile("/?game/stats/(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern INLINE_GAME_ID_PATTERN = Pattern.compile("game\\s*id[^0-9]{0,10}(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern CANDIDATE_LINK_PATTERN = Pattern.compile(
-            "href\\s*=\\s*\"([^\"]*/game/stats/(\\d+)/[^\"]*)\"",
+            "href\\s*=\\s*(['\"])([^'\"#>]*?game/stats/(\\d+)/[^'\"#>]*)\\1",
             Pattern.CASE_INSENSITIVE
     );
     private static final String DEFAULT_MATCHLIST_PATH = "/tournament/tournament-matchlist/esports/home/";
@@ -216,8 +216,8 @@ public class GolGgClient {
         Map<String, GolGgRawCandidate> byGameId = new LinkedHashMap<>();
 
         while (matcher.find()) {
-            String href = matcher.group(1);
-            String gameId = matcher.group(2);
+            String href = matcher.group(2);
+            String gameId = matcher.group(3);
             if (gameId == null || gameId.isBlank()) {
                 continue;
             }
@@ -227,7 +227,7 @@ public class GolGgClient {
             String context = stripTags(html.substring(start, end));
             GolGgRawCandidate candidate = new GolGgRawCandidate(
                     gameId,
-                    buildGameSummaryUrl(gameId),
+                    normalizeCandidateHref(href, gameId),
                     context
             );
 
@@ -237,6 +237,23 @@ public class GolGgClient {
             }
         }
         return new ArrayList<>(byGameId.values());
+    }
+
+    private String normalizeCandidateHref(String href, String gameId) {
+        if (href == null || href.isBlank()) {
+            return buildGameSummaryUrl(gameId);
+        }
+        String trimmed = href.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("/")) {
+            return properties.getBaseUrl() + trimmed;
+        }
+        if (trimmed.toLowerCase(Locale.ROOT).startsWith("game/")) {
+            return properties.getBaseUrl() + "/" + trimmed;
+        }
+        return buildGameSummaryUrl(gameId);
     }
 
     private String stripTags(String value) {
