@@ -96,19 +96,26 @@ public class GolGgClient {
 
     public List<GolGgRawCandidate> fetchRawCandidates() {
         String homeUrl = properties.getBaseUrl() + DEFAULT_HOME_PATH;
+        String legacyUrl = properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH;
         Map<String, GolGgRawCandidate> merged = new LinkedHashMap<>();
+        LinkedHashSet<String> tournamentUrls = new LinkedHashSet<>();
 
         String homeHtml = tryFetchHtml(homeUrl);
         if (homeHtml != null) {
             mergeCandidates(merged, extractRawCandidates(homeHtml));
-            List<String> tournamentUrls = extractTournamentUrls(homeHtml).stream()
-                    .limit(MAX_EXTRA_TOURNAMENT_PAGES)
-                    .toList();
-            for (String tournamentUrl : tournamentUrls) {
-                String tournamentHtml = tryFetchHtml(tournamentUrl);
-                if (tournamentHtml != null) {
-                    mergeCandidates(merged, extractRawCandidates(tournamentHtml));
-                }
+            tournamentUrls.addAll(extractTournamentUrls(homeHtml));
+        }
+
+        String legacyHtml = tryFetchHtml(legacyUrl);
+        if (legacyHtml != null) {
+            mergeCandidates(merged, extractRawCandidates(legacyHtml));
+            tournamentUrls.addAll(extractTournamentUrls(legacyHtml));
+        }
+
+        for (String tournamentUrl : tournamentUrls.stream().limit(MAX_EXTRA_TOURNAMENT_PAGES).toList()) {
+            String tournamentHtml = tryFetchHtml(tournamentUrl);
+            if (tournamentHtml != null) {
+                mergeCandidates(merged, extractRawCandidates(tournamentHtml));
             }
         }
 
@@ -116,8 +123,8 @@ public class GolGgClient {
             return new ArrayList<>(merged.values());
         }
 
-        String legacyHtml = fetchHtml(properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH);
-        return extractRawCandidates(legacyHtml);
+        String fallbackHtml = fetchHtml(legacyUrl);
+        return extractRawCandidates(fallbackHtml);
     }
 
     public String buildGameSummaryUrl(String providerGameId) {

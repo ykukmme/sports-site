@@ -42,7 +42,7 @@ class GolDetailCandidateMatcherTest {
                 10
         );
 
-        assertThat(ranked).hasSize(2);
+        assertThat(ranked).hasSize(1);
         assertThat(ranked.get(0).providerGameId()).isEqualTo("1001");
         assertThat(ranked.get(0).score()).isGreaterThanOrEqualTo(85);
         assertThat(ranked.get(0).reasons()).contains("TEAM_A", "TEAM_B");

@@ -24,6 +24,7 @@ public class GolDetailCandidateMatcher {
     private static final int DATE_SCORE = 10;
     private static final int DATE_MISMATCH_PENALTY = 25;
     private static final int CROSS_BONUS_SCORE = 5;
+    private static final int MINIMUM_CANDIDATE_SCORE = 15;
 
     public List<ScoredCandidate> rankCandidates(Match match,
                                                 List<GolGgClient.GolGgRawCandidate> rawCandidates,
@@ -54,6 +55,7 @@ public class GolDetailCandidateMatcher {
 
         return byProviderGameId.values().stream()
                 .sorted(comparator)
+                .filter(item -> item.score() >= MINIMUM_CANDIDATE_SCORE)
                 .limit(Math.max(1, limit))
                 .toList();
     }
