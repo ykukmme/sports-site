@@ -32,7 +32,13 @@ public class GolGgClient {
             "href\\s*=\\s*(['\"])([^'\"#>]*?game/stats/(\\d+)/[^'\"#>]*)\\1",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern TOURNAMENT_LINK_PATTERN = Pattern.compile(
+            "href\\s*=\\s*(['\"])([^'\"#>]*?/tournament/tournament-matchlist/[^'\"#>]*)\\1",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final String DEFAULT_HOME_PATH = "/esports/home/";
     private static final String DEFAULT_MATCHLIST_PATH = "/tournament/tournament-matchlist/esports/home/";
+    private static final int MAX_EXTRA_TOURNAMENT_PAGES = 12;
     private static final String BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -89,8 +95,29 @@ public class GolGgClient {
     }
 
     public List<GolGgRawCandidate> fetchRawCandidates() {
-        String html = fetchHtml(properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH);
-        return extractRawCandidates(html);
+        String homeUrl = properties.getBaseUrl() + DEFAULT_HOME_PATH;
+        Map<String, GolGgRawCandidate> merged = new LinkedHashMap<>();
+
+        String homeHtml = tryFetchHtml(homeUrl);
+        if (homeHtml != null) {
+            mergeCandidates(merged, extractRawCandidates(homeHtml));
+            List<String> tournamentUrls = extractTournamentUrls(homeHtml).stream()
+                    .limit(MAX_EXTRA_TOURNAMENT_PAGES)
+                    .toList();
+            for (String tournamentUrl : tournamentUrls) {
+                String tournamentHtml = tryFetchHtml(tournamentUrl);
+                if (tournamentHtml != null) {
+                    mergeCandidates(merged, extractRawCandidates(tournamentHtml));
+                }
+            }
+        }
+
+        if (!merged.isEmpty()) {
+            return new ArrayList<>(merged.values());
+        }
+
+        String legacyHtml = fetchHtml(properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH);
+        return extractRawCandidates(legacyHtml);
     }
 
     public String buildGameSummaryUrl(String providerGameId) {
@@ -143,6 +170,14 @@ public class GolGgClient {
             return body;
         } catch (RestClientException e) {
             throw new RestClientException("Failed to fetch gol.gg page: " + normalizedUrl, e);
+        }
+    }
+
+    private String tryFetchHtml(String url) {
+        try {
+            return fetchHtml(url);
+        } catch (RestClientException ignored) {
+            return null;
         }
     }
 
@@ -270,6 +305,51 @@ public class GolGgClient {
         return new ArrayList<>(byGameId.values());
     }
 
+    private List<String> extractTournamentUrls(String html) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Matcher matcher = TOURNAMENT_LINK_PATTERN.matcher(html.replace("\\/", "/"));
+        LinkedHashSet<String> urls = new LinkedHashSet<>();
+        while (matcher.find()) {
+            String href = matcher.group(2);
+            String normalized = normalizeTournamentHref(href);
+            if (normalized != null) {
+                urls.add(normalized);
+            }
+        }
+        return new ArrayList<>(urls);
+    }
+
+    private String normalizeTournamentHref(String href) {
+        if (href == null || href.isBlank()) {
+            return null;
+        }
+        String trimmed = href.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("/")) {
+            return properties.getBaseUrl() + trimmed;
+        }
+        return properties.getBaseUrl() + "/" + trimmed;
+    }
+
+    private void mergeCandidates(Map<String, GolGgRawCandidate> target, List<GolGgRawCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return;
+        }
+        for (GolGgRawCandidate candidate : candidates) {
+            if (candidate == null || candidate.providerGameId() == null || candidate.providerGameId().isBlank()) {
+                continue;
+            }
+            GolGgRawCandidate current = target.get(candidate.providerGameId());
+            if (current == null || candidate.contextText().length() > current.contextText().length()) {
+                target.put(candidate.providerGameId(), candidate);
+            }
+        }
+    }
+
     private String normalizeCandidateHref(String href, String gameId) {
         if (href == null || href.isBlank()) {
             return buildGameSummaryUrl(gameId);
@@ -281,7 +361,7 @@ public class GolGgClient {
         if (trimmed.startsWith("/")) {
             return properties.getBaseUrl() + trimmed;
         }
-        if (trimmed.toLowerCase(Locale.ROOT).startsWith("game/")) {
+        if (trimmed.toLowerCase(Locale.ROOT).contains("game/stats/")) {
             return properties.getBaseUrl() + "/" + trimmed;
         }
         return buildGameSummaryUrl(gameId);
