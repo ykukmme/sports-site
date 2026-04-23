@@ -33,6 +33,8 @@ public class GolGgClient {
             Pattern.CASE_INSENSITIVE
     );
     private static final String DEFAULT_MATCHLIST_PATH = "/tournament/tournament-matchlist/esports/home/";
+    private static final String BROWSER_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
     private final GolGgProperties properties;
     private final ObjectMapper objectMapper;
@@ -130,6 +132,9 @@ public class GolGgClient {
         try {
             String body = restClient.get()
                     .uri(normalizedUrl)
+                    .header("User-Agent", BROWSER_USER_AGENT)
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .header("Accept-Language", "en-US,en;q=0.9")
                     .retrieve()
                     .body(String.class);
             if (body == null || body.isBlank()) {
@@ -159,10 +164,13 @@ public class GolGgClient {
         if (value == null || value.isBlank()) {
             return List.of();
         }
-        Matcher matcher = pattern.matcher(value);
         List<String> matches = new ArrayList<>();
-        while (matcher.find()) {
-            matches.add(matcher.group(1));
+        List<String> sources = List.of(value, value.replace("\\/", "/"));
+        for (String source : sources) {
+            Matcher matcher = pattern.matcher(source);
+            while (matcher.find()) {
+                matches.add(matcher.group(1));
+            }
         }
         return matches;
     }
@@ -212,7 +220,8 @@ public class GolGgClient {
         if (html == null || html.isBlank()) {
             return List.of();
         }
-        Matcher matcher = CANDIDATE_LINK_PATTERN.matcher(html);
+        String normalizedHtml = html.replace("\\/", "/");
+        Matcher matcher = CANDIDATE_LINK_PATTERN.matcher(normalizedHtml);
         Map<String, GolGgRawCandidate> byGameId = new LinkedHashMap<>();
 
         while (matcher.find()) {
@@ -223,8 +232,8 @@ public class GolGgClient {
             }
 
             int start = Math.max(0, matcher.start() - 400);
-            int end = Math.min(html.length(), matcher.end() + 400);
-            String context = stripTags(html.substring(start, end));
+            int end = Math.min(normalizedHtml.length(), matcher.end() + 400);
+            String context = stripTags(normalizedHtml.substring(start, end));
             GolGgRawCandidate candidate = new GolGgRawCandidate(
                     gameId,
                     normalizeCandidateHref(href, gameId),
@@ -234,6 +243,28 @@ public class GolGgClient {
             GolGgRawCandidate current = byGameId.get(gameId);
             if (current == null || candidate.contextText().length() > current.contextText().length()) {
                 byGameId.put(gameId, candidate);
+            }
+        }
+
+        if (byGameId.isEmpty()) {
+            Matcher idMatcher = URL_GAME_ID_PATTERN.matcher(normalizedHtml);
+            while (idMatcher.find()) {
+                String gameId = idMatcher.group(1);
+                if (gameId == null || gameId.isBlank()) {
+                    continue;
+                }
+                int start = Math.max(0, idMatcher.start() - 240);
+                int end = Math.min(normalizedHtml.length(), idMatcher.end() + 240);
+                String context = stripTags(normalizedHtml.substring(start, end));
+                GolGgRawCandidate candidate = new GolGgRawCandidate(
+                        gameId,
+                        buildGameSummaryUrl(gameId),
+                        context
+                );
+                GolGgRawCandidate current = byGameId.get(gameId);
+                if (current == null || candidate.contextText().length() > current.contextText().length()) {
+                    byGameId.put(gameId, candidate);
+                }
             }
         }
         return new ArrayList<>(byGameId.values());

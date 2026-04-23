@@ -224,7 +224,9 @@ public class GolDetailEnrichmentService {
         if (detail.getSourceUrl() == null || detail.getSourceUrl().isBlank()) {
             detail.setStatus(ExternalDetailStatus.NEEDS_REVIEW);
         }
-        if (autoSelected == null && (detail.getSourceUrl() == null || detail.getSourceUrl().isBlank())) {
+        if (merged.isEmpty()) {
+            detail.setErrorMessage("No gol.gg candidates found. bind sourceUrl manually.");
+        } else if (autoSelected == null && (detail.getSourceUrl() == null || detail.getSourceUrl().isBlank())) {
             detail.setErrorMessage("sourceUrl is required before sync");
         } else {
             detail.setErrorMessage(null);

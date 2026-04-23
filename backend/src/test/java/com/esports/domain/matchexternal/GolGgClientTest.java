@@ -93,4 +93,23 @@ class GolGgClientTest {
         assertThat(resolved.needsReview()).isFalse();
         assertThat(resolved.confidence()).isEqualTo(90);
     }
+
+    @Test
+    void resolvesGameIdsFromEscapedScriptPaths() {
+        String sourceUrl = "https://gol.gg/tournament/tournament-matchlist/LCK%202026/";
+        String html = """
+                <html>
+                  <script>
+                    const path = "\\/game\\/stats\\/76055\\/page-summary\\/";
+                  </script>
+                </html>
+                """;
+
+        GolGgClient.ResolvedProviderGameIds resolved =
+                client.resolveProviderGameIds(sourceUrl, html, List.of());
+
+        assertThat(resolved.providerGameIds()).containsExactly("76055");
+        assertThat(resolved.needsReview()).isFalse();
+        assertThat(resolved.confidence()).isEqualTo(90);
+    }
 }
