@@ -22,6 +22,7 @@ public class GolDetailCandidateMatcher {
     private static final int TOURNAMENT_KEYWORD_SCORE = 12;
     private static final int STAGE_SCORE = 5;
     private static final int DATE_SCORE = 10;
+    private static final int DATE_MISMATCH_PENALTY = 25;
     private static final int CROSS_BONUS_SCORE = 5;
 
     public List<ScoredCandidate> rankCandidates(Match match,
@@ -58,7 +59,8 @@ public class GolDetailCandidateMatcher {
     }
 
     private ScoredCandidate score(MatchReference reference, GolGgClient.GolGgRawCandidate candidate) {
-        String context = normalize(candidate.contextText()) + " " + normalize(candidate.sourceUrl());
+        String rawContext = safe(candidate.contextText()) + " " + safe(candidate.sourceUrl());
+        String context = normalize(rawContext);
         String compactContext = compact(context);
 
         int score = 0;
@@ -96,10 +98,14 @@ public class GolDetailCandidateMatcher {
             reasons.add("STAGE");
         }
 
-        boolean dateMatched = dateMatched(context, reference.scheduledAt());
+        boolean explicitDatePresent = hasExplicitDate(rawContext);
+        boolean dateMatched = dateMatched(rawContext, reference.scheduledAt()) || dateMatched(context, reference.scheduledAt());
         if (dateMatched) {
             score += DATE_SCORE;
             reasons.add("DATE");
+        } else if (explicitDatePresent) {
+            score -= DATE_MISMATCH_PENALTY;
+            reasons.add("DATE_MISMATCH");
         }
 
         if (teamAMatched && teamBMatched && (tournamentMatched || dateMatched)) {
@@ -114,6 +120,10 @@ public class GolDetailCandidateMatcher {
                 normalizedScore,
                 List.copyOf(reasons)
         );
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private boolean dateMatched(String context, OffsetDateTime scheduledAt) {
@@ -135,6 +145,15 @@ public class GolDetailCandidateMatcher {
                 || context.matches(".*\\b" + dayPattern + "[-/.]" + monthPattern + "[-/.]" + year + "\\b.*")
                 || context.matches(".*\\b" + monthPattern + "[-/.]" + dayPattern + "[-/.]" + year + "\\b.*")
                 || context.matches(".*\\b" + year + month2 + day2 + "\\b.*");
+    }
+
+    private boolean hasExplicitDate(String context) {
+        if (context == null || context.isBlank()) {
+            return false;
+        }
+        return context.matches("(?s).*\\b20\\d{2}[-./]\\d{1,2}[-./]\\d{1,2}\\b.*")
+                || context.matches("(?s).*\\b\\d{1,2}[-./]\\d{1,2}[-./]20\\d{2}\\b.*")
+                || context.matches("(?s).*\\b20\\d{6}\\b.*");
     }
 
     private int keywordHitCount(String context, String compactContext, Set<String> keywords) {

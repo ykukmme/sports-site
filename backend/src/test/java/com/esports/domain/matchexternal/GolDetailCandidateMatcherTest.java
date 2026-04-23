@@ -106,6 +106,40 @@ class GolDetailCandidateMatcherTest {
         assertThat(ranked.get(0).reasons()).doesNotContain("DATE");
     }
 
+    @Test
+    void rankCandidatesPenalizesExplicitDateMismatch() {
+        Match match = buildMatch(
+                "Dplus Kia",
+                "DN SOOPers",
+                "LCK 2026",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-16T08:00:00Z")
+        );
+
+        List<GolDetailCandidateMatcher.ScoredCandidate> ranked = matcher.rankCandidates(
+                match,
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "4001",
+                                "https://gol.gg/game/stats/4001/page-summary/",
+                                "LCK 2026 Dplus Kia vs DN SOOPers 2026-05-30"
+                        ),
+                        new GolGgClient.GolGgRawCandidate(
+                                "4002",
+                                "https://gol.gg/game/stats/4002/page-summary/",
+                                "LCK 2026 Dplus Kia vs DN SOOPers 2026-01-16"
+                        )
+                ),
+                10
+        );
+
+        assertThat(ranked).hasSize(2);
+        assertThat(ranked.get(0).providerGameId()).isEqualTo("4002");
+        assertThat(ranked.get(0).reasons()).contains("DATE");
+        assertThat(ranked.get(1).reasons()).contains("DATE_MISMATCH");
+        assertThat(ranked.get(0).score()).isGreaterThan(ranked.get(1).score());
+    }
+
     private Match buildMatch(String teamAName,
                              String teamBName,
                              String tournamentName,
