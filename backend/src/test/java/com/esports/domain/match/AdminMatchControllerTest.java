@@ -4,6 +4,8 @@ import com.esports.config.JwtTokenProvider;
 import com.esports.config.SecurityConfig;
 import com.esports.domain.matchexternal.GolDetailEnrichmentService;
 import com.esports.domain.matchexternal.MatchExternalDetailBatchSyncResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailCandidateResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailCandidatesResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailSyncItemResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -130,6 +132,55 @@ class AdminMatchControllerTest {
         mockMvc.perform(post("/api/admin/matches/1/details/sync").with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("SYNCED"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void candidatesReturns200() throws Exception {
+        MatchExternalDetailCandidatesResponse response = new MatchExternalDetailCandidatesResponse(
+                1L,
+                "NEEDS_REVIEW",
+                "https://gol.gg/game/stats/1/page-summary/",
+                95,
+                List.of(new MatchExternalDetailCandidateResponse(
+                        "1",
+                        "https://gol.gg/game/stats/1/page-summary/",
+                        95,
+                        List.of("TEAM_A", "TEAM_B"),
+                        true
+                )),
+                new MatchExternalDetailSummaryResponse("GOL_GG", "NEEDS_REVIEW", null, 0, null, null)
+        );
+        when(golDetailEnrichmentService.findCandidates(1L)).thenReturn(response);
+
+        mockMvc.perform(post("/api/admin/matches/1/details/candidates").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.matchId").value(1))
+                .andExpect(jsonPath("$.data.candidates[0].providerGameId").value("1"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void resolveReturns200() throws Exception {
+        MatchExternalDetailSummaryResponse summary = new MatchExternalDetailSummaryResponse(
+                "GOL_GG",
+                "PENDING",
+                "https://gol.gg/game/stats/75840/page-summary/",
+                95,
+                null,
+                null
+        );
+        when(golDetailEnrichmentService.resolveCandidate(eq(1L), any(String.class))).thenReturn(summary);
+
+        mockMvc.perform(post("/api/admin/matches/1/details/resolve")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceUrl":"https://gol.gg/game/stats/75840/page-summary/"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.sourceUrl").value("https://gol.gg/game/stats/75840/page-summary/"));
     }
 
     @Test

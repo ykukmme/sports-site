@@ -51,6 +51,23 @@ export interface MatchExternalDetailSyncItemResponse {
   detailSummary: MatchExternalDetailSummaryResponse | null
 }
 
+export interface MatchExternalDetailCandidateResponse {
+  providerGameId: string
+  sourceUrl: string
+  score: number
+  reasons: string[]
+  autoSelected: boolean
+}
+
+export interface MatchExternalDetailCandidatesResponse {
+  matchId: number
+  status: MatchExternalDetailStatus | 'FAILED'
+  autoSelectedSourceUrl: string | null
+  autoSelectedScore: number | null
+  candidates: MatchExternalDetailCandidateResponse[]
+  detailSummary: MatchExternalDetailSummaryResponse | null
+}
+
 export interface MatchExternalDetailBatchSyncResponse {
   requestedCount: number
   syncedCount: number

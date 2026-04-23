@@ -13,9 +13,11 @@ import org.springframework.web.client.RestClientException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,6 +28,11 @@ public class GolGgClient {
     private static final Pattern TITLE_PATTERN = Pattern.compile("<title>(.*?)</title>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private static final Pattern URL_GAME_ID_PATTERN = Pattern.compile("/game/stats/(\\d+)");
     private static final Pattern INLINE_GAME_ID_PATTERN = Pattern.compile("game\\s*id[^0-9]{0,10}(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CANDIDATE_LINK_PATTERN = Pattern.compile(
+            "href\\s*=\\s*\"([^\"]*/game/stats/(\\d+)/[^\"]*)\"",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final String DEFAULT_MATCHLIST_PATH = "/tournament/tournament-matchlist/esports/home/";
 
     private final GolGgProperties properties;
     private final ObjectMapper objectMapper;
@@ -77,6 +84,18 @@ public class GolGgClient {
                 resolved.confidence(),
                 resolved.needsReview()
         );
+    }
+
+    public List<GolGgRawCandidate> fetchRawCandidates() {
+        String html = fetchHtml(properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH);
+        return extractRawCandidates(html);
+    }
+
+    public String buildGameSummaryUrl(String providerGameId) {
+        if (providerGameId == null || providerGameId.isBlank()) {
+            throw new IllegalArgumentException("providerGameId is required");
+        }
+        return properties.getBaseUrl() + "/game/stats/" + providerGameId.trim() + "/page-summary/";
     }
 
     ResolvedProviderGameIds resolveProviderGameIds(String normalizedUrl,
@@ -189,6 +208,49 @@ public class GolGgClient {
         return null;
     }
 
+    private List<GolGgRawCandidate> extractRawCandidates(String html) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Matcher matcher = CANDIDATE_LINK_PATTERN.matcher(html);
+        Map<String, GolGgRawCandidate> byGameId = new LinkedHashMap<>();
+
+        while (matcher.find()) {
+            String href = matcher.group(1);
+            String gameId = matcher.group(2);
+            if (gameId == null || gameId.isBlank()) {
+                continue;
+            }
+
+            int start = Math.max(0, matcher.start() - 400);
+            int end = Math.min(html.length(), matcher.end() + 400);
+            String context = stripTags(html.substring(start, end));
+            GolGgRawCandidate candidate = new GolGgRawCandidate(
+                    gameId,
+                    buildGameSummaryUrl(gameId),
+                    context
+            );
+
+            GolGgRawCandidate current = byGameId.get(gameId);
+            if (current == null || candidate.contextText().length() > current.contextText().length()) {
+                byGameId.put(gameId, candidate);
+            }
+        }
+        return new ArrayList<>(byGameId.values());
+    }
+
+    private String stripTags(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value
+                .replaceAll("<[^>]+>", " ")
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
     public record GolGgParsedDetail(
             String sourceUrl,
             List<String> providerGameIds,
@@ -203,6 +265,13 @@ public class GolGgClient {
     public record GolGgParsedGame(
             int gameNo,
             String providerGameId
+    ) {
+    }
+
+    public record GolGgRawCandidate(
+            String providerGameId,
+            String sourceUrl,
+            String contextText
     ) {
     }
 

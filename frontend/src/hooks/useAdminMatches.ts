@@ -7,8 +7,10 @@ import {
   createAdminMatch,
   createMatchResult,
   deleteAdminMatch,
+  findMatchExternalDetailCandidates,
   fetchAdminMatch,
   fetchAdminMatches,
+  resolveMatchExternalDetailSource,
   syncMatchExternalDetail,
   syncMatchExternalDetailsBatch,
   syncPandaScoreMatchResults,
@@ -127,6 +129,27 @@ export function useSyncMatchExternalDetail() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (matchId: number) => syncMatchExternalDetail(matchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function useFindMatchExternalDetailCandidates() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (matchId: number) => findMatchExternalDetailCandidates(matchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function useResolveMatchExternalDetailSource() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ matchId, sourceUrl }: { matchId: number; sourceUrl: string }) =>
+      resolveMatchExternalDetailSource(matchId, sourceUrl),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
     },

@@ -5,6 +5,8 @@ import com.esports.domain.matchexternal.GolDetailEnrichmentService;
 import com.esports.domain.matchexternal.MatchExternalDetailBatchSyncRequest;
 import com.esports.domain.matchexternal.MatchExternalDetailBatchSyncResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailBindRequest;
+import com.esports.domain.matchexternal.MatchExternalDetailCandidatesResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailResolveRequest;
 import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailSyncItemResponse;
 import jakarta.validation.Valid;
@@ -52,6 +54,18 @@ public class AdminMatchController {
             @PathVariable Long id,
             @Valid @RequestBody MatchExternalDetailBindRequest request) {
         return ApiResponse.ok(golDetailEnrichmentService.bindSourceUrl(id, request.sourceUrl()));
+    }
+
+    @PostMapping("/{id}/details/candidates")
+    public ApiResponse<MatchExternalDetailCandidatesResponse> findMatchDetailCandidates(@PathVariable Long id) {
+        return ApiResponse.ok(golDetailEnrichmentService.findCandidates(id));
+    }
+
+    @PostMapping("/{id}/details/resolve")
+    public ApiResponse<MatchExternalDetailSummaryResponse> resolveMatchDetailSource(
+            @PathVariable Long id,
+            @Valid @RequestBody MatchExternalDetailResolveRequest request) {
+        return ApiResponse.ok(golDetailEnrichmentService.resolveCandidate(id, request.sourceUrl()));
     }
 
     @PostMapping("/{id}/details/sync")

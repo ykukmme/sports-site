@@ -18,12 +18,15 @@ import {
   useAdminDeleteMatch,
   useAdminMatchList,
   useBindMatchExternalDetailSource,
+  useFindMatchExternalDetailCandidates,
   usePandaScoreMatchResultSync,
+  useResolveMatchExternalDetailSource,
   useSyncMatchExternalDetail,
   useSyncMatchExternalDetailsBatch,
 } from '../../../hooks/useAdminMatches'
 import { useAdminTeamList } from '../../../hooks/useAdminTeams'
 import type {
+  MatchExternalDetailCandidatesResponse,
   MatchExternalDetailBatchSyncResponse,
   MatchExternalDetailStatus,
   PandaScoreImportResultStatus,
@@ -74,6 +77,7 @@ export function AdminMatchListPage() {
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
+  const [candidateMap, setCandidateMap] = useState<Record<number, MatchExternalDetailCandidatesResponse>>({})
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
   const [bindSourceInputs, setBindSourceInputs] = useState<Record<number, string>>({})
 
@@ -92,6 +96,8 @@ export function AdminMatchListPage() {
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
   const bindSourceMutation = useBindMatchExternalDetailSource()
+  const findCandidatesMutation = useFindMatchExternalDetailCandidates()
+  const resolveSourceMutation = useResolveMatchExternalDetailSource()
   const detailSyncMutation = useSyncMatchExternalDetail()
   const detailSyncBatchMutation = useSyncMatchExternalDetailsBatch()
 
@@ -181,6 +187,31 @@ export function AdminMatchListPage() {
     })
   }
 
+  function runFindDetailCandidates(matchId: number) {
+    findCandidatesMutation.mutate(matchId, {
+      onSuccess: (result) => {
+        setCandidateMap((prev) => ({ ...prev, [matchId]: result }))
+        if (result.autoSelectedSourceUrl) {
+          setBindInputValue(matchId, result.autoSelectedSourceUrl)
+        }
+      },
+    })
+  }
+
+  function runResolveSourceUrl(matchId: number, sourceUrl: string) {
+    const trimmed = sourceUrl.trim()
+    if (!trimmed) return
+    resolveSourceMutation.mutate(
+      { matchId, sourceUrl: trimmed },
+      {
+        onSuccess: () => {
+          setBindResultMessage(`matchId ${matchId} sourceUrl 확정 완료`)
+          setBindInputValue(matchId, trimmed)
+        },
+      },
+    )
+  }
+
   function runBatchDetailSync() {
     if (selectedMatchIds.length === 0) return
     detailSyncBatchMutation.mutate(selectedMatchIds, {
@@ -207,6 +238,14 @@ export function AdminMatchListPage() {
     bindSourceMutation.error instanceof ApiError
       ? bindSourceMutation.error.message
       : bindSourceMutation.error?.message
+  const findCandidatesErrorMessage =
+    findCandidatesMutation.error instanceof ApiError
+      ? findCandidatesMutation.error.message
+      : findCandidatesMutation.error?.message
+  const resolveSourceErrorMessage =
+    resolveSourceMutation.error instanceof ApiError
+      ? resolveSourceMutation.error.message
+      : resolveSourceMutation.error?.message
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
@@ -355,6 +394,18 @@ export function AdminMatchListPage() {
         </div>
       )}
 
+      {findCandidatesErrorMessage && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {findCandidatesErrorMessage}
+        </div>
+      )}
+
+      {resolveSourceErrorMessage && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {resolveSourceErrorMessage}
+        </div>
+      )}
+
       {bindResultMessage && (
         <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
           {bindResultMessage}
@@ -469,6 +520,7 @@ export function AdminMatchListPage() {
                 const bindInputValue = getBindInputValue(match.id, effectiveSourceUrl)
                 const canBind = bindInputValue.trim().length > 0
                 const canSync = Boolean(effectiveSourceUrl)
+                const candidateResult = candidateMap[match.id]
 
                 return (
                   <TableRow key={match.id}>
@@ -536,10 +588,52 @@ export function AdminMatchListPage() {
                             {effectiveSourceUrl}
                           </a>
                         )}
+                        {candidateResult && (
+                          <div className="text-xs text-muted-foreground">
+                            후보 {candidateResult.candidates.length}개
+                            {candidateResult.autoSelectedSourceUrl && (
+                              <button
+                                type="button"
+                                className="ml-2 text-primary underline-offset-4 hover:underline"
+                                onClick={() =>
+                                  runResolveSourceUrl(
+                                    match.id,
+                                    candidateResult.autoSelectedSourceUrl ?? '',
+                                  )
+                                }
+                              >
+                                추천 확정
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={findCandidatesMutation.isPending}
+                          onClick={() => runFindDetailCandidates(match.id)}
+                        >
+                          후보
+                        </Button>
+                        {candidateResult?.autoSelectedSourceUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={resolveSourceMutation.isPending}
+                            onClick={() =>
+                              runResolveSourceUrl(
+                                match.id,
+                                candidateResult.autoSelectedSourceUrl ?? '',
+                              )
+                            }
+                          >
+                            추천 확정
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"

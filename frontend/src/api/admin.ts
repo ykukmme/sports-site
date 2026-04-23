@@ -2,6 +2,7 @@ import apiClient from './client'
 import type { ApiResponse, PageResponse } from '../types/api'
 import type {
   MatchResponse,
+  MatchExternalDetailCandidatesResponse,
   MatchExternalDetailBatchSyncResponse,
   MatchExternalDetailSummaryResponse,
   MatchExternalDetailSyncItemResponse,
@@ -253,6 +254,26 @@ export async function bindMatchExternalDetailSource(
 export async function syncMatchExternalDetail(matchId: number): Promise<MatchExternalDetailSyncItemResponse> {
   const res = await apiClient.post<ApiResponse<MatchExternalDetailSyncItemResponse>>(
     `/api/admin/matches/${matchId}/details/sync`,
+  )
+  return res.data.data!
+}
+
+export async function findMatchExternalDetailCandidates(
+  matchId: number,
+): Promise<MatchExternalDetailCandidatesResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailCandidatesResponse>>(
+    `/api/admin/matches/${matchId}/details/candidates`,
+  )
+  return res.data.data!
+}
+
+export async function resolveMatchExternalDetailSource(
+  matchId: number,
+  sourceUrl: string,
+): Promise<MatchExternalDetailSummaryResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailSummaryResponse>>(
+    `/api/admin/matches/${matchId}/details/resolve`,
+    { sourceUrl },
   )
   return res.data.data!
 }
