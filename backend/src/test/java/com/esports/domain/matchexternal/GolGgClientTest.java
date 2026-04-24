@@ -271,6 +271,53 @@ class GolGgClientTest {
         assertThat(searchLabels).containsExactly("Group Stage");
     }
 
+    @Test
+    void filterCandidatesByTargetRejectsDifferentExplicitDateEvenWhenLeagueAndTeamMatch() throws Exception {
+        Match match = buildMatch(
+                "Dplus Kia",
+                "T1",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-16T08:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK");
+
+        Object target = buildTarget(match);
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "76534",
+                                "https://gol.gg/game/stats/76534/page-game/",
+                                "Dplus KIA vs T1 LCK 2026 Rounds 1-2 2026-04-17"
+                        )
+                ),
+                target
+        );
+
+        assertThat(filtered).isEmpty();
+    }
+
+    @Test
+    void buildTournamentGuessUrlsAddsCommonStageYearVariants() throws Exception {
+        Match match = buildMatch(
+                "DN SOOPers",
+                "Dplus Kia",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-16T08:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK");
+
+        Object target = buildTarget(match);
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method method = GolGgClient.class.getDeclaredMethod("buildTournamentGuessUrls", targetClass);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> urls = (List<String>) method.invoke(client, target);
+
+        assertThat(urls).anyMatch(url -> url.toLowerCase().contains("lck%20cup%202026"));
+        assertThat(urls).anyMatch(url -> url.toLowerCase().contains("lck%202026%20rounds%201-2"));
+    }
+
     private Object buildTarget(Match match) throws Exception {
         Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
         Method fromMethod = targetClass.getDeclaredMethod("from", Match.class);

@@ -19,6 +19,7 @@ import java.time.OffsetDateTime;
 import java.time.Instant;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,7 +44,7 @@ public class GolGgClient {
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern TOURNAMENT_LINK_PATTERN = Pattern.compile(
-            "href\\s*=\\s*(['\"])([^'\"#>]*?/tournament/tournament-matchlist/[^'\"#>]*)\\1",
+            "href\\s*=\\s*(['\"])([^'\"#>]*?/(?:esports/)?tournament/tournament-(?:matchlist|stats)/[^'\"#>]*)\\1",
             Pattern.CASE_INSENSITIVE
     );
     private static final String DEFAULT_HOME_PATH = "/esports/home/";
@@ -53,6 +55,19 @@ public class GolGgClient {
     private static final String BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private static final Set<String> KNOWN_STAGE_SIGNALS = buildKnownStageSignals();
+    private static final List<String> COMMON_TOURNAMENT_SUFFIXES = List.of(
+            "Cup",
+            "Kickoff",
+            "Rounds 1-2",
+            "Spring",
+            "Summer",
+            "Winter",
+            "Split 1",
+            "Split 2",
+            "Split 3",
+            "Season Finals",
+            "Versus"
+    );
 
     private final GolGgProperties properties;
     private final ObjectMapper objectMapper;
@@ -187,11 +202,32 @@ public class GolGgClient {
                         .toList()
         );
 
-        for (String tournamentUrl : targetTournamentUrls) {
-            String html = tryFetchHtml(tournamentUrl);
-            if (html != null) {
-                mergeCandidates(merged, extractRawCandidates(html));
+        LinkedHashSet<String> visitedTournamentUrls = new LinkedHashSet<>();
+        List<String> queue = new ArrayList<>(targetTournamentUrls);
+        int index = 0;
+        while (index < queue.size() && visitedTournamentUrls.size() < MAX_TARGET_TOURNAMENT_PAGES) {
+            String tournamentUrl = queue.get(index++);
+            if (tournamentUrl == null || tournamentUrl.isBlank() || !visitedTournamentUrls.add(tournamentUrl)) {
+                continue;
             }
+
+            String html = tryFetchHtml(tournamentUrl);
+            if (html == null) {
+                continue;
+            }
+
+            mergeCandidates(merged, extractRawCandidates(html));
+
+            List<String> nestedTournamentUrls = extractTournamentUrls(html).stream()
+                    .filter(url -> !visitedTournamentUrls.contains(url))
+                    .sorted((left, right) -> Integer.compare(
+                            scoreTournamentUrl(right, target),
+                            scoreTournamentUrl(left, target)
+                    ))
+                    .filter(url -> scoreTournamentUrl(url, target) > 0)
+                    .limit(Math.max(1, MAX_TARGET_TOURNAMENT_PAGES - visitedTournamentUrls.size()))
+                    .toList();
+            queue.addAll(nestedTournamentUrls);
         }
 
         List<GolGgRawCandidate> mergedCandidates = new ArrayList<>(merged.values());
@@ -501,13 +537,21 @@ public class GolGgClient {
                 }
             }
         }
+        labels.addAll(buildStageYearVariants(target));
 
         return labels.stream()
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .map(this::encodePathSegment)
-                .map(value -> properties.getBaseUrl() + "/tournament/tournament-matchlist/" + value + "/")
-                .collect(Collectors.toCollection(ArrayList::new));
+                .flatMap(value -> Stream.of(
+                        properties.getBaseUrl() + "/tournament/tournament-matchlist/" + value + "/",
+                        properties.getBaseUrl() + "/tournament/tournament-stats/" + value + "/",
+                        properties.getBaseUrl() + "/esports/tournament/tournament-matchlist/" + value + "/",
+                        properties.getBaseUrl() + "/esports/tournament/tournament-stats/" + value + "/"
+                ))
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .toList();
     }
 
     private String encodePathSegment(String value) {
@@ -520,8 +564,9 @@ public class GolGgClient {
         }
         List<GolGgRawCandidate> filtered = candidates.stream()
                 .filter(candidate -> {
-                    String context = normalizeForMatch((candidate.contextText() == null ? "" : candidate.contextText())
-                            + " " + (candidate.sourceUrl() == null ? "" : candidate.sourceUrl()));
+                    String rawContext = (candidate.contextText() == null ? "" : candidate.contextText())
+                            + " " + (candidate.sourceUrl() == null ? "" : candidate.sourceUrl());
+                    String context = normalizeForMatch(rawContext);
                     String compact = compactForMatch(context);
 
                     boolean teamHit = target.teamKeys().stream()
@@ -531,6 +576,10 @@ public class GolGgClient {
                     boolean stageHit = target.stageSignals().stream()
                             .anyMatch(signal -> !signal.isBlank() && compact.contains(compactForMatch(signal)));
                     boolean contextHit = tournamentHit || stageHit;
+                    boolean explicitDatePresent = hasExplicitDate(rawContext) || hasExplicitDate(context);
+                    if (explicitDatePresent && !dateMatched(rawContext, target.scheduledDate()) && !dateMatched(context, target.scheduledDate())) {
+                        return false;
+                    }
                     if (!target.stageSignals().isEmpty() || !target.tournamentTokens().isEmpty()) {
                         return teamHit && contextHit;
                     }
@@ -538,6 +587,55 @@ public class GolGgClient {
                 })
                 .toList();
         return filtered;
+    }
+
+    private List<String> buildStageYearVariants(MatchTarget target) {
+        if (target.stageSignals().isEmpty() || target.year().isBlank()) {
+            return List.of();
+        }
+        LinkedHashSet<String> variants = new LinkedHashSet<>();
+        for (String stageSignal : target.stageSignals()) {
+            if (stageSignal == null || stageSignal.isBlank()) {
+                continue;
+            }
+            variants.add(stageSignal + " " + target.year());
+            variants.add(target.year() + " " + stageSignal);
+            for (String suffix : COMMON_TOURNAMENT_SUFFIXES) {
+                variants.add(stageSignal + " " + suffix + " " + target.year());
+                variants.add(stageSignal + " " + target.year() + " " + suffix);
+            }
+        }
+        return List.copyOf(variants);
+    }
+
+    private boolean dateMatched(String context, LocalDate scheduledDate) {
+        if (scheduledDate == null || context == null || context.isBlank()) {
+            return false;
+        }
+        String year = String.valueOf(scheduledDate.getYear());
+        String month2 = String.format(Locale.ROOT, "%02d", scheduledDate.getMonthValue());
+        String day2 = String.format(Locale.ROOT, "%02d", scheduledDate.getDayOfMonth());
+        String month1 = String.valueOf(scheduledDate.getMonthValue());
+        String day1 = String.valueOf(scheduledDate.getDayOfMonth());
+
+        if (!context.contains(year)) {
+            return false;
+        }
+        String monthPattern = "(?:" + month2 + "|" + month1 + ")";
+        String dayPattern = "(?:" + day2 + "|" + day1 + ")";
+        return context.matches("(?s).*\\b" + year + "[-/.]" + monthPattern + "[-/.]" + dayPattern + "\\b.*")
+                || context.matches("(?s).*\\b" + dayPattern + "[-/.]" + monthPattern + "[-/.]" + year + "\\b.*")
+                || context.matches("(?s).*\\b" + monthPattern + "[-/.]" + dayPattern + "[-/.]" + year + "\\b.*")
+                || context.matches("(?s).*\\b" + year + month2 + day2 + "\\b.*");
+    }
+
+    private boolean hasExplicitDate(String context) {
+        if (context == null || context.isBlank()) {
+            return false;
+        }
+        return context.matches("(?s).*\\b20\\d{2}[-./]\\d{1,2}[-./]\\d{1,2}\\b.*")
+                || context.matches("(?s).*\\b\\d{1,2}[-./]\\d{1,2}[-./]20\\d{2}\\b.*")
+                || context.matches("(?s).*\\b20\\d{6}\\b.*");
     }
 
     private static String normalizeForMatch(String value) {
@@ -614,13 +712,15 @@ public class GolGgClient {
             Set<String> tournamentTokens,
             Set<String> stageSignals,
             Set<String> teamKeys,
-            String year
+            String year,
+            LocalDate scheduledDate
     ) {
         static MatchTarget from(Match match) {
             String tournament = match.getTournamentName() == null ? "" : match.getTournamentName().trim();
             String stage = match.getStage() == null ? "" : match.getStage().trim();
             OffsetDateTime scheduledAt = match.getScheduledAt();
             String year = scheduledAt == null ? "" : String.valueOf(scheduledAt.getYear());
+            LocalDate scheduledDate = scheduledAt != null ? scheduledAt.toLocalDate() : null;
 
             Set<String> teamKeys = new LinkedHashSet<>();
             teamKeys.addAll(teamKeywordSet(match.getTeamA()));
@@ -648,7 +748,8 @@ public class GolGgClient {
                     Set.copyOf(tournamentTokens),
                     stageSignals,
                     teamKeys,
-                    year
+                    year,
+                    scheduledDate
             );
         }
 
