@@ -68,6 +68,15 @@ export interface MatchExternalDetailCandidatesResponse {
   detailSummary: MatchExternalDetailSummaryResponse | null
 }
 
+export interface MatchExternalDetailValidationResponse {
+  valid: boolean
+  normalizedSourceUrl: string | null
+  providerGameId: string | null
+  score: number
+  reasons: string[]
+  message: string
+}
+
 export interface MatchExternalDetailBatchSyncResponse {
   requestedCount: number
   syncedCount: number

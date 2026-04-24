@@ -34,8 +34,12 @@ public class GolDetailEnrichmentService {
     private static final int AUTO_SELECT_SCORE_THRESHOLD = 85;
     private static final int AUTO_SELECT_GAP_THRESHOLD = 15;
     private static final int MAX_CANDIDATE_SIZE = 20;
+    private static final int VALIDATION_MIN_SCORE = 60;
     private static final Set<String> RELAXED_STRONG_SIGNAL_REASONS = Set.of(
             "DATE", "TEAM_A", "TEAM_B"
+    );
+    private static final Set<String> VALIDATION_CONTEXT_REASONS = Set.of(
+            "DATE", "TOURNAMENT_EXACT", "TOURNAMENT_KEYWORDS"
     );
 
     private final MatchRepository matchRepository;
@@ -63,7 +67,71 @@ public class GolDetailEnrichmentService {
         return resolveCandidate(matchId, sourceUrl);
     }
 
+    public MatchExternalDetailValidationResponse validateSourceUrl(Long matchId, String sourceUrl) {
+        Match match = loadMatch(matchId);
+        try {
+            GolGgClient.GolGgParsedDetail parsed = golGgClient.fetchDetail(sourceUrl, List.of());
+            List<String> providerGameIds = parsed.providerGameIds() != null
+                    ? parsed.providerGameIds()
+                    : List.of();
+            String providerGameId = providerGameIds.isEmpty()
+                    ? extractGameIdsFromSourceUrl(parsed.sourceUrl()).stream().findFirst().orElse("manual")
+                    : providerGameIds.get(0);
+            String title = parsed.summaryJson() != null ? parsed.summaryJson().path("title").asText("") : "";
+            String context = (title + " " + parsed.sourceUrl()).trim();
+
+            List<GolDetailCandidateMatcher.ScoredCandidate> ranked = candidateMatcher.rankCandidatesRelaxed(
+                    match,
+                    List.of(new GolGgClient.GolGgRawCandidate(providerGameId, parsed.sourceUrl(), context)),
+                    1
+            );
+            GolDetailCandidateMatcher.ScoredCandidate top = ranked.stream().findFirst().orElse(
+                    new GolDetailCandidateMatcher.ScoredCandidate(
+                            providerGameId,
+                            parsed.sourceUrl(),
+                            0,
+                            List.of()
+                    )
+            );
+
+            boolean teamAMatched = top.reasons().contains("TEAM_A");
+            boolean teamBMatched = top.reasons().contains("TEAM_B");
+            boolean contextMatched = top.reasons().stream().anyMatch(VALIDATION_CONTEXT_REASONS::contains);
+            boolean valid = top.score() >= VALIDATION_MIN_SCORE && teamAMatched && teamBMatched && contextMatched;
+
+            String message;
+            if (valid) {
+                message = "Validated";
+            } else if (!teamAMatched || !teamBMatched) {
+                message = "Team names do not match this match.";
+            } else if (!contextMatched) {
+                message = "Date or league signal is too weak.";
+            } else {
+                message = "Confidence is too low.";
+            }
+
+            return new MatchExternalDetailValidationResponse(
+                    valid,
+                    parsed.sourceUrl(),
+                    providerGameId,
+                    top.score(),
+                    top.reasons(),
+                    message
+            );
+        } catch (IllegalArgumentException | RestClientException e) {
+            return new MatchExternalDetailValidationResponse(
+                    false,
+                    sourceUrl == null ? null : sourceUrl.trim(),
+                    null,
+                    0,
+                    List.of(),
+                    e.getMessage()
+            );
+        }
+    }
+
     public MatchExternalDetailSummaryResponse resolveCandidate(Long matchId, String sourceUrl) {
+        assertSourceUrlValid(matchId, sourceUrl);
         Match match = loadMatch(matchId);
         MatchExternalDetail detail = detailRepository.findByMatchId(matchId)
                 .orElseGet(() -> new MatchExternalDetail(match));
@@ -71,6 +139,17 @@ public class GolDetailEnrichmentService {
         detail.setSummaryJson(markResolvedSource(detail.getSummaryJson(), detail.getSourceUrl()));
         MatchExternalDetail saved = detailRepository.save(detail);
         return MatchExternalDetailSummaryResponse.from(saved);
+    }
+
+    private void assertSourceUrlValid(Long matchId, String sourceUrl) {
+        MatchExternalDetailValidationResponse validation = validateSourceUrl(matchId, sourceUrl);
+        if (!validation.valid()) {
+            throw new BusinessException(
+                    "MATCH_EXTERNAL_SOURCE_INVALID",
+                    validation.message(),
+                    HttpStatus.BAD_REQUEST
+            );
+        }
     }
 
     public MatchExternalDetailCandidatesResponse findCandidates(Long matchId) {

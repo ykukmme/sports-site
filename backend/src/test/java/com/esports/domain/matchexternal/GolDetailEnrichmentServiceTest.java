@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -63,11 +64,59 @@ class GolDetailEnrichmentServiceTest {
         when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
         when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
         when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(golGgClient.fetchDetail(eq("https://gol.gg/game/stats/123/page-game/"), any())).thenReturn(
+                new GolGgClient.GolGgParsedDetail(
+                        "https://gol.gg/game/stats/123/page-game/",
+                        List.of("123"),
+                        new ObjectMapper().createObjectNode().put("title", "dummy"),
+                        new ObjectMapper().createObjectNode(),
+                        List.of(),
+                        90,
+                        false
+                )
+        );
+        when(candidateMatcher.rankCandidatesRelaxed(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "123",
+                        "https://gol.gg/game/stats/123/page-game/",
+                        90,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                )
+        ));
 
         MatchExternalDetailSummaryResponse response = service.bindSourceUrl(1L, "https://gol.gg/game/stats/123/page-game/");
 
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-game/");
+    }
+
+    @Test
+    void bindSourceUrlThrowsWhenValidationFails() {
+        Match match = mock(Match.class);
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(golGgClient.fetchDetail(eq("https://gol.gg/game/stats/999/page-game/"), any())).thenReturn(
+                new GolGgClient.GolGgParsedDetail(
+                        "https://gol.gg/game/stats/999/page-game/",
+                        List.of("999"),
+                        new ObjectMapper().createObjectNode().put("title", "dummy"),
+                        new ObjectMapper().createObjectNode(),
+                        List.of(),
+                        30,
+                        false
+                )
+        );
+        when(candidateMatcher.rankCandidatesRelaxed(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "999",
+                        "https://gol.gg/game/stats/999/page-game/",
+                        30,
+                        List.of("TEAM_A")
+                )
+        ));
+
+        assertThatThrownBy(() -> service.bindSourceUrl(1L, "https://gol.gg/game/stats/999/page-game/"))
+                .isInstanceOf(com.esports.common.exception.BusinessException.class)
+                .hasMessage("Team names do not match this match.");
     }
 
     @Test

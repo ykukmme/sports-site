@@ -6,6 +6,7 @@ import type {
   MatchExternalDetailBatchSyncResponse,
   MatchExternalDetailSummaryResponse,
   MatchExternalDetailSyncItemResponse,
+  MatchExternalDetailValidationResponse,
   TeamResponse,
   PlayerResponse,
   MatchStatus,
@@ -246,6 +247,17 @@ export async function bindMatchExternalDetailSource(
 ): Promise<MatchExternalDetailSummaryResponse> {
   const res = await apiClient.post<ApiResponse<MatchExternalDetailSummaryResponse>>(
     `/api/admin/matches/${matchId}/details/bind`,
+    { sourceUrl },
+  )
+  return res.data.data!
+}
+
+export async function validateMatchExternalDetailSource(
+  matchId: number,
+  sourceUrl: string,
+): Promise<MatchExternalDetailValidationResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailValidationResponse>>(
+    `/api/admin/matches/${matchId}/details/validate`,
     { sourceUrl },
   )
   return res.data.data!

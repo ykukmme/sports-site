@@ -14,6 +14,7 @@ import {
   syncMatchExternalDetail,
   syncMatchExternalDetailsBatch,
   syncPandaScoreMatchResults,
+  validateMatchExternalDetailSource,
   updateAdminMatch,
   updateMatchResult,
 } from '../api/admin'
@@ -122,6 +123,13 @@ export function useBindMatchExternalDetailSource() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
     },
+  })
+}
+
+export function useValidateMatchExternalDetailSource() {
+  return useMutation({
+    mutationFn: ({ matchId, sourceUrl }: { matchId: number; sourceUrl: string }) =>
+      validateMatchExternalDetailSource(matchId, sourceUrl),
   })
 }
 

@@ -23,12 +23,15 @@ import {
   useResolveMatchExternalDetailSource,
   useSyncMatchExternalDetail,
   useSyncMatchExternalDetailsBatch,
+  useValidateMatchExternalDetailSource,
 } from '../../../hooks/useAdminMatches'
 import { useAdminTeamList } from '../../../hooks/useAdminTeams'
 import type {
   MatchExternalDetailCandidatesResponse,
   MatchExternalDetailBatchSyncResponse,
   MatchExternalDetailStatus,
+  MatchExternalDetailValidationResponse,
+  MatchResponse,
   PandaScoreImportResultStatus,
   PandaScoreMatchResultSyncResponse,
 } from '../../../types/domain'
@@ -81,6 +84,7 @@ export function AdminMatchListPage() {
   const [selectedCandidateSourceMap, setSelectedCandidateSourceMap] = useState<Record<number, string>>({})
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
   const [bindSourceInputs, setBindSourceInputs] = useState<Record<number, string>>({})
+  const [validationMap, setValidationMap] = useState<Record<number, MatchExternalDetailValidationResponse>>({})
 
   const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
   const league = leagueFilter === 'ALL' ? undefined : leagueFilter
@@ -97,6 +101,7 @@ export function AdminMatchListPage() {
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
   const bindSourceMutation = useBindMatchExternalDetailSource()
+  const validateSourceMutation = useValidateMatchExternalDetailSource()
   const findCandidatesMutation = useFindMatchExternalDetailCandidates()
   const resolveSourceMutation = useResolveMatchExternalDetailSource()
   const detailSyncMutation = useSyncMatchExternalDetail()
@@ -161,15 +166,37 @@ export function AdminMatchListPage() {
     setBindSourceInputs((prev) => ({ ...prev, [matchId]: value }))
   }
 
-  function runBindSourceUrl(matchId: number, sourceUrl: string) {
+  function openGolSearch(match: MatchResponse) {
+    if (typeof window === 'undefined') return
+    const day = match.scheduledAt.slice(0, 10)
+    const query = `${match.teamA.name} ${match.teamB.name} ${match.tournamentName} ${day} site:gol.gg game/stats`
+    const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  async function validateSourceUrl(matchId: number, sourceUrl: string): Promise<string | null> {
     const trimmed = sourceUrl.trim()
-    if (!trimmed) return
+    if (!trimmed) return null
+    const validation = await validateSourceMutation.mutateAsync({ matchId, sourceUrl: trimmed })
+    setValidationMap((prev) => ({ ...prev, [matchId]: validation }))
+    const normalized = validation.normalizedSourceUrl?.trim() || trimmed
+    setBindInputValue(matchId, normalized)
+    if (!validation.valid) {
+      setBindResultMessage(`matchId ${matchId} 검증 실패: ${validation.message}`)
+      return null
+    }
+    return normalized
+  }
+
+  async function runBindSourceUrl(matchId: number, sourceUrl: string) {
+    const normalized = await validateSourceUrl(matchId, sourceUrl)
+    if (!normalized) return
     bindSourceMutation.mutate(
-      { matchId, sourceUrl: trimmed },
+      { matchId, sourceUrl: normalized },
       {
         onSuccess: () => {
           setBindResultMessage(`matchId ${matchId} sourceUrl 바인딩 완료`)
-          setBindInputValue(matchId, trimmed)
+          setBindInputValue(matchId, normalized)
         },
       },
     )
@@ -204,15 +231,15 @@ export function AdminMatchListPage() {
     })
   }
 
-  function runResolveSourceUrl(matchId: number, sourceUrl: string) {
-    const trimmed = sourceUrl.trim()
-    if (!trimmed) return
+  async function runResolveSourceUrl(matchId: number, sourceUrl: string) {
+    const normalized = await validateSourceUrl(matchId, sourceUrl)
+    if (!normalized) return
     resolveSourceMutation.mutate(
-      { matchId, sourceUrl: trimmed },
+      { matchId, sourceUrl: normalized },
       {
         onSuccess: () => {
           setBindResultMessage(`matchId ${matchId} sourceUrl 확정 완료`)
-          setBindInputValue(matchId, trimmed)
+          setBindInputValue(matchId, normalized)
         },
       },
     )
@@ -252,6 +279,10 @@ export function AdminMatchListPage() {
     resolveSourceMutation.error instanceof ApiError
       ? resolveSourceMutation.error.message
       : resolveSourceMutation.error?.message
+  const validateSourceErrorMessage =
+    validateSourceMutation.error instanceof ApiError
+      ? validateSourceMutation.error.message
+      : validateSourceMutation.error?.message
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
@@ -412,6 +443,12 @@ export function AdminMatchListPage() {
         </div>
       )}
 
+      {validateSourceErrorMessage && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {validateSourceErrorMessage}
+        </div>
+      )}
+
       {bindResultMessage && (
         <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
           {bindResultMessage}
@@ -508,13 +545,14 @@ export function AdminMatchListPage() {
               <TableHead>일정</TableHead>
               <TableHead>상태</TableHead>
               <TableHead>상세 상태</TableHead>
+              <TableHead className="w-[84px]">경기ID</TableHead>
               <TableHead className="text-right">액션</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {matches.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                   등록된 경기가 없습니다.
                 </TableCell>
               </TableRow>
@@ -530,6 +568,7 @@ export function AdminMatchListPage() {
                 const selectedCandidateSourceUrl =
                   selectedCandidateSourceMap[match.id] ?? candidateResult?.autoSelectedSourceUrl ?? ''
                 const canResolveCandidate = selectedCandidateSourceUrl.trim().length > 0
+                const validationResult = validationMap[match.id]
 
                 return (
                   <TableRow key={match.id}>
@@ -580,12 +619,22 @@ export function AdminMatchListPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={!canBind || bindSourceMutation.isPending}
+                            disabled={!canBind || bindSourceMutation.isPending || validateSourceMutation.isPending}
                             onClick={() => runBindSourceUrl(match.id, bindInputValue)}
                           >
                             바인딩
                           </Button>
+                          <Button variant="outline" size="sm" onClick={() => openGolSearch(match)}>
+                            검색 열기
+                          </Button>
                         </div>
+                        {validationResult && (
+                          <span className={`text-xs ${validationResult.valid ? 'text-muted-foreground' : 'text-destructive'}`}>
+                            {validationResult.valid
+                              ? `검증 통과 (score ${validationResult.score})`
+                              : validationResult.message}
+                          </span>
+                        )}
                         {effectiveSourceUrl && (
                           <a
                             href={effectiveSourceUrl}
@@ -640,7 +689,7 @@ export function AdminMatchListPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={!canResolveCandidate || resolveSourceMutation.isPending}
+                            disabled={!canResolveCandidate || resolveSourceMutation.isPending || validateSourceMutation.isPending}
                             onClick={() => runResolveSourceUrl(match.id, selectedCandidateSourceUrl)}
                           >
                             후보 확정
@@ -648,6 +697,7 @@ export function AdminMatchListPage() {
                         </div>
                       ) : null}
                     </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{match.id}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
@@ -662,7 +712,7 @@ export function AdminMatchListPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={resolveSourceMutation.isPending}
+                            disabled={resolveSourceMutation.isPending || validateSourceMutation.isPending}
                             onClick={() =>
                               runResolveSourceUrl(
                                 match.id,

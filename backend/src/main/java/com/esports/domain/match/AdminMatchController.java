@@ -9,6 +9,7 @@ import com.esports.domain.matchexternal.MatchExternalDetailCandidatesResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailResolveRequest;
 import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailSyncItemResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailValidationResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -54,6 +55,13 @@ public class AdminMatchController {
             @PathVariable Long id,
             @Valid @RequestBody MatchExternalDetailBindRequest request) {
         return ApiResponse.ok(golDetailEnrichmentService.bindSourceUrl(id, request.sourceUrl()));
+    }
+
+    @PostMapping("/{id}/details/validate")
+    public ApiResponse<MatchExternalDetailValidationResponse> validateMatchDetailSource(
+            @PathVariable Long id,
+            @Valid @RequestBody MatchExternalDetailBindRequest request) {
+        return ApiResponse.ok(golDetailEnrichmentService.validateSourceUrl(id, request.sourceUrl()));
     }
 
     @PostMapping("/{id}/details/candidates")

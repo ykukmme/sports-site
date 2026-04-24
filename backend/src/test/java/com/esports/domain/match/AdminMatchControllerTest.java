@@ -8,6 +8,7 @@ import com.esports.domain.matchexternal.MatchExternalDetailCandidateResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailCandidatesResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailSyncItemResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailValidationResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,6 +117,30 @@ class AdminMatchControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.provider").value("GOL_GG"))
                 .andExpect(jsonPath("$.data.status").value("PENDING"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void validateDetailReturns200() throws Exception {
+        MatchExternalDetailValidationResponse response = new MatchExternalDetailValidationResponse(
+                true,
+                "https://gol.gg/game/stats/123456/page-summary/",
+                "123456",
+                90,
+                List.of("TEAM_A", "TEAM_B", "DATE"),
+                "Validated"
+        );
+        when(golDetailEnrichmentService.validateSourceUrl(eq(1L), any(String.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/admin/matches/1/details/validate")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceUrl":"https://gol.gg/game/stats/123456/page-summary/"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.valid").value(true))
+                .andExpect(jsonPath("$.data.providerGameId").value("123456"));
     }
 
     @Test
