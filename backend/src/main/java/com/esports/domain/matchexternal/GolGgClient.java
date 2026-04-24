@@ -1,8 +1,10 @@
 package com.esports.domain.matchexternal;
 
 import com.esports.config.GolGgProperties;
+import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.Match;
 import com.esports.domain.team.Team;
+import com.esports.domain.team.TeamLeague;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -50,6 +52,7 @@ public class GolGgClient {
     private static final Duration RAW_CANDIDATE_CACHE_TTL = Duration.ofMinutes(3);
     private static final String BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+    private static final Set<String> KNOWN_STAGE_SIGNALS = buildKnownStageSignals();
 
     private final GolGgProperties properties;
     private final ObjectMapper objectMapper;
@@ -471,16 +474,18 @@ public class GolGgClient {
     }
 
     private List<String> buildTournamentGuessUrls(MatchTarget target) {
-        if (target.tournamentName().isBlank()) {
+        if (target.searchLabels().isEmpty()) {
             return List.of();
         }
         LinkedHashSet<String> labels = new LinkedHashSet<>();
-        labels.add(target.tournamentName());
+        labels.addAll(target.searchLabels());
         if (!target.year().isBlank()) {
-            labels.add(target.tournamentName() + " " + target.year());
-            String firstToken = target.tournamentName().split("\\s+")[0];
-            if (!firstToken.isBlank()) {
-                labels.add(firstToken + " " + target.year());
+            for (String label : target.searchLabels()) {
+                labels.add(label + " " + target.year());
+                String firstToken = label.split("\\s+")[0];
+                if (!firstToken.isBlank()) {
+                    labels.add(firstToken + " " + target.year());
+                }
             }
         }
 
@@ -510,7 +515,13 @@ public class GolGgClient {
                             .anyMatch(key -> !key.isBlank() && compact.contains(compactForMatch(key)));
                     boolean tournamentHit = target.tournamentTokens().stream()
                             .anyMatch(token -> token.length() >= 3 && context.contains(token));
-                    return teamHit || tournamentHit;
+                    boolean stageHit = target.stageSignals().stream()
+                            .anyMatch(signal -> !signal.isBlank() && compact.contains(compactForMatch(signal)));
+                    boolean contextHit = tournamentHit || stageHit;
+                    if (!target.stageSignals().isEmpty() || !target.tournamentTokens().isEmpty()) {
+                        return teamHit && contextHit;
+                    }
+                    return teamHit;
                 })
                 .toList();
         return filtered;
@@ -551,31 +562,89 @@ public class GolGgClient {
         return result;
     }
 
+    private static Set<String> buildKnownStageSignals() {
+        LinkedHashSet<String> values = new LinkedHashSet<>();
+        for (TeamLeague league : TeamLeague.values()) {
+            values.add(normalizeForMatch(league.getCode()));
+            values.add(normalizeForMatch(league.getLabel()));
+        }
+        for (InternationalCompetitionType type : InternationalCompetitionType.values()) {
+            values.add(normalizeForMatch(type.getFilterCode()));
+            values.add(normalizeForMatch(type.getLabel()));
+        }
+        return Set.copyOf(values);
+    }
+
+    private static Set<String> toStageSignals(String stage) {
+        if (stage == null || stage.isBlank()) {
+            return Set.of();
+        }
+        LinkedHashSet<String> values = new LinkedHashSet<>();
+        String normalized = normalizeForMatch(stage);
+        String compact = compactForMatch(stage);
+        if (KNOWN_STAGE_SIGNALS.contains(normalized)) {
+            values.add(normalized);
+        }
+        if (!compact.isBlank()) {
+            for (String known : KNOWN_STAGE_SIGNALS) {
+                if (compactForMatch(known).equals(compact)) {
+                    values.add(known);
+                }
+            }
+        }
+        return Set.copyOf(values);
+    }
+
     private record MatchTarget(
             String tournamentName,
+            Set<String> searchLabels,
             Set<String> tournamentTokens,
+            Set<String> stageSignals,
             Set<String> teamKeys,
             String year
     ) {
         static MatchTarget from(Match match) {
             String tournament = match.getTournamentName() == null ? "" : match.getTournamentName().trim();
+            String stage = match.getStage() == null ? "" : match.getStage().trim();
             OffsetDateTime scheduledAt = match.getScheduledAt();
             String year = scheduledAt == null ? "" : String.valueOf(scheduledAt.getYear());
 
             Set<String> teamKeys = new LinkedHashSet<>();
             teamKeys.addAll(teamKeywordSet(match.getTeamA()));
             teamKeys.addAll(teamKeywordSet(match.getTeamB()));
+            Set<String> stageSignals = toStageSignals(stage);
+
+            LinkedHashSet<String> searchLabels = new LinkedHashSet<>();
+            if (!tournament.isBlank()) {
+                searchLabels.add(tournament);
+            }
+            if (!stageSignals.isEmpty()) {
+                searchLabels.add(stage);
+            }
+            if (!tournament.isBlank() && !stageSignals.isEmpty()) {
+                searchLabels.add(stage + " " + tournament);
+                searchLabels.add(tournament + " " + stage);
+            }
+
+            LinkedHashSet<String> tournamentTokens = new LinkedHashSet<>();
+            tournamentTokens.addAll(toKeywordSet(tournament));
 
             return new MatchTarget(
                     tournament,
-                    toKeywordSet(tournament),
+                    Set.copyOf(searchLabels),
+                    Set.copyOf(tournamentTokens),
+                    stageSignals,
                     teamKeys,
                     year
             );
         }
 
         boolean isEmpty() {
-            return tournamentName.isBlank() && teamKeys.isEmpty() && year.isBlank();
+            return tournamentName.isBlank()
+                    && searchLabels.isEmpty()
+                    && stageSignals.isEmpty()
+                    && teamKeys.isEmpty()
+                    && year.isBlank();
         }
     }
 

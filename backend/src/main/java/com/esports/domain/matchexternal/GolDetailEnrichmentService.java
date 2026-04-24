@@ -357,8 +357,7 @@ public class GolDetailEnrichmentService {
         if (targeted != null && !targeted.isEmpty()) {
             return targeted;
         }
-        List<GolGgClient.GolGgRawCandidate> fallback = fallbackSupplier.get();
-        return fallback == null ? List.of() : fallback;
+        return List.of();
     }
 
     private List<GolDetailCandidateMatcher.ScoredCandidate> mergeBoundCandidate(

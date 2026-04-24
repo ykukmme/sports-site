@@ -163,7 +163,7 @@ class GolDetailEnrichmentServiceTest {
 
         when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
         when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
-        when(golGgClient.fetchRawCandidates()).thenReturn(List.of(
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
                 new GolGgClient.GolGgRawCandidate(
                         "123",
                         "https://gol.gg/game/stats/123/page-summary/",
@@ -203,7 +203,7 @@ class GolDetailEnrichmentServiceTest {
 
         when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
         when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
-        when(golGgClient.fetchRawCandidates()).thenThrow(new IllegalArgumentException("candidate fetch failed"));
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenThrow(new IllegalArgumentException("candidate fetch failed"));
 
         MatchExternalDetailCandidatesResponse response = service.findCandidates(1L);
 
@@ -213,7 +213,7 @@ class GolDetailEnrichmentServiceTest {
     }
 
     @Test
-    void syncBatchFetchesRawCandidatesOnlyOnceWhenMultipleMatchesNeedCandidates() {
+    void syncBatchDoesNotFallbackToGlobalCandidatesWhenMultipleMatchesNeedCandidates() {
         Match match1 = mock(Match.class);
         Match match2 = mock(Match.class);
         MatchExternalDetail detail1 = new MatchExternalDetail(match1);
@@ -223,16 +223,34 @@ class GolDetailEnrichmentServiceTest {
         when(matchRepository.findById(2L)).thenReturn(Optional.of(match2));
         when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail1));
         when(detailRepository.findByMatchId(2L)).thenReturn(Optional.of(detail2));
-        when(golGgClient.fetchRawCandidates()).thenReturn(List.of(
-                new GolGgClient.GolGgRawCandidate("1", "https://gol.gg/game/stats/1/page-summary/", "context")
-        ));
+        when(golGgClient.fetchRawCandidatesForMatch(match1)).thenReturn(List.of());
+        when(golGgClient.fetchRawCandidatesForMatch(match2)).thenReturn(List.of());
         when(candidateMatcher.rankCandidates(any(Match.class), any(), anyInt())).thenReturn(List.of());
         when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MatchExternalDetailBatchSyncResponse response = service.syncBatch(List.of(1L, 2L));
 
         assertThat(response.requestedCount()).isEqualTo(2);
-        verify(golGgClient, times(1)).fetchRawCandidates();
+        verify(golGgClient, times(1)).fetchRawCandidatesForMatch(match1);
+        verify(golGgClient, times(1)).fetchRawCandidatesForMatch(match2);
+        verify(golGgClient, never()).fetchRawCandidates();
+    }
+
+    @Test
+    void findCandidatesDoesNotFallbackToGlobalCandidatesWhenTargetedCandidatesAreEmpty() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of());
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailCandidatesResponse response = service.findCandidates(1L);
+
+        assertThat(response.candidates()).isEmpty();
+        assertThat(response.detailSummary().errorMessage()).isEqualTo("No gol.gg candidates found. bind sourceUrl manually.");
+        verify(golGgClient, never()).fetchRawCandidates();
     }
 
     @Test

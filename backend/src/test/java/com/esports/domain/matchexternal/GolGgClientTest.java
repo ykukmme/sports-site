@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Method;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -173,6 +174,83 @@ class GolGgClientTest {
         assertThat(filtered).isEmpty();
     }
 
+    @Test
+    void filterCandidatesByTargetUsesStageAsLeagueSignal() throws Exception {
+        Match match = buildMatch(
+                "DN SOOPers",
+                "Dplus Kia",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-16T08:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK");
+
+        Object target = buildTarget(match);
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "76534",
+                                "https://gol.gg/game/stats/76534/page-summary/",
+                                "LCK Cup 2026 Dplus Kia vs DN SOOPers"
+                        )
+                ),
+                target
+        );
+
+        assertThat(filtered).extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .containsExactly("76534");
+    }
+
+    @Test
+    void filterCandidatesByTargetDoesNotMixLckClWithLckOnStageSignal() throws Exception {
+        Match match = buildMatch(
+                "Gen.G Global Academy",
+                "DN SOOPers Challengers",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-12T05:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK CL");
+
+        Object target = buildTarget(match);
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "7001",
+                                "https://gol.gg/game/stats/7001/page-summary/",
+                                "LCK 2026 Gen.G vs DN SOOPers"
+                        ),
+                        new GolGgClient.GolGgRawCandidate(
+                                "7002",
+                                "https://gol.gg/game/stats/7002/page-summary/",
+                                "LCK CL 2026 Gen.G Global Academy vs DN SOOPers Challengers"
+                        )
+                ),
+                target
+        );
+
+        assertThat(filtered).extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .containsExactly("7002");
+    }
+
+    @Test
+    void matchTargetDoesNotUseGenericStageAsSearchLabel() throws Exception {
+        Match match = buildMatch(
+                "T1",
+                "Gen.G",
+                "Group Stage",
+                OffsetDateTime.parse("2026-05-01T10:00:00Z")
+        );
+        when(match.getStage()).thenReturn("Rounds 1-2");
+
+        Object target = buildTarget(match);
+        Method searchLabelsMethod = target.getClass().getDeclaredMethod("searchLabels");
+        searchLabelsMethod.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Set<String> searchLabels = (Set<String>) searchLabelsMethod.invoke(target);
+
+        assertThat(searchLabels).containsExactly("Group Stage");
+    }
+
     private Object buildTarget(Match match) throws Exception {
         Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
         Method fromMethod = targetClass.getDeclaredMethod("from", Match.class);
@@ -206,6 +284,7 @@ class GolGgClientTest {
         when(match.getTeamA()).thenReturn(teamA);
         when(match.getTeamB()).thenReturn(teamB);
         when(match.getTournamentName()).thenReturn(tournamentName);
+        when(match.getStage()).thenReturn(null);
         when(match.getScheduledAt()).thenReturn(scheduledAt);
 
         return match;
