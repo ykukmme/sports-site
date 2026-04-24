@@ -107,7 +107,11 @@ public class GolDetailEnrichmentService {
 
         if (detail.getSourceUrl() == null || detail.getSourceUrl().isBlank()) {
             try {
-                CandidateSelection selection = refreshCandidates(match, detail, rawCandidateSupplier.get());
+                CandidateSelection selection = refreshCandidates(
+                        match,
+                        detail,
+                        resolveRawCandidates(match, rawCandidateSupplier)
+                );
                 GolDetailCandidateMatcher.ScoredCandidate autoSelected = selection.autoSelected();
                 if (autoSelected == null || autoSelected.sourceUrl() == null || autoSelected.sourceUrl().isBlank()) {
                     detail.setStatus(ExternalDetailStatus.NEEDS_REVIEW);
@@ -209,7 +213,10 @@ public class GolDetailEnrichmentService {
                                                  List<GolGgClient.GolGgRawCandidate> rawCandidatesOverride) {
         List<GolGgClient.GolGgRawCandidate> rawCandidates = rawCandidatesOverride != null
                 ? rawCandidatesOverride
-                : golGgClient.fetchRawCandidates();
+                : resolveRawCandidates(match, golGgClient::fetchRawCandidates);
+        if (rawCandidates == null) {
+            rawCandidates = List.of();
+        }
         List<GolDetailCandidateMatcher.ScoredCandidate> ranked = candidateMatcher.rankCandidates(
                 match,
                 rawCandidates,
@@ -232,6 +239,18 @@ public class GolDetailEnrichmentService {
             detail.setErrorMessage(null);
         }
         return new CandidateSelection(merged, autoSelected);
+    }
+
+    private List<GolGgClient.GolGgRawCandidate> resolveRawCandidates(
+            Match match,
+            Supplier<List<GolGgClient.GolGgRawCandidate>> fallbackSupplier
+    ) {
+        List<GolGgClient.GolGgRawCandidate> targeted = golGgClient.fetchRawCandidatesForMatch(match);
+        if (targeted != null && !targeted.isEmpty()) {
+            return targeted;
+        }
+        List<GolGgClient.GolGgRawCandidate> fallback = fallbackSupplier.get();
+        return fallback == null ? List.of() : fallback;
     }
 
     private List<GolDetailCandidateMatcher.ScoredCandidate> mergeBoundCandidate(

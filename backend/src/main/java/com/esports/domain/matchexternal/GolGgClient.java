@@ -1,6 +1,8 @@
 package com.esports.domain.matchexternal;
 
 import com.esports.config.GolGgProperties;
+import com.esports.domain.match.Match;
+import com.esports.domain.team.Team;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -13,6 +15,8 @@ import org.springframework.web.client.RestClientException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.Instant;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -21,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +46,7 @@ public class GolGgClient {
     private static final String DEFAULT_HOME_PATH = "/esports/home/";
     private static final String DEFAULT_MATCHLIST_PATH = "/tournament/tournament-matchlist/esports/home/";
     private static final int MAX_EXTRA_TOURNAMENT_PAGES = 6;
+    private static final int MAX_TARGET_TOURNAMENT_PAGES = 8;
     private static final Duration RAW_CANDIDATE_CACHE_TTL = Duration.ofMinutes(3);
     private static final String BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -139,6 +145,61 @@ public class GolGgClient {
         List<GolGgRawCandidate> result = extractRawCandidates(fallbackHtml);
         rawCandidateCache.set(new CandidateCache(List.copyOf(result), now.plus(RAW_CANDIDATE_CACHE_TTL)));
         return result;
+    }
+
+    public List<GolGgRawCandidate> fetchRawCandidatesForMatch(Match match) {
+        if (match == null) {
+            return List.of();
+        }
+
+        MatchTarget target = MatchTarget.from(match);
+        if (target.isEmpty()) {
+            return fetchRawCandidates();
+        }
+
+        String homeUrl = properties.getBaseUrl() + DEFAULT_HOME_PATH;
+        String legacyUrl = properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH;
+        Map<String, GolGgRawCandidate> merged = new LinkedHashMap<>();
+        LinkedHashSet<String> discoveredTournamentUrls = new LinkedHashSet<>();
+
+        for (String seedUrl : List.of(homeUrl, legacyUrl)) {
+            String html = tryFetchHtml(seedUrl);
+            if (html == null) {
+                continue;
+            }
+            mergeCandidates(merged, extractRawCandidates(html));
+            discoveredTournamentUrls.addAll(extractTournamentUrls(html));
+        }
+
+        LinkedHashSet<String> targetTournamentUrls = new LinkedHashSet<>();
+        targetTournamentUrls.addAll(buildTournamentGuessUrls(target));
+        targetTournamentUrls.addAll(
+                discoveredTournamentUrls.stream()
+                        .sorted((left, right) -> Integer.compare(
+                                scoreTournamentUrl(right, target),
+                                scoreTournamentUrl(left, target)
+                        ))
+                        .filter(url -> scoreTournamentUrl(url, target) > 0)
+                        .limit(MAX_TARGET_TOURNAMENT_PAGES)
+                        .toList()
+        );
+
+        for (String tournamentUrl : targetTournamentUrls) {
+            String html = tryFetchHtml(tournamentUrl);
+            if (html != null) {
+                mergeCandidates(merged, extractRawCandidates(html));
+            }
+        }
+
+        List<GolGgRawCandidate> mergedCandidates = new ArrayList<>(merged.values());
+        List<GolGgRawCandidate> filtered = filterCandidatesByTarget(mergedCandidates, target);
+        if (!filtered.isEmpty()) {
+            return filtered;
+        }
+        if (!mergedCandidates.isEmpty()) {
+            return mergedCandidates;
+        }
+        return fetchRawCandidates();
     }
 
     public String buildGameSummaryUrl(String providerGameId) {
@@ -386,6 +447,150 @@ public class GolGgClient {
             return properties.getBaseUrl() + "/" + trimmed;
         }
         return buildGameSummaryUrl(gameId);
+    }
+
+    private int scoreTournamentUrl(String tournamentUrl, MatchTarget target) {
+        String normalized = normalizeForMatch(tournamentUrl);
+        String compact = compactForMatch(normalized);
+        int score = 0;
+
+        for (String token : target.tournamentTokens()) {
+            if (token.length() < 3) {
+                continue;
+            }
+            if (normalized.contains(token)) {
+                score += 3;
+            }
+        }
+        if (!target.year().isBlank() && normalized.contains(target.year())) {
+            score += 2;
+        }
+        for (String key : target.teamKeys()) {
+            if (!key.isBlank() && compact.contains(compactForMatch(key))) {
+                score += 1;
+            }
+        }
+        return score;
+    }
+
+    private List<String> buildTournamentGuessUrls(MatchTarget target) {
+        if (target.tournamentName().isBlank()) {
+            return List.of();
+        }
+        LinkedHashSet<String> labels = new LinkedHashSet<>();
+        labels.add(target.tournamentName());
+        if (!target.year().isBlank()) {
+            labels.add(target.tournamentName() + " " + target.year());
+            String firstToken = target.tournamentName().split("\\s+")[0];
+            if (!firstToken.isBlank()) {
+                labels.add(firstToken + " " + target.year());
+            }
+        }
+
+        return labels.stream()
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(this::encodePathSegment)
+                .map(value -> properties.getBaseUrl() + "/tournament/tournament-matchlist/" + value + "/")
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private String encodePathSegment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private List<GolGgRawCandidate> filterCandidatesByTarget(List<GolGgRawCandidate> candidates, MatchTarget target) {
+        if (candidates == null || candidates.isEmpty()) {
+            return List.of();
+        }
+        List<GolGgRawCandidate> filtered = candidates.stream()
+                .filter(candidate -> {
+                    String context = normalizeForMatch((candidate.contextText() == null ? "" : candidate.contextText())
+                            + " " + (candidate.sourceUrl() == null ? "" : candidate.sourceUrl()));
+                    String compact = compactForMatch(context);
+
+                    boolean teamHit = target.teamKeys().stream()
+                            .anyMatch(key -> !key.isBlank() && compact.contains(compactForMatch(key)));
+                    boolean tournamentHit = target.tournamentTokens().stream()
+                            .anyMatch(token -> token.length() >= 3 && context.contains(token));
+                    boolean yearHit = !target.year().isBlank() && context.contains(target.year());
+                    return teamHit || tournamentHit || yearHit;
+                })
+                .toList();
+        return filtered;
+    }
+
+    private static String normalizeForMatch(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s:/_-]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static String compactForMatch(String value) {
+        return normalizeForMatch(value).replaceAll("[^a-z0-9]", "");
+    }
+
+    private static Set<String> toKeywordSet(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        String normalized = normalizeForMatch(value);
+        if (!normalized.isBlank()) {
+            result.add(normalized);
+        }
+        String compact = compactForMatch(value);
+        if (!compact.isBlank()) {
+            result.add(compact);
+        }
+        for (String token : normalized.split(" ")) {
+            if (token.length() >= 3) {
+                result.add(token);
+            }
+        }
+        return result;
+    }
+
+    private record MatchTarget(
+            String tournamentName,
+            Set<String> tournamentTokens,
+            Set<String> teamKeys,
+            String year
+    ) {
+        static MatchTarget from(Match match) {
+            String tournament = match.getTournamentName() == null ? "" : match.getTournamentName().trim();
+            OffsetDateTime scheduledAt = match.getScheduledAt();
+            String year = scheduledAt == null ? "" : String.valueOf(scheduledAt.getYear());
+
+            Set<String> teamKeys = new LinkedHashSet<>();
+            teamKeys.addAll(teamKeywordSet(match.getTeamA()));
+            teamKeys.addAll(teamKeywordSet(match.getTeamB()));
+
+            return new MatchTarget(
+                    tournament,
+                    toKeywordSet(tournament),
+                    teamKeys,
+                    year
+            );
+        }
+
+        boolean isEmpty() {
+            return tournamentName.isBlank() && teamKeys.isEmpty() && year.isBlank();
+        }
+    }
+
+    private static Set<String> teamKeywordSet(Team team) {
+        if (team == null) {
+            return Set.of();
+        }
+        LinkedHashSet<String> keys = new LinkedHashSet<>();
+        keys.addAll(toKeywordSet(team.getName()));
+        keys.addAll(toKeywordSet(team.getShortName()));
+        return keys;
     }
 
     private String stripTags(String value) {
