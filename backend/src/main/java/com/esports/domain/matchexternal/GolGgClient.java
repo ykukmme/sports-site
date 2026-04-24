@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,13 +40,15 @@ public class GolGgClient {
     );
     private static final String DEFAULT_HOME_PATH = "/esports/home/";
     private static final String DEFAULT_MATCHLIST_PATH = "/tournament/tournament-matchlist/esports/home/";
-    private static final int MAX_EXTRA_TOURNAMENT_PAGES = 12;
+    private static final int MAX_EXTRA_TOURNAMENT_PAGES = 6;
+    private static final Duration RAW_CANDIDATE_CACHE_TTL = Duration.ofMinutes(3);
     private static final String BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
     private final GolGgProperties properties;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
+    private final AtomicReference<CandidateCache> rawCandidateCache = new AtomicReference<>();
 
     public GolGgClient(GolGgProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
@@ -95,6 +99,12 @@ public class GolGgClient {
     }
 
     public List<GolGgRawCandidate> fetchRawCandidates() {
+        CandidateCache cached = rawCandidateCache.get();
+        Instant now = Instant.now();
+        if (cached != null && now.isBefore(cached.expiresAt())) {
+            return cached.candidates();
+        }
+
         String homeUrl = properties.getBaseUrl() + DEFAULT_HOME_PATH;
         String legacyUrl = properties.getBaseUrl() + DEFAULT_MATCHLIST_PATH;
         Map<String, GolGgRawCandidate> merged = new LinkedHashMap<>();
@@ -120,11 +130,15 @@ public class GolGgClient {
         }
 
         if (!merged.isEmpty()) {
-            return new ArrayList<>(merged.values());
+            List<GolGgRawCandidate> result = new ArrayList<>(merged.values());
+            rawCandidateCache.set(new CandidateCache(List.copyOf(result), now.plus(RAW_CANDIDATE_CACHE_TTL)));
+            return result;
         }
 
         String fallbackHtml = fetchHtml(legacyUrl);
-        return extractRawCandidates(fallbackHtml);
+        List<GolGgRawCandidate> result = extractRawCandidates(fallbackHtml);
+        rawCandidateCache.set(new CandidateCache(List.copyOf(result), now.plus(RAW_CANDIDATE_CACHE_TTL)));
+        return result;
     }
 
     public String buildGameSummaryUrl(String providerGameId) {
@@ -414,6 +428,12 @@ public class GolGgClient {
             List<String> providerGameIds,
             boolean needsReview,
             int confidence
+    ) {
+    }
+
+    private record CandidateCache(
+            List<GolGgRawCandidate> candidates,
+            Instant expiresAt
     ) {
     }
 }
