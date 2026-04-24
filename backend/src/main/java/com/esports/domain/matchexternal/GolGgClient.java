@@ -196,10 +196,7 @@ public class GolGgClient {
         if (!filtered.isEmpty()) {
             return filtered;
         }
-        if (!mergedCandidates.isEmpty()) {
-            return mergedCandidates;
-        }
-        return fetchRawCandidates();
+        return List.of();
     }
 
     public String buildGameSummaryUrl(String providerGameId) {
@@ -513,8 +510,7 @@ public class GolGgClient {
                             .anyMatch(key -> !key.isBlank() && compact.contains(compactForMatch(key)));
                     boolean tournamentHit = target.tournamentTokens().stream()
                             .anyMatch(token -> token.length() >= 3 && context.contains(token));
-                    boolean yearHit = !target.year().isBlank() && context.contains(target.year());
-                    return teamHit || tournamentHit || yearHit;
+                    return teamHit || tournamentHit;
                 })
                 .toList();
         return filtered;
@@ -548,7 +544,7 @@ public class GolGgClient {
             result.add(compact);
         }
         for (String token : normalized.split(" ")) {
-            if (token.length() >= 3) {
+            if (token.length() >= 3 && !token.chars().allMatch(Character::isDigit)) {
                 result.add(token);
             }
         }

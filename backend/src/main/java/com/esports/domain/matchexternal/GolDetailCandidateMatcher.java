@@ -302,7 +302,7 @@ public class GolDetailCandidateMatcher {
         Set<String> keywords = new LinkedHashSet<>();
         String normalized = normalize(value);
         for (String token : normalized.split(" ")) {
-            if (token.length() >= 3) {
+            if (token.length() >= 3 && !token.chars().allMatch(Character::isDigit)) {
                 keywords.add(token);
             }
         }

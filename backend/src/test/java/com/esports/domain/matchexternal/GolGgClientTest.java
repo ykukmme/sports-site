@@ -1,13 +1,19 @@
 package com.esports.domain.matchexternal;
 
 import com.esports.config.GolGgProperties;
+import com.esports.domain.match.Match;
+import com.esports.domain.team.Team;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GolGgClientTest {
 
@@ -111,5 +117,97 @@ class GolGgClientTest {
         assertThat(resolved.providerGameIds()).containsExactly("76055");
         assertThat(resolved.needsReview()).isFalse();
         assertThat(resolved.confidence()).isEqualTo(90);
+    }
+
+    @Test
+    void filterCandidatesByTargetDoesNotKeepYearOnlyMatches() throws Exception {
+        Match match = buildMatch(
+                "DN SOOPers",
+                "Dplus Kia",
+                "LCK Cup 2026",
+                OffsetDateTime.parse("2026-01-16T08:00:00Z")
+        );
+
+        Object target = buildTarget(match);
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "76536",
+                                "https://gol.gg/game/stats/76536/page-summary/",
+                                "2026 season standings update"
+                        ),
+                        new GolGgClient.GolGgRawCandidate(
+                                "76534",
+                                "https://gol.gg/game/stats/76534/page-summary/",
+                                "LCK Cup 2026 Dplus Kia vs DN SOOPers"
+                        )
+                ),
+                target
+        );
+
+        assertThat(filtered).extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .containsExactly("76534");
+    }
+
+    @Test
+    void filterCandidatesByTargetReturnsEmptyWhenNoTeamOrTournamentSignal() throws Exception {
+        Match match = buildMatch(
+                "T1",
+                "Gen.G",
+                "LCK Spring 2026",
+                OffsetDateTime.parse("2026-04-23T10:00:00Z")
+        );
+
+        Object target = buildTarget(match);
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "5001",
+                                "https://gol.gg/game/stats/5001/page-summary/",
+                                "2026 week 12 featured match"
+                        )
+                ),
+                target
+        );
+
+        assertThat(filtered).isEmpty();
+    }
+
+    private Object buildTarget(Match match) throws Exception {
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method fromMethod = targetClass.getDeclaredMethod("from", Match.class);
+        fromMethod.setAccessible(true);
+        return fromMethod.invoke(null, match);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<GolGgClient.GolGgRawCandidate> invokeFilterCandidatesByTarget(
+            List<GolGgClient.GolGgRawCandidate> candidates,
+            Object target
+    ) throws Exception {
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method method = GolGgClient.class.getDeclaredMethod("filterCandidatesByTarget", List.class, targetClass);
+        method.setAccessible(true);
+        return (List<GolGgClient.GolGgRawCandidate>) method.invoke(client, candidates, target);
+    }
+
+    private Match buildMatch(String teamAName,
+                             String teamBName,
+                             String tournamentName,
+                             OffsetDateTime scheduledAt) {
+        Match match = mock(Match.class);
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+
+        when(teamA.getName()).thenReturn(teamAName);
+        when(teamB.getName()).thenReturn(teamBName);
+        when(teamA.getShortName()).thenReturn(teamAName);
+        when(teamB.getShortName()).thenReturn(teamBName);
+        when(match.getTeamA()).thenReturn(teamA);
+        when(match.getTeamB()).thenReturn(teamB);
+        when(match.getTournamentName()).thenReturn(tournamentName);
+        when(match.getScheduledAt()).thenReturn(scheduledAt);
+
+        return match;
     }
 }
