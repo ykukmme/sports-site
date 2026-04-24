@@ -133,11 +133,51 @@ class GolDetailCandidateMatcherTest {
                 10
         );
 
-        assertThat(ranked).hasSize(2);
+        assertThat(ranked).hasSize(1);
         assertThat(ranked.get(0).providerGameId()).isEqualTo("4002");
         assertThat(ranked.get(0).reasons()).contains("DATE");
-        assertThat(ranked.get(1).reasons()).contains("DATE_MISMATCH");
-        assertThat(ranked.get(0).score()).isGreaterThan(ranked.get(1).score());
+        assertThat(ranked.get(0).reasons()).doesNotContain("DATE_MISMATCH");
+    }
+
+    @Test
+    void rankCandidatesPrioritizesDateThenLeagueThenTeam() {
+        Match match = buildMatch(
+                "T1",
+                "Gen.G",
+                "LCK Spring 2026",
+                "Rounds 1-2",
+                OffsetDateTime.parse("2026-04-23T10:00:00Z")
+        );
+
+        List<GolDetailCandidateMatcher.ScoredCandidate> ranked = matcher.rankCandidates(
+                match,
+                List.of(
+                        // 양팀+리그는 맞지만 날짜 불일치
+                        new GolGgClient.GolGgRawCandidate(
+                                "5001",
+                                "https://gol.gg/game/stats/5001/page-summary/",
+                                "LCK Spring 2026 T1 vs Gen.G 2026-04-22"
+                        ),
+                        // 날짜+리그 일치
+                        new GolGgClient.GolGgRawCandidate(
+                                "5002",
+                                "https://gol.gg/game/stats/5002/page-summary/",
+                                "LCK Spring 2026 Team X vs Team Y 2026-04-23"
+                        ),
+                        // 날짜+팀은 일치하지만 리그 불일치
+                        new GolGgClient.GolGgRawCandidate(
+                                "5003",
+                                "https://gol.gg/game/stats/5003/page-summary/",
+                                "Random Cup T1 vs Gen.G 2026-04-23"
+                        )
+                ),
+                10
+        );
+
+        assertThat(ranked).hasSize(1);
+        assertThat(ranked.get(0).providerGameId()).isEqualTo("5002");
+        assertThat(ranked.get(0).reasons()).contains("DATE");
+        assertThat(ranked.get(0).reasons()).containsAnyOf("TOURNAMENT_EXACT", "TOURNAMENT_KEYWORDS");
     }
 
     private Match buildMatch(String teamAName,

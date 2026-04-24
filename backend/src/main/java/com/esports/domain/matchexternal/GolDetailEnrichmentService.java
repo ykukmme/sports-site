@@ -222,6 +222,16 @@ public class GolDetailEnrichmentService {
                 rawCandidates,
                 MAX_CANDIDATE_SIZE
         );
+        if (ranked.isEmpty() && !rawCandidates.isEmpty()) {
+            ranked = candidateMatcher.rankCandidatesRelaxed(
+                    match,
+                    rawCandidates,
+                    Math.min(5, MAX_CANDIDATE_SIZE)
+            );
+            if (ranked == null) {
+                ranked = List.of();
+            }
+        }
         List<GolDetailCandidateMatcher.ScoredCandidate> merged = mergeBoundCandidate(detail.getSourceUrl(), ranked);
         GolDetailCandidateMatcher.ScoredCandidate autoSelected = selectAutoCandidate(merged);
 

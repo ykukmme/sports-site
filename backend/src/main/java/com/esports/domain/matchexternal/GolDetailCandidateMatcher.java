@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Component
 public class GolDetailCandidateMatcher {
@@ -25,10 +26,28 @@ public class GolDetailCandidateMatcher {
     private static final int DATE_MISMATCH_PENALTY = 25;
     private static final int CROSS_BONUS_SCORE = 5;
     private static final int MINIMUM_CANDIDATE_SCORE = 15;
+    private static final Pattern NON_ALNUM = Pattern.compile("[^a-z0-9]");
+    private static final Set<String> TEAM_TOKEN_STOPWORDS = Set.of(
+            "team", "esports", "academy", "challengers", "gaming", "club", "the"
+    );
+    private static final Set<String> LEAGUE_REASONS = Set.of("TOURNAMENT_EXACT", "TOURNAMENT_KEYWORDS");
 
     public List<ScoredCandidate> rankCandidates(Match match,
                                                 List<GolGgClient.GolGgRawCandidate> rawCandidates,
                                                 int limit) {
+        return rankCandidatesInternal(match, rawCandidates, limit, MINIMUM_CANDIDATE_SCORE);
+    }
+
+    public List<ScoredCandidate> rankCandidatesRelaxed(Match match,
+                                                       List<GolGgClient.GolGgRawCandidate> rawCandidates,
+                                                       int limit) {
+        return rankCandidatesInternal(match, rawCandidates, limit, 0);
+    }
+
+    private List<ScoredCandidate> rankCandidatesInternal(Match match,
+                                                         List<GolGgClient.GolGgRawCandidate> rawCandidates,
+                                                         int limit,
+                                                         int minScore) {
         if (match == null || rawCandidates == null || rawCandidates.isEmpty()) {
             return List.of();
         }
@@ -53,11 +72,74 @@ public class GolDetailCandidateMatcher {
                 .reversed()
                 .thenComparing(ScoredCandidate::providerGameId, Comparator.nullsLast(Comparator.reverseOrder()));
 
-        return byProviderGameId.values().stream()
+        List<ScoredCandidate> sorted = byProviderGameId.values().stream()
                 .sorted(comparator)
-                .filter(item -> item.score() >= MINIMUM_CANDIDATE_SCORE)
+                .toList();
+        List<ScoredCandidate> prioritized = applyPriorityFilters(sorted);
+
+        return prioritized.stream()
+                .filter(item -> item.score() >= Math.max(0, minScore))
                 .limit(Math.max(1, limit))
                 .toList();
+    }
+
+    private List<ScoredCandidate> applyPriorityFilters(List<ScoredCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return List.of();
+        }
+
+        List<ScoredCandidate> current = candidates;
+
+        // 1) 날짜(시간 제외) 우선
+        List<ScoredCandidate> dateMatched = current.stream()
+                .filter(item -> hasReason(item, "DATE"))
+                .toList();
+        if (!dateMatched.isEmpty()) {
+            current = dateMatched;
+        }
+
+        // 2) 리그(대회) 확인
+        List<ScoredCandidate> leagueMatched = current.stream()
+                .filter(item -> hasAnyReason(item, LEAGUE_REASONS))
+                .toList();
+        if (!leagueMatched.isEmpty()) {
+            current = leagueMatched;
+        }
+
+        // 3) 팀 이름 확인 (양팀 일치 우선, 없으면 단일팀 일치)
+        List<ScoredCandidate> bothTeamsMatched = current.stream()
+                .filter(item -> hasReason(item, "TEAM_A") && hasReason(item, "TEAM_B"))
+                .toList();
+        if (!bothTeamsMatched.isEmpty()) {
+            current = bothTeamsMatched;
+        } else {
+            List<ScoredCandidate> anyTeamMatched = current.stream()
+                    .filter(item -> hasReason(item, "TEAM_A") || hasReason(item, "TEAM_B"))
+                    .toList();
+            if (!anyTeamMatched.isEmpty()) {
+                current = anyTeamMatched;
+            }
+        }
+
+        return current;
+    }
+
+    private boolean hasReason(ScoredCandidate candidate, String reason) {
+        return candidate != null
+                && candidate.reasons() != null
+                && candidate.reasons().contains(reason);
+    }
+
+    private boolean hasAnyReason(ScoredCandidate candidate, Set<String> reasons) {
+        if (candidate == null || candidate.reasons() == null || reasons == null || reasons.isEmpty()) {
+            return false;
+        }
+        for (String reason : candidate.reasons()) {
+            if (reasons.contains(reason)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ScoredCandidate score(MatchReference reference, GolGgClient.GolGgRawCandidate candidate) {
@@ -208,6 +290,8 @@ public class GolDetailCandidateMatcher {
         Set<String> keys = new LinkedHashSet<>();
         addKey(keys, team.getName());
         addKey(keys, team.getShortName());
+        addTokenKeys(keys, team.getName());
+        addTokenKeys(keys, team.getShortName());
         return keys;
     }
 
@@ -233,6 +317,27 @@ public class GolDetailCandidateMatcher {
         String compact = compact(value);
         if (!compact.isBlank()) {
             keys.add(compact);
+        }
+    }
+
+    private static void addTokenKeys(Set<String> keys, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String normalized = normalize(value);
+        for (String token : normalized.split(" ")) {
+            if (token.isBlank()) {
+                continue;
+            }
+            if (token.length() >= 3 && !TEAM_TOKEN_STOPWORDS.contains(token)) {
+                keys.add(token);
+                keys.add(NON_ALNUM.matcher(token).replaceAll(""));
+                continue;
+            }
+            // allow meaningful short acronyms like "dn", "kt", "t1"
+            if (token.length() == 2 || token.matches("[a-z]\\d|\\d[a-z]")) {
+                keys.add(token);
+            }
         }
     }
 
