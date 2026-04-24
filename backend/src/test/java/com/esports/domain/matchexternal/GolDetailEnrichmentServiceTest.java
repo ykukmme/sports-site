@@ -212,4 +212,31 @@ class GolDetailEnrichmentServiceTest {
         assertThat(response.candidates()).isEmpty();
         assertThat(response.detailSummary().errorMessage()).isEqualTo("No gol.gg candidates found. bind sourceUrl manually.");
     }
+
+    @Test
+    void findCandidatesDropsRelaxedCandidatesWithLeagueOnlyReasons() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate("76534", "https://gol.gg/game/stats/76534/page-summary/", "lck only context")
+        ));
+        when(candidateMatcher.rankCandidates(eq(match), any(), anyInt())).thenReturn(List.of());
+        when(candidateMatcher.rankCandidatesRelaxed(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "76534",
+                        "https://gol.gg/game/stats/76534/page-summary/",
+                        12,
+                        List.of("TOURNAMENT_KEYWORDS")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailCandidatesResponse response = service.findCandidates(1L);
+
+        assertThat(response.candidates()).isEmpty();
+        assertThat(response.detailSummary().errorMessage()).isEqualTo("No gol.gg candidates found. bind sourceUrl manually.");
+    }
 }

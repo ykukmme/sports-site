@@ -34,8 +34,8 @@ public class GolDetailEnrichmentService {
     private static final int AUTO_SELECT_SCORE_THRESHOLD = 85;
     private static final int AUTO_SELECT_GAP_THRESHOLD = 15;
     private static final int MAX_CANDIDATE_SIZE = 20;
-    private static final Set<String> RELAXED_SIGNAL_REASONS = Set.of(
-            "DATE", "TEAM_A", "TEAM_B", "TOURNAMENT_EXACT", "TOURNAMENT_KEYWORDS"
+    private static final Set<String> RELAXED_STRONG_SIGNAL_REASONS = Set.of(
+            "DATE", "TEAM_A", "TEAM_B"
     );
 
     private final MatchRepository matchRepository;
@@ -236,7 +236,7 @@ public class GolDetailEnrichmentService {
                 ranked = List.of();
             }
             ranked = ranked.stream()
-                    .filter(this::hasSignalReason)
+                    .filter(this::hasStrongSignalReason)
                     .toList();
         }
         List<GolDetailCandidateMatcher.ScoredCandidate> merged = mergeBoundCandidate(detail.getSourceUrl(), ranked);
@@ -258,12 +258,12 @@ public class GolDetailEnrichmentService {
         return new CandidateSelection(merged, autoSelected);
     }
 
-    private boolean hasSignalReason(GolDetailCandidateMatcher.ScoredCandidate candidate) {
+    private boolean hasStrongSignalReason(GolDetailCandidateMatcher.ScoredCandidate candidate) {
         if (candidate == null || candidate.reasons() == null || candidate.reasons().isEmpty()) {
             return false;
         }
         for (String reason : candidate.reasons()) {
-            if (RELAXED_SIGNAL_REASONS.contains(reason)) {
+            if (RELAXED_STRONG_SIGNAL_REASONS.contains(reason)) {
                 return true;
             }
         }
