@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.function.Supplier;
@@ -33,6 +34,9 @@ public class GolDetailEnrichmentService {
     private static final int AUTO_SELECT_SCORE_THRESHOLD = 85;
     private static final int AUTO_SELECT_GAP_THRESHOLD = 15;
     private static final int MAX_CANDIDATE_SIZE = 20;
+    private static final Set<String> RELAXED_SIGNAL_REASONS = Set.of(
+            "DATE", "TEAM_A", "TEAM_B", "TOURNAMENT_EXACT", "TOURNAMENT_KEYWORDS"
+    );
 
     private final MatchRepository matchRepository;
     private final MatchExternalDetailRepository detailRepository;
@@ -231,6 +235,9 @@ public class GolDetailEnrichmentService {
             if (ranked == null) {
                 ranked = List.of();
             }
+            ranked = ranked.stream()
+                    .filter(this::hasSignalReason)
+                    .toList();
         }
         List<GolDetailCandidateMatcher.ScoredCandidate> merged = mergeBoundCandidate(detail.getSourceUrl(), ranked);
         GolDetailCandidateMatcher.ScoredCandidate autoSelected = selectAutoCandidate(merged);
@@ -249,6 +256,18 @@ public class GolDetailEnrichmentService {
             detail.setErrorMessage(null);
         }
         return new CandidateSelection(merged, autoSelected);
+    }
+
+    private boolean hasSignalReason(GolDetailCandidateMatcher.ScoredCandidate candidate) {
+        if (candidate == null || candidate.reasons() == null || candidate.reasons().isEmpty()) {
+            return false;
+        }
+        for (String reason : candidate.reasons()) {
+            if (RELAXED_SIGNAL_REASONS.contains(reason)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<GolGgClient.GolGgRawCandidate> resolveRawCandidates(
