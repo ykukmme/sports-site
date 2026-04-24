@@ -569,21 +569,32 @@ public class GolGgClient {
                     String context = normalizeForMatch(rawContext);
                     String compact = compactForMatch(context);
 
-                    boolean teamHit = target.teamKeys().stream()
+                    boolean teamAHit = target.teamAKeys().stream()
                             .anyMatch(key -> !key.isBlank() && compact.contains(compactForMatch(key)));
+                    boolean teamBHit = target.teamBKeys().stream()
+                            .anyMatch(key -> !key.isBlank() && compact.contains(compactForMatch(key)));
+                    boolean teamHit = teamAHit || teamBHit;
+                    boolean bothTeamsHit = teamAHit && teamBHit;
                     boolean tournamentHit = target.tournamentTokens().stream()
                             .anyMatch(token -> token.length() >= 3 && context.contains(token));
                     boolean stageHit = target.stageSignals().stream()
                             .anyMatch(signal -> !signal.isBlank() && compact.contains(compactForMatch(signal)));
                     boolean contextHit = tournamentHit || stageHit;
                     boolean explicitDatePresent = hasExplicitDate(rawContext) || hasExplicitDate(context);
-                    if (explicitDatePresent && !dateMatched(rawContext, target.scheduledDate()) && !dateMatched(context, target.scheduledDate())) {
+                    boolean dateHit = dateMatched(rawContext, target.scheduledDate()) || dateMatched(context, target.scheduledDate());
+                    if (explicitDatePresent && !dateHit) {
                         return false;
                     }
                     if (!target.stageSignals().isEmpty() || !target.tournamentTokens().isEmpty()) {
-                        return teamHit && contextHit;
+                        if (!teamHit || !contextHit) {
+                            return false;
+                        }
+                        if (bothTeamsHit) {
+                            return true;
+                        }
+                        return dateHit;
                     }
-                    return teamHit;
+                    return bothTeamsHit || dateHit;
                 })
                 .toList();
         return filtered;
@@ -711,6 +722,8 @@ public class GolGgClient {
             Set<String> searchLabels,
             Set<String> tournamentTokens,
             Set<String> stageSignals,
+            Set<String> teamAKeys,
+            Set<String> teamBKeys,
             Set<String> teamKeys,
             String year,
             LocalDate scheduledDate
@@ -722,9 +735,11 @@ public class GolGgClient {
             String year = scheduledAt == null ? "" : String.valueOf(scheduledAt.getYear());
             LocalDate scheduledDate = scheduledAt != null ? scheduledAt.toLocalDate() : null;
 
+            Set<String> teamAKeys = teamKeywordSet(match.getTeamA());
+            Set<String> teamBKeys = teamKeywordSet(match.getTeamB());
             Set<String> teamKeys = new LinkedHashSet<>();
-            teamKeys.addAll(teamKeywordSet(match.getTeamA()));
-            teamKeys.addAll(teamKeywordSet(match.getTeamB()));
+            teamKeys.addAll(teamAKeys);
+            teamKeys.addAll(teamBKeys);
             Set<String> stageSignals = toStageSignals(stage);
 
             LinkedHashSet<String> searchLabels = new LinkedHashSet<>();
@@ -747,6 +762,8 @@ public class GolGgClient {
                     Set.copyOf(searchLabels),
                     Set.copyOf(tournamentTokens),
                     stageSignals,
+                    Set.copyOf(teamAKeys),
+                    Set.copyOf(teamBKeys),
                     teamKeys,
                     year,
                     scheduledDate

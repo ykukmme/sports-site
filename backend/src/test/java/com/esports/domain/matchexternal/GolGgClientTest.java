@@ -318,6 +318,42 @@ class GolGgClientTest {
         assertThat(urls).anyMatch(url -> url.toLowerCase().contains("lck%202026%20rounds%201-2"));
     }
 
+    @Test
+    void filterCandidatesByTargetRejectsSingleTeamRecentHomeCandidate() throws Exception {
+        Match match = buildMatch(
+                "DN SOOPers",
+                "Dplus Kia",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-16T08:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK");
+
+        Object target = buildTarget(match);
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                List.of(
+                        new GolGgClient.GolGgRawCandidate(
+                                "76536",
+                                "https://gol.gg/game/stats/76536/page-game/",
+                                "HLE vs Gen.G LCK 2026 Rounds 1-2"
+                        ),
+                        new GolGgClient.GolGgRawCandidate(
+                                "76534",
+                                "https://gol.gg/game/stats/76534/page-game/",
+                                "Dplus KIA vs T1 LCK 2026 Rounds 1-2"
+                        ),
+                        new GolGgClient.GolGgRawCandidate(
+                                "7002",
+                                "https://gol.gg/game/stats/7002/page-summary/",
+                                "DN SOOPers vs Dplus KIA LCK Cup 2026 2026-01-16"
+                        )
+                ),
+                target
+        );
+
+        assertThat(filtered).extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .containsExactly("7002");
+    }
+
     private Object buildTarget(Match match) throws Exception {
         Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
         Method fromMethod = targetClass.getDeclaredMethod("from", Match.class);
