@@ -411,10 +411,7 @@ public class GolGgClient {
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
             return trimmed;
         }
-        if (trimmed.startsWith("/")) {
-            return properties.getBaseUrl() + trimmed;
-        }
-        return properties.getBaseUrl() + "/" + trimmed;
+        return resolveRelativeUrl(trimmed);
     }
 
     private void mergeCandidates(Map<String, GolGgRawCandidate> target, List<GolGgRawCandidate> candidates) {
@@ -440,13 +437,29 @@ public class GolGgClient {
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
             return trimmed;
         }
-        if (trimmed.startsWith("/")) {
-            return properties.getBaseUrl() + trimmed;
-        }
         if (trimmed.toLowerCase(Locale.ROOT).contains("game/stats/")) {
-            return properties.getBaseUrl() + "/" + trimmed;
+            return resolveRelativeUrl(trimmed);
         }
         return buildGameSummaryUrl(gameId);
+    }
+
+    private String resolveRelativeUrl(String href) {
+        String base = properties.getBaseUrl();
+        if (base == null || base.isBlank()) {
+            return href;
+        }
+        String normalizedBase = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+        String normalizedHref = href.trim().replace("\\", "/");
+        while (normalizedHref.startsWith("../")) {
+            normalizedHref = normalizedHref.substring(3);
+        }
+        while (normalizedHref.startsWith("./")) {
+            normalizedHref = normalizedHref.substring(2);
+        }
+        if (normalizedHref.startsWith("/")) {
+            return normalizedBase + normalizedHref;
+        }
+        return normalizedBase + "/" + normalizedHref;
     }
 
     private int scoreTournamentUrl(String tournamentUrl, MatchTarget target) {

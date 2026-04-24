@@ -121,6 +121,26 @@ class GolGgClientTest {
     }
 
     @Test
+    void normalizesRelativeCandidateHrefWithParentSegments() throws Exception {
+        Method method = GolGgClient.class.getDeclaredMethod("normalizeCandidateHref", String.class, String.class);
+        method.setAccessible(true);
+
+        String normalized = (String) method.invoke(client, "../game/stats/76534/page-game/", "76534");
+
+        assertThat(normalized).isEqualTo("https://gol.gg/game/stats/76534/page-game/");
+    }
+
+    @Test
+    void normalizesRelativeTournamentHrefWithParentSegments() throws Exception {
+        Method method = GolGgClient.class.getDeclaredMethod("normalizeTournamentHref", String.class);
+        method.setAccessible(true);
+
+        String normalized = (String) method.invoke(client, "../tournament/tournament-matchlist/LCK%20Cup%202026/");
+
+        assertThat(normalized).isEqualTo("https://gol.gg/tournament/tournament-matchlist/LCK%20Cup%202026/");
+    }
+
+    @Test
     void filterCandidatesByTargetDoesNotKeepYearOnlyMatches() throws Exception {
         Match match = buildMatch(
                 "DN SOOPers",
