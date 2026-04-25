@@ -354,6 +354,49 @@ class GolGgClientTest {
                 .containsExactly("7002");
     }
 
+    @Test
+    void buildTournamentGuessUrlsDoesNotBroadenMultiWordStageToSingleToken() throws Exception {
+        Match match = buildMatch(
+                "Gen.G Global Academy",
+                "DN SOOPers Challengers",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-12T05:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK CL");
+
+        Object target = buildTarget(match);
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method method = GolGgClient.class.getDeclaredMethod("buildTournamentGuessUrls", targetClass);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> urls = (List<String>) method.invoke(client, target);
+
+        assertThat(urls).noneMatch(url -> url.toLowerCase().contains("/lck%202026/"));
+        assertThat(urls).anyMatch(url -> url.toLowerCase().contains("/lck%20cl%202026/"));
+    }
+
+    @Test
+    void scoreTournamentUrlPrefersExactStageSignalOverSiblingLeague() throws Exception {
+        Match match = buildMatch(
+                "Gen.G Global Academy",
+                "DN SOOPers Challengers",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-12T05:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK CL");
+
+        Object target = buildTarget(match);
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method method = GolGgClient.class.getDeclaredMethod("scoreTournamentUrl", String.class, targetClass);
+        method.setAccessible(true);
+
+        int lckScore = (int) method.invoke(client, "https://gol.gg/tournament/tournament-matchlist/LCK%202026/", target);
+        int lckClScore = (int) method.invoke(client, "https://gol.gg/tournament/tournament-matchlist/LCK%20CL%202026/", target);
+
+        assertThat(lckClScore).isGreaterThan(lckScore);
+    }
+
     private Object buildTarget(Match match) throws Exception {
         Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
         Method fromMethod = targetClass.getDeclaredMethod("from", Match.class);

@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.Instant;
 import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -499,7 +500,7 @@ public class GolGgClient {
     }
 
     private int scoreTournamentUrl(String tournamentUrl, MatchTarget target) {
-        String normalized = normalizeForMatch(tournamentUrl);
+        String normalized = normalizeForMatch(decodeUrlComponent(tournamentUrl));
         String compact = compactForMatch(normalized);
         int score = 0;
 
@@ -514,12 +515,37 @@ public class GolGgClient {
         if (!target.year().isBlank() && normalized.contains(target.year())) {
             score += 2;
         }
+        for (String stageSignal : target.stageSignals()) {
+            if (stageSignal == null || stageSignal.isBlank()) {
+                continue;
+            }
+            String normalizedStage = normalizeForMatch(stageSignal);
+            String compactStage = compactForMatch(stageSignal);
+            if (!normalizedStage.isBlank() && normalized.contains(normalizedStage)) {
+                score += 4;
+                continue;
+            }
+            if (!compactStage.isBlank() && compact.contains(compactStage)) {
+                score += 4;
+            }
+        }
         for (String key : target.teamKeys()) {
             if (!key.isBlank() && compact.contains(compactForMatch(key))) {
                 score += 1;
             }
         }
         return score;
+    }
+
+    private String decodeUrlComponent(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return value;
+        }
     }
 
     private List<String> buildTournamentGuessUrls(MatchTarget target) {
@@ -532,7 +558,10 @@ public class GolGgClient {
             for (String label : target.searchLabels()) {
                 labels.add(label + " " + target.year());
                 String firstToken = label.split("\\s+")[0];
-                if (!firstToken.isBlank()) {
+                boolean exactStageLabel = target.stageSignals().stream()
+                        .map(GolGgClient::normalizeForMatch)
+                        .anyMatch(normalizedStage -> normalizedStage.equals(normalizeForMatch(label)));
+                if (!firstToken.isBlank() && !exactStageLabel && label.split("\\s+").length == 1) {
                     labels.add(firstToken + " " + target.year());
                 }
             }
