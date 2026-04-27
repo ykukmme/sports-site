@@ -192,7 +192,7 @@ public class GolGgClient {
             if (html == null) {
                 continue;
             }
-            mergeCandidates(merged, extractRawCandidates(html));
+            mergeCandidates(merged, extractRawCandidates(html, seedUrl));
             discoveredTournamentUrls.addAll(extractTournamentUrls(html));
         }
 
@@ -223,7 +223,7 @@ public class GolGgClient {
                 continue;
             }
 
-            mergeCandidates(merged, extractRawCandidates(html));
+            mergeCandidates(merged, extractRawCandidates(html, tournamentUrl + " " + safe(extractTitle(html))));
 
             List<String> nestedTournamentUrls = extractTournamentUrls(html).stream()
                     .filter(url -> !visitedTournamentUrls.contains(url))
@@ -377,9 +377,14 @@ public class GolGgClient {
     }
 
     private List<GolGgRawCandidate> extractRawCandidates(String html) {
+        return extractRawCandidates(html, "");
+    }
+
+    private List<GolGgRawCandidate> extractRawCandidates(String html, String pageContext) {
         if (html == null || html.isBlank()) {
             return List.of();
         }
+        String normalizedPageContext = stripTags(pageContext == null ? "" : pageContext);
         String normalizedHtml = html.replace("\\/", "/");
         Matcher matcher = CANDIDATE_LINK_PATTERN.matcher(normalizedHtml);
         Map<String, GolGgRawCandidate> byGameId = new LinkedHashMap<>();
@@ -393,7 +398,7 @@ public class GolGgClient {
 
             int start = Math.max(0, matcher.start() - 400);
             int end = Math.min(normalizedHtml.length(), matcher.end() + 400);
-            String context = stripTags(normalizedHtml.substring(start, end));
+            String context = appendContext(stripTags(normalizedHtml.substring(start, end)), normalizedPageContext);
             GolGgRawCandidate candidate = new GolGgRawCandidate(
                     gameId,
                     normalizeCandidateHref(href, gameId),
@@ -415,7 +420,7 @@ public class GolGgClient {
                 }
                 int start = Math.max(0, idMatcher.start() - 240);
                 int end = Math.min(normalizedHtml.length(), idMatcher.end() + 240);
-                String context = stripTags(normalizedHtml.substring(start, end));
+                String context = appendContext(stripTags(normalizedHtml.substring(start, end)), normalizedPageContext);
                 GolGgRawCandidate candidate = new GolGgRawCandidate(
                         gameId,
                         buildGameSummaryUrl(gameId),
@@ -428,6 +433,20 @@ public class GolGgClient {
             }
         }
         return new ArrayList<>(byGameId.values());
+    }
+
+    private String appendContext(String rowContext, String pageContext) {
+        if (pageContext == null || pageContext.isBlank()) {
+            return rowContext == null ? "" : rowContext;
+        }
+        if (rowContext == null || rowContext.isBlank()) {
+            return pageContext;
+        }
+        return rowContext + " " + pageContext;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private List<String> extractTournamentUrls(String html) {

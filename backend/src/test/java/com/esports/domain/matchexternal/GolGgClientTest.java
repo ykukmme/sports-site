@@ -371,6 +371,44 @@ class GolGgClientTest {
     }
 
     @Test
+    void extractRawCandidatesUsesTournamentPageContextForLeagueFiltering() throws Exception {
+        Match match = buildMatch(
+                "Nongshim Esports Academy",
+                "DN SOOPers Challengers",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-12T05:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK CL");
+
+        String html = """
+                <table><tbody>
+                  <tr>
+                    <td><a href="../game/stats/7002/page-summary/" title="NS vs DN summary">NS vs DN</a></td>
+                    <td>Nongshim Esports Academy</td>
+                    <td>2 - 0</td>
+                    <td>DN SOOPers Challengers</td>
+                    <td>WEEK1</td>
+                    <td>16.1</td>
+                    <td>2026-01-12</td>
+                  </tr>
+                </tbody></table>
+                """;
+
+        List<GolGgClient.GolGgRawCandidate> rawCandidates = invokeExtractRawCandidates(
+                html,
+                "https://gol.gg/tournament/tournament-matchlist/LCK%20CL%202026%20Rounds%201-2/ "
+                        + "LCK CL 2026 Rounds 1-2 match list"
+        );
+        List<GolGgClient.GolGgRawCandidate> filtered = invokeFilterCandidatesByTarget(
+                rawCandidates,
+                buildTarget(match)
+        );
+
+        assertThat(filtered).extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .containsExactly("7002");
+    }
+
+    @Test
     void filterCandidatesByTargetRejectsSingleTeamRecentHomeCandidate() throws Exception {
         Match match = buildMatch(
                 "DN SOOPers",
@@ -466,6 +504,13 @@ class GolGgClientTest {
         Method method = GolGgClient.class.getDeclaredMethod("buildTournamentGuessUrls", targetClass);
         method.setAccessible(true);
         return (List<String>) method.invoke(client, target);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<GolGgClient.GolGgRawCandidate> invokeExtractRawCandidates(String html, String pageContext) throws Exception {
+        Method method = GolGgClient.class.getDeclaredMethod("extractRawCandidates", String.class, String.class);
+        method.setAccessible(true);
+        return (List<GolGgClient.GolGgRawCandidate>) method.invoke(client, html, pageContext);
     }
 
     private Object buildTarget(Match match) throws Exception {
