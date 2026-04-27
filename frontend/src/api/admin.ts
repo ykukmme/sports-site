@@ -329,6 +329,10 @@ export async function syncGolGgTournamentSource(sourceId: number): Promise<GolGg
   return res.data.data!
 }
 
+export async function deleteGolGgTournamentSource(sourceId: number): Promise<void> {
+  await apiClient.delete(`/api/admin/golgg/sources/${sourceId}`)
+}
+
 export async function importPandaScoreTeams(
   leagueCodes: TeamLeagueCode[],
 ): Promise<PandaScoreTeamImportResponse> {

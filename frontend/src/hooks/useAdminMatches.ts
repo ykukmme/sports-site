@@ -8,6 +8,7 @@ import {
   createAdminMatch,
   createMatchResult,
   deleteAdminMatch,
+  deleteGolGgTournamentSource,
   findMatchExternalDetailCandidates,
   fetchGolGgTournamentSources,
   fetchAdminMatch,
@@ -202,6 +203,17 @@ export function useSyncGolGgTournamentSource() {
     mutationFn: (sourceId: number) => syncGolGgTournamentSource(sourceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
+    },
+  })
+}
+
+export function useDeleteGolGgTournamentSource() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sourceId: number) => deleteGolGgTournamentSource(sourceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
     },
   })
 }

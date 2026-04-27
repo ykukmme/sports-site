@@ -33,4 +33,10 @@ public class GolGgTournamentSourceController {
     public ApiResponse<GolGgTournamentSourceResponse> syncSource(@PathVariable Long id) {
         return ApiResponse.ok(indexService.syncSource(id));
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteSource(@PathVariable Long id) {
+        indexService.deleteSource(id);
+    }
 }

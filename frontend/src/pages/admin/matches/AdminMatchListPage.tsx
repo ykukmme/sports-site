@@ -19,6 +19,7 @@ import {
   useAdminMatchList,
   useBindMatchExternalDetailSource,
   useCreateGolGgTournamentSource,
+  useDeleteGolGgTournamentSource,
   useFindMatchExternalDetailCandidates,
   useGolGgTournamentSources,
   usePandaScoreMatchResultSync,
@@ -108,6 +109,7 @@ export function AdminMatchListPage() {
   const resultSyncMutation = usePandaScoreMatchResultSync()
   const createGolGgSourceMutation = useCreateGolGgTournamentSource()
   const syncGolGgSourceMutation = useSyncGolGgTournamentSource()
+  const deleteGolGgSourceMutation = useDeleteGolGgTournamentSource()
   const bindSourceMutation = useBindMatchExternalDetailSource()
   const validateSourceMutation = useValidateMatchExternalDetailSource()
   const findCandidatesMutation = useFindMatchExternalDetailCandidates()
@@ -276,6 +278,13 @@ export function AdminMatchListPage() {
         },
       },
     )
+  }
+
+  function runDeleteGolGgSource(sourceId: number, label: string) {
+    if (!window.confirm(`${label} GOL.GG source를 삭제할까요?`)) {
+      return
+    }
+    deleteGolGgSourceMutation.mutate(sourceId)
   }
 
   const deleteErrorMessage =
@@ -473,16 +482,29 @@ export function AdminMatchListPage() {
         </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {(golGgSourcesData ?? []).slice(0, 6).map((source) => (
-            <button
+            <div
               key={source.id}
-              type="button"
-              className="rounded-md border border-border px-2 py-1 text-left"
-              disabled={syncGolGgSourceMutation.isPending}
-              onClick={() => syncGolGgSourceMutation.mutate(source.id)}
-              title={source.errorMessage ?? source.sourceUrl}
+              className="flex items-center gap-1 rounded-md border border-border px-2 py-1"
             >
-              {source.label || source.sourceUrl} / {source.status} / {source.candidateCount}
-            </button>
+              <button
+                type="button"
+                className="text-left"
+                disabled={syncGolGgSourceMutation.isPending}
+                onClick={() => syncGolGgSourceMutation.mutate(source.id)}
+                title={source.errorMessage ?? source.sourceUrl}
+              >
+                {source.label || source.sourceUrl} / {source.status} / {source.candidateCount}
+              </button>
+              <button
+                type="button"
+                className="rounded px-1 text-destructive hover:bg-destructive/10"
+                disabled={deleteGolGgSourceMutation.isPending}
+                onClick={() => runDeleteGolGgSource(source.id, source.label || source.sourceUrl)}
+                title="삭제"
+              >
+                삭제
+              </button>
+            </div>
           ))}
         </div>
       </div>

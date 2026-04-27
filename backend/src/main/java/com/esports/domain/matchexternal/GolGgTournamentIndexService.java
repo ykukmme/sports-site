@@ -79,6 +79,16 @@ public class GolGgTournamentIndexService {
         return GolGgTournamentSourceResponse.from(sourceRepository.save(source));
     }
 
+    public void deleteSource(Long sourceId) {
+        GolGgTournamentSource source = sourceRepository.findById(sourceId)
+                .orElseThrow(() -> new BusinessException(
+                        "GOLGG_SOURCE_NOT_FOUND",
+                        "GOL.GG source not found.",
+                        HttpStatus.NOT_FOUND
+                ));
+        sourceRepository.delete(source);
+    }
+
     @Transactional(readOnly = true)
     public List<GolGgClient.GolGgRawCandidate> findIndexedCandidates() {
         return indexedMatchRepository.findTop1000ByOrderByUpdatedAtDesc().stream()
