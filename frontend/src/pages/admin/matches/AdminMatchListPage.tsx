@@ -198,8 +198,8 @@ export function AdminMatchListPage() {
     return normalized
   }
 
-  async function runBindSourceUrl(matchId: number, sourceUrl: string) {
-    const normalized = await validateSourceUrl(matchId, sourceUrl)
+  async function runBindSourceUrl(matchId: number, sourceUrl: string, skipValidation = false) {
+    const normalized = skipValidation ? sourceUrl.trim() : await validateSourceUrl(matchId, sourceUrl)
     if (!normalized) return
     bindSourceMutation.mutate(
       { matchId, sourceUrl: normalized },
@@ -671,6 +671,8 @@ export function AdminMatchListPage() {
                   selectedCandidateSourceMap[match.id] ?? candidateResult?.autoSelectedSourceUrl ?? ''
                 const canResolveCandidate = selectedCandidateSourceUrl.trim().length > 0
                 const validationResult = validationMap[match.id]
+                const bindInputIsKnownCandidate =
+                  candidateResult?.candidates.some((candidate) => candidate.sourceUrl === bindInputValue.trim()) ?? false
 
                 return (
                   <TableRow key={match.id}>
@@ -721,8 +723,12 @@ export function AdminMatchListPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={!canBind || bindSourceMutation.isPending || validateSourceMutation.isPending}
-                            onClick={() => runBindSourceUrl(match.id, bindInputValue)}
+                            disabled={
+                              !canBind ||
+                              bindSourceMutation.isPending ||
+                              (!bindInputIsKnownCandidate && validateSourceMutation.isPending)
+                            }
+                            onClick={() => runBindSourceUrl(match.id, bindInputValue, bindInputIsKnownCandidate)}
                           >
                             바인딩
                           </Button>
