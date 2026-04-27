@@ -17,6 +17,7 @@ import org.springframework.web.client.RestClientException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.Instant;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -290,7 +291,7 @@ public class GolGgClient {
     private String fetchHtml(String normalizedUrl) {
         try {
             String body = restClient.get()
-                    .uri(normalizedUrl)
+                    .uri(URI.create(normalizedUrl))
                     .header("User-Agent", BROWSER_USER_AGENT)
                     .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                     .header("Accept-Language", "en-US,en;q=0.9")
