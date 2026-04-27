@@ -67,7 +67,11 @@ public class GolDetailEnrichmentService {
     }
 
     public MatchExternalDetailSummaryResponse bindSourceUrl(Long matchId, String sourceUrl) {
-        return resolveCandidate(matchId, sourceUrl);
+        assertSourceUrlValid(matchId, sourceUrl);
+        Match match = loadMatch(matchId);
+        MatchExternalDetail detail = detailRepository.findByMatchId(matchId)
+                .orElseGet(() -> new MatchExternalDetail(match));
+        return saveResolvedSource(detail, sourceUrl);
     }
 
     public MatchExternalDetailValidationResponse validateSourceUrl(Long matchId, String sourceUrl) {
@@ -134,14 +138,37 @@ public class GolDetailEnrichmentService {
     }
 
     public MatchExternalDetailSummaryResponse resolveCandidate(Long matchId, String sourceUrl) {
-        assertSourceUrlValid(matchId, sourceUrl);
         Match match = loadMatch(matchId);
         MatchExternalDetail detail = detailRepository.findByMatchId(matchId)
                 .orElseGet(() -> new MatchExternalDetail(match));
+        if (!isKnownCandidateSource(detail.getSummaryJson(), sourceUrl)) {
+            assertSourceUrlValid(matchId, sourceUrl);
+        }
+        return saveResolvedSource(detail, sourceUrl);
+    }
+
+    private MatchExternalDetailSummaryResponse saveResolvedSource(MatchExternalDetail detail, String sourceUrl) {
         applyResolvedSource(detail, sourceUrl);
         detail.setSummaryJson(markResolvedSource(detail.getSummaryJson(), detail.getSourceUrl()));
         MatchExternalDetail saved = detailRepository.save(detail);
         return MatchExternalDetailSummaryResponse.from(saved);
+    }
+
+    private boolean isKnownCandidateSource(JsonNode summaryJson, String sourceUrl) {
+        if (summaryJson == null || sourceUrl == null || sourceUrl.isBlank()) {
+            return false;
+        }
+        JsonNode candidates = summaryJson.path("candidateSnapshot").path("candidates");
+        if (!candidates.isArray()) {
+            return false;
+        }
+        String normalized = sourceUrl.trim();
+        for (JsonNode candidate : candidates) {
+            if (normalized.equals(candidate.path("sourceUrl").asText(null))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void assertSourceUrlValid(Long matchId, String sourceUrl) {

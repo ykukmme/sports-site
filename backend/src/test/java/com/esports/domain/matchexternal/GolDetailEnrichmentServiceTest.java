@@ -124,6 +124,35 @@ class GolDetailEnrichmentServiceTest {
     }
 
     @Test
+    void resolveCandidateSkipsValidationForKnownCandidateSource() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode summary = objectMapper.createObjectNode();
+        ObjectNode snapshot = objectMapper.createObjectNode();
+        ObjectNode candidate = objectMapper.createObjectNode();
+        candidate.put("sourceUrl", "https://gol.gg/game/stats/123/page-summary/");
+        candidate.put("providerGameId", "123");
+        candidate.put("score", 90);
+        snapshot.set("candidates", objectMapper.createArrayNode().add(candidate));
+        summary.set("candidateSnapshot", snapshot);
+        detail.setSummaryJson(summary);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailSummaryResponse response = service.resolveCandidate(
+                1L,
+                "https://gol.gg/game/stats/123/page-summary/"
+        );
+
+        assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-summary/");
+        verify(golGgClient, never()).fetchDetail(any(), any());
+    }
+
+    @Test
     void syncOneMarksSyncedWhenClientSucceeds() {
         Match match = mock(Match.class);
         MatchExternalDetail detail = new MatchExternalDetail(match);

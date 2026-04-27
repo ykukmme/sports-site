@@ -73,6 +73,44 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('ko-KR')
 }
 
+type OperationNotice = {
+  key: string
+  message: string
+  variant: 'error' | 'success'
+  onClose: () => void
+}
+
+function OperationNoticeToasts({ notices }: { notices: OperationNotice[] }) {
+  if (notices.length === 0) return null
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2">
+      {notices.map((notice) => (
+        <div
+          key={notice.key}
+          className={
+            notice.variant === 'error'
+              ? 'rounded-lg border border-destructive/40 bg-card px-4 py-3 text-sm text-destructive shadow-lg'
+              : 'rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground shadow-lg'
+          }
+        >
+          <div className="flex items-start justify-between gap-3">
+            <span className="leading-5">{notice.message}</span>
+            <button
+              type="button"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={notice.onClose}
+              aria-label="알림 닫기"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function AdminMatchListPage() {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
@@ -322,6 +360,64 @@ export function AdminMatchListPage() {
         ? syncGolGgSourceMutation.error.message
         : createGolGgSourceMutation.error?.message ?? syncGolGgSourceMutation.error?.message
 
+  const operationNotices: OperationNotice[] = [
+    resultSyncErrorMessage
+      ? { key: 'result-sync-error', message: resultSyncErrorMessage, variant: 'error', onClose: () => resultSyncMutation.reset() }
+      : null,
+    detailSyncErrorMessage
+      ? {
+          key: 'detail-sync-error',
+          message: detailSyncErrorMessage,
+          variant: 'error',
+          onClose: () => {
+            detailSyncMutation.reset()
+            detailSyncBatchMutation.reset()
+          },
+        }
+      : null,
+    bindSourceErrorMessage
+      ? { key: 'bind-source-error', message: bindSourceErrorMessage, variant: 'error', onClose: () => bindSourceMutation.reset() }
+      : null,
+    findCandidatesErrorMessage
+      ? {
+          key: 'find-candidates-error',
+          message: findCandidatesErrorMessage,
+          variant: 'error',
+          onClose: () => findCandidatesMutation.reset(),
+        }
+      : null,
+    resolveSourceErrorMessage
+      ? {
+          key: 'resolve-source-error',
+          message: resolveSourceErrorMessage,
+          variant: 'error',
+          onClose: () => resolveSourceMutation.reset(),
+        }
+      : null,
+    validateSourceErrorMessage
+      ? {
+          key: 'validate-source-error',
+          message: validateSourceErrorMessage,
+          variant: 'error',
+          onClose: () => validateSourceMutation.reset(),
+        }
+      : null,
+    golGgSourceErrorMessage
+      ? {
+          key: 'golgg-source-error',
+          message: golGgSourceErrorMessage,
+          variant: 'error',
+          onClose: () => {
+            createGolGgSourceMutation.reset()
+            syncGolGgSourceMutation.reset()
+          },
+        }
+      : null,
+    bindResultMessage
+      ? { key: 'bind-result', message: bindResultMessage, variant: 'success', onClose: () => setBindResultMessage(null) }
+      : null,
+  ].filter((notice): notice is OperationNotice => notice != null)
+
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
   }
@@ -336,6 +432,8 @@ export function AdminMatchListPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <OperationNoticeToasts notices={operationNotices} />
+
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-foreground">경기 관리</h1>
@@ -508,54 +606,6 @@ export function AdminMatchListPage() {
           ))}
         </div>
       </div>
-
-      {resultSyncErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {resultSyncErrorMessage}
-        </div>
-      )}
-
-      {detailSyncErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {detailSyncErrorMessage}
-        </div>
-      )}
-
-      {bindSourceErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {bindSourceErrorMessage}
-        </div>
-      )}
-
-      {findCandidatesErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {findCandidatesErrorMessage}
-        </div>
-      )}
-
-      {resolveSourceErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {resolveSourceErrorMessage}
-        </div>
-      )}
-
-      {validateSourceErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {validateSourceErrorMessage}
-        </div>
-      )}
-
-      {golGgSourceErrorMessage && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {golGgSourceErrorMessage}
-        </div>
-      )}
-
-      {bindResultMessage && (
-        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
-          {bindResultMessage}
-        </div>
-      )}
 
       {resultSyncResult && (
         <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
