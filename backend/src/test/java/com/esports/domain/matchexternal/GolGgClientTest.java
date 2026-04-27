@@ -319,6 +319,58 @@ class GolGgClientTest {
     }
 
     @Test
+    void buildTournamentGuessUrlsPrioritizesStageYearMatchlistsBeforeGenericLabels() throws Exception {
+        Match match = buildMatch(
+                "Nongshim Esports Academy",
+                "DN SOOPers Challengers",
+                "Group Stage",
+                OffsetDateTime.parse("2026-01-12T05:00:00Z")
+        );
+        when(match.getStage()).thenReturn("LCK CL");
+
+        Object target = buildTarget(match);
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method method = GolGgClient.class.getDeclaredMethod("buildTournamentGuessUrls", targetClass);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> urls = (List<String>) method.invoke(client, target);
+
+        int kickoffIndex = indexOfContaining(urls, "/tournament/tournament-matchlist/lck%20cl%202026%20kickoff/");
+        int roundsIndex = indexOfContaining(urls, "/tournament/tournament-matchlist/lck%20cl%202026%20rounds%201-2/");
+        int genericIndex = indexOfContaining(urls, "/tournament/tournament-matchlist/Group%20Stage/");
+
+        assertThat(kickoffIndex).isBetween(0, 7);
+        assertThat(roundsIndex).isBetween(0, 7);
+        assertThat(genericIndex).isGreaterThan(roundsIndex);
+    }
+
+    @Test
+    void buildTournamentGuessUrlsCoversKnownLeagueSpecificTournamentNames() throws Exception {
+        Match lecMatch = buildMatch(
+                "G2 Esports",
+                "Fnatic",
+                "Group Stage",
+                OffsetDateTime.parse("2026-02-08T17:00:00Z")
+        );
+        when(lecMatch.getStage()).thenReturn("LEC");
+
+        Match lcpMatch = buildMatch(
+                "Team Secret Whales",
+                "Deep Cross Gaming",
+                "Group Stage",
+                OffsetDateTime.parse("2026-03-01T10:00:00Z")
+        );
+        when(lcpMatch.getStage()).thenReturn("LCP");
+
+        List<String> lecUrls = invokeBuildTournamentGuessUrls(lecMatch);
+        List<String> lcpUrls = invokeBuildTournamentGuessUrls(lcpMatch);
+
+        assertThat(lecUrls).anyMatch(url -> url.toLowerCase().contains("lec%202026%20versus%20season"));
+        assertThat(lcpUrls).anyMatch(url -> url.toLowerCase().contains("lcp%202026%20split%201%20playoffs"));
+    }
+
+    @Test
     void filterCandidatesByTargetRejectsSingleTeamRecentHomeCandidate() throws Exception {
         Match match = buildMatch(
                 "DN SOOPers",
@@ -395,6 +447,25 @@ class GolGgClientTest {
         int lckClScore = (int) method.invoke(client, "https://gol.gg/tournament/tournament-matchlist/LCK%20CL%202026/", target);
 
         assertThat(lckClScore).isGreaterThan(lckScore);
+    }
+
+    private int indexOfContaining(List<String> values, String needle) {
+        String normalizedNeedle = needle.toLowerCase();
+        for (int i = 0; i < values.size(); i++) {
+            if (values.get(i).toLowerCase().contains(normalizedNeedle)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> invokeBuildTournamentGuessUrls(Match match) throws Exception {
+        Object target = buildTarget(match);
+        Class<?> targetClass = Class.forName("com.esports.domain.matchexternal.GolGgClient$MatchTarget");
+        Method method = GolGgClient.class.getDeclaredMethod("buildTournamentGuessUrls", targetClass);
+        method.setAccessible(true);
+        return (List<String>) method.invoke(client, target);
     }
 
     private Object buildTarget(Match match) throws Exception {

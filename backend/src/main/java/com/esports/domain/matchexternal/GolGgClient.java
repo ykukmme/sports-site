@@ -29,8 +29,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,10 +62,18 @@ public class GolGgClient {
             "Summer",
             "Winter",
             "Split 1",
+            "Split 1 Playoffs",
             "Split 2",
+            "Split 2 Playoffs",
             "Split 3",
+            "Split 3 Playoffs",
+            "Spring Playoffs",
+            "Summer Playoffs",
             "Season Finals",
-            "Versus"
+            "Versus",
+            "Versus Season",
+            "Lock-In",
+            "Lock In"
     );
 
     private final GolGgProperties properties;
@@ -553,6 +559,7 @@ public class GolGgClient {
             return List.of();
         }
         LinkedHashSet<String> labels = new LinkedHashSet<>();
+        labels.addAll(buildStageYearVariants(target));
         labels.addAll(target.searchLabels());
         if (!target.year().isBlank()) {
             for (String label : target.searchLabels()) {
@@ -566,21 +573,19 @@ public class GolGgClient {
                 }
             }
         }
-        labels.addAll(buildStageYearVariants(target));
-
-        return labels.stream()
+        List<String> encodedLabels = labels.stream()
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .map(this::encodePathSegment)
-                .flatMap(value -> Stream.of(
-                        properties.getBaseUrl() + "/tournament/tournament-matchlist/" + value + "/",
-                        properties.getBaseUrl() + "/tournament/tournament-stats/" + value + "/",
-                        properties.getBaseUrl() + "/esports/tournament/tournament-matchlist/" + value + "/",
-                        properties.getBaseUrl() + "/esports/tournament/tournament-stats/" + value + "/"
-                ))
-                .collect(Collectors.toCollection(LinkedHashSet::new))
-                .stream()
                 .toList();
+
+        LinkedHashSet<String> urls = new LinkedHashSet<>();
+        encodedLabels.forEach(value -> urls.add(properties.getBaseUrl() + "/tournament/tournament-matchlist/" + value + "/"));
+        encodedLabels.forEach(value -> urls.add(properties.getBaseUrl() + "/esports/tournament/tournament-matchlist/" + value + "/"));
+        encodedLabels.forEach(value -> urls.add(properties.getBaseUrl() + "/tournament/tournament-stats/" + value + "/"));
+        encodedLabels.forEach(value -> urls.add(properties.getBaseUrl() + "/esports/tournament/tournament-stats/" + value + "/"));
+
+        return urls.stream().toList();
     }
 
     private String encodePathSegment(String value) {
