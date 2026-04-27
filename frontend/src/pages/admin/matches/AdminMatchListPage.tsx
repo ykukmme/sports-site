@@ -242,7 +242,7 @@ export function AdminMatchListPage() {
   }
 
   async function runResolveSourceUrl(matchId: number, sourceUrl: string) {
-    const normalized = await validateSourceUrl(matchId, sourceUrl)
+    const normalized = sourceUrl.trim()
     if (!normalized) return
     resolveSourceMutation.mutate(
       { matchId, sourceUrl: normalized },
