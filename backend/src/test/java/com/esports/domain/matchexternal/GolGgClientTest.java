@@ -409,6 +409,26 @@ class GolGgClientTest {
     }
 
     @Test
+    void extractRawCandidatesIndexesPlainGameStatsOccurrencesFromTournamentPages() throws Exception {
+        String html = """
+                <html><body>
+                  game/stats/75665
+                  game/stats/75668
+                  <a href="game/stats/75671/page-summary/">NS vs DNS</a>
+                </body></html>
+                """;
+
+        List<GolGgClient.GolGgRawCandidate> rawCandidates = invokeExtractRawCandidates(
+                html,
+                "https://gol.gg/tournament/tournament-matchlist/LCK%20CL%202026%20Rounds%201-2/"
+        );
+
+        assertThat(rawCandidates)
+                .extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .contains("75665", "75668", "75671");
+    }
+
+    @Test
     void filterCandidatesByTargetRejectsSingleTeamRecentHomeCandidate() throws Exception {
         Match match = buildMatch(
                 "DN SOOPers",

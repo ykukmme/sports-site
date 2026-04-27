@@ -418,25 +418,23 @@ public class GolGgClient {
             }
         }
 
-        if (byGameId.isEmpty()) {
-            Matcher idMatcher = URL_GAME_ID_PATTERN.matcher(normalizedHtml);
-            while (idMatcher.find()) {
-                String gameId = idMatcher.group(1);
-                if (gameId == null || gameId.isBlank()) {
-                    continue;
-                }
-                int start = Math.max(0, idMatcher.start() - 240);
-                int end = Math.min(normalizedHtml.length(), idMatcher.end() + 240);
-                String context = appendContext(stripTags(normalizedHtml.substring(start, end)), normalizedPageContext);
-                GolGgRawCandidate candidate = new GolGgRawCandidate(
-                        gameId,
-                        buildGameSummaryUrl(gameId),
-                        context
-                );
-                GolGgRawCandidate current = byGameId.get(gameId);
-                if (current == null || candidate.contextText().length() > current.contextText().length()) {
-                    byGameId.put(gameId, candidate);
-                }
+        Matcher idMatcher = URL_GAME_ID_PATTERN.matcher(normalizedHtml);
+        while (idMatcher.find()) {
+            String gameId = idMatcher.group(1);
+            if (gameId == null || gameId.isBlank() || byGameId.containsKey(gameId)) {
+                continue;
+            }
+            int start = Math.max(0, idMatcher.start() - 240);
+            int end = Math.min(normalizedHtml.length(), idMatcher.end() + 240);
+            String context = appendContext(stripTags(normalizedHtml.substring(start, end)), normalizedPageContext);
+            GolGgRawCandidate candidate = new GolGgRawCandidate(
+                    gameId,
+                    buildGameSummaryUrl(gameId),
+                    context
+            );
+            GolGgRawCandidate current = byGameId.get(gameId);
+            if (current == null || candidate.contextText().length() > current.contextText().length()) {
+                byGameId.put(gameId, candidate);
             }
         }
         return new ArrayList<>(byGameId.values());
