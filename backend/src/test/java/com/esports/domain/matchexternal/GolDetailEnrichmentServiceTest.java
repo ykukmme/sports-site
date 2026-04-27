@@ -42,6 +42,9 @@ class GolDetailEnrichmentServiceTest {
     @Mock
     private GolDetailCandidateMatcher candidateMatcher;
 
+    @Mock
+    private GolGgTournamentIndexService tournamentIndexService;
+
     private GolDetailEnrichmentService service;
 
     @BeforeEach
@@ -54,7 +57,8 @@ class GolDetailEnrichmentServiceTest {
                 golGgClient,
                 properties,
                 new ObjectMapper(),
-                candidateMatcher
+                candidateMatcher,
+                tournamentIndexService
         );
     }
 

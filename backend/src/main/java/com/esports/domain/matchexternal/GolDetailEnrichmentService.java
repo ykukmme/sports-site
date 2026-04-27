@@ -48,19 +48,22 @@ public class GolDetailEnrichmentService {
     private final GolGgProperties golGgProperties;
     private final ObjectMapper objectMapper;
     private final GolDetailCandidateMatcher candidateMatcher;
+    private final GolGgTournamentIndexService tournamentIndexService;
 
     public GolDetailEnrichmentService(MatchRepository matchRepository,
                                       MatchExternalDetailRepository detailRepository,
                                       GolGgClient golGgClient,
                                       GolGgProperties golGgProperties,
                                       ObjectMapper objectMapper,
-                                      GolDetailCandidateMatcher candidateMatcher) {
+                                      GolDetailCandidateMatcher candidateMatcher,
+                                      GolGgTournamentIndexService tournamentIndexService) {
         this.matchRepository = matchRepository;
         this.detailRepository = detailRepository;
         this.golGgClient = golGgClient;
         this.golGgProperties = golGgProperties;
         this.objectMapper = objectMapper;
         this.candidateMatcher = candidateMatcher;
+        this.tournamentIndexService = tournamentIndexService;
     }
 
     public MatchExternalDetailSummaryResponse bindSourceUrl(Long matchId, String sourceUrl) {
@@ -357,7 +360,8 @@ public class GolDetailEnrichmentService {
         if (targeted != null && !targeted.isEmpty()) {
             return targeted;
         }
-        return List.of();
+        List<GolGgClient.GolGgRawCandidate> indexed = tournamentIndexService.findIndexedCandidates();
+        return indexed != null ? indexed : List.of();
     }
 
     private List<GolDetailCandidateMatcher.ScoredCandidate> mergeBoundCandidate(

@@ -4,15 +4,18 @@ import type { MatchCreateFormValues, MatchResultFormValues, MatchUpdateFormValue
 import { MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
 import {
   bindMatchExternalDetailSource,
+  createGolGgTournamentSource,
   createAdminMatch,
   createMatchResult,
   deleteAdminMatch,
   findMatchExternalDetailCandidates,
+  fetchGolGgTournamentSources,
   fetchAdminMatch,
   fetchAdminMatches,
   resolveMatchExternalDetailSource,
   syncMatchExternalDetail,
   syncMatchExternalDetailsBatch,
+  syncGolGgTournamentSource,
   syncPandaScoreMatchResults,
   validateMatchExternalDetailSource,
   updateAdminMatch,
@@ -170,6 +173,35 @@ export function useSyncMatchExternalDetailsBatch() {
     mutationFn: (matchIds: number[]) => syncMatchExternalDetailsBatch(matchIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function useGolGgTournamentSources() {
+  return useQuery({
+    queryKey: ['admin', 'golgg', 'sources'],
+    queryFn: fetchGolGgTournamentSources,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateGolGgTournamentSource() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sourceUrl, label }: { sourceUrl: string; label?: string }) =>
+      createGolGgTournamentSource(sourceUrl, label),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
+    },
+  })
+}
+
+export function useSyncGolGgTournamentSource() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sourceId: number) => syncGolGgTournamentSource(sourceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
     },
   })
 }

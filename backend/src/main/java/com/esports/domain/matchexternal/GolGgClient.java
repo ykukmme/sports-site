@@ -22,6 +22,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -250,6 +251,12 @@ public class GolGgClient {
             throw new IllegalArgumentException("providerGameId is required");
         }
         return properties.getBaseUrl() + "/game/stats/" + providerGameId.trim() + "/page-summary/";
+    }
+
+    public List<GolGgRawCandidate> fetchRawCandidatesFromTournamentSource(String sourceUrl) {
+        String normalizedUrl = normalizeUrl(sourceUrl);
+        String html = fetchHtml(normalizedUrl);
+        return extractRawCandidates(html, normalizedUrl + " " + safe(extractTitle(html)));
     }
 
     ResolvedProviderGameIds resolveProviderGameIds(String normalizedUrl,
@@ -747,7 +754,7 @@ public class GolGgClient {
             values.add(normalizeForMatch(type.getFilterCode()));
             values.add(normalizeForMatch(type.getLabel()));
         }
-        return Set.copyOf(values);
+        return Collections.unmodifiableSet(values);
     }
 
     private static Set<String> toStageSignals(String stage) {
@@ -767,7 +774,7 @@ public class GolGgClient {
                 }
             }
         }
-        return Set.copyOf(values);
+        return Collections.unmodifiableSet(values);
     }
 
     private record MatchTarget(
@@ -812,11 +819,11 @@ public class GolGgClient {
 
             return new MatchTarget(
                     tournament,
-                    Set.copyOf(searchLabels),
-                    Set.copyOf(tournamentTokens),
+                    Collections.unmodifiableSet(searchLabels),
+                    Collections.unmodifiableSet(tournamentTokens),
                     stageSignals,
-                    Set.copyOf(teamAKeys),
-                    Set.copyOf(teamBKeys),
+                    Collections.unmodifiableSet(teamAKeys),
+                    Collections.unmodifiableSet(teamBKeys),
                     teamKeys,
                     year,
                     scheduledDate

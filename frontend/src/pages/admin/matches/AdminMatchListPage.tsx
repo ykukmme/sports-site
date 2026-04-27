@@ -18,9 +18,12 @@ import {
   useAdminDeleteMatch,
   useAdminMatchList,
   useBindMatchExternalDetailSource,
+  useCreateGolGgTournamentSource,
   useFindMatchExternalDetailCandidates,
+  useGolGgTournamentSources,
   usePandaScoreMatchResultSync,
   useResolveMatchExternalDetailSource,
+  useSyncGolGgTournamentSource,
   useSyncMatchExternalDetail,
   useSyncMatchExternalDetailsBatch,
   useValidateMatchExternalDetailSource,
@@ -85,6 +88,8 @@ export function AdminMatchListPage() {
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
   const [bindSourceInputs, setBindSourceInputs] = useState<Record<number, string>>({})
   const [validationMap, setValidationMap] = useState<Record<number, MatchExternalDetailValidationResponse>>({})
+  const [golGgSourceUrl, setGolGgSourceUrl] = useState('')
+  const [golGgSourceLabel, setGolGgSourceLabel] = useState('')
 
   const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
   const league = leagueFilter === 'ALL' ? undefined : leagueFilter
@@ -98,8 +103,11 @@ export function AdminMatchListPage() {
     sortDirection,
   )
   const { data: teamsData } = useAdminTeamList()
+  const { data: golGgSourcesData } = useGolGgTournamentSources()
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
+  const createGolGgSourceMutation = useCreateGolGgTournamentSource()
+  const syncGolGgSourceMutation = useSyncGolGgTournamentSource()
   const bindSourceMutation = useBindMatchExternalDetailSource()
   const validateSourceMutation = useValidateMatchExternalDetailSource()
   const findCandidatesMutation = useFindMatchExternalDetailCandidates()
@@ -255,6 +263,21 @@ export function AdminMatchListPage() {
     })
   }
 
+  function runCreateGolGgSource() {
+    const sourceUrl = golGgSourceUrl.trim()
+    if (!sourceUrl) return
+    createGolGgSourceMutation.mutate(
+      { sourceUrl, label: golGgSourceLabel.trim() || undefined },
+      {
+        onSuccess: (source) => {
+          setGolGgSourceUrl('')
+          setGolGgSourceLabel('')
+          syncGolGgSourceMutation.mutate(source.id)
+        },
+      },
+    )
+  }
+
   const deleteErrorMessage =
     deleteMutation.error instanceof ApiError ? deleteMutation.error.message : deleteMutation.error?.message
   const resultSyncErrorMessage =
@@ -283,6 +306,12 @@ export function AdminMatchListPage() {
     validateSourceMutation.error instanceof ApiError
       ? validateSourceMutation.error.message
       : validateSourceMutation.error?.message
+  const golGgSourceErrorMessage =
+    createGolGgSourceMutation.error instanceof ApiError
+      ? createGolGgSourceMutation.error.message
+      : syncGolGgSourceMutation.error instanceof ApiError
+        ? syncGolGgSourceMutation.error.message
+        : createGolGgSourceMutation.error?.message ?? syncGolGgSourceMutation.error?.message
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">불러오는 중...</div>
@@ -413,6 +442,51 @@ export function AdminMatchListPage() {
         </div>
       </div>
 
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end">
+          <label className="flex-1 text-sm">
+            <span className="mb-1 block text-muted-foreground">GOL.GG tournament URL</span>
+            <input
+              className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+              value={golGgSourceUrl}
+              onChange={(event) => setGolGgSourceUrl(event.target.value)}
+              placeholder="https://gol.gg/tournament/tournament-matchlist/LCK%20CL%202026%20Rounds%201-2/"
+            />
+          </label>
+          <label className="w-full text-sm md:w-56">
+            <span className="mb-1 block text-muted-foreground">Label</span>
+            <input
+              className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+              value={golGgSourceLabel}
+              onChange={(event) => setGolGgSourceLabel(event.target.value)}
+              placeholder="LCK CL 2026"
+            />
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!golGgSourceUrl.trim() || createGolGgSourceMutation.isPending || syncGolGgSourceMutation.isPending}
+            onClick={runCreateGolGgSource}
+          >
+            Register & index
+          </Button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {(golGgSourcesData ?? []).slice(0, 6).map((source) => (
+            <button
+              key={source.id}
+              type="button"
+              className="rounded-md border border-border px-2 py-1 text-left"
+              disabled={syncGolGgSourceMutation.isPending}
+              onClick={() => syncGolGgSourceMutation.mutate(source.id)}
+              title={source.errorMessage ?? source.sourceUrl}
+            >
+              {source.label || source.sourceUrl} / {source.status} / {source.candidateCount}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {resultSyncErrorMessage && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {resultSyncErrorMessage}
@@ -446,6 +520,12 @@ export function AdminMatchListPage() {
       {validateSourceErrorMessage && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {validateSourceErrorMessage}
+        </div>
+      )}
+
+      {golGgSourceErrorMessage && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {golGgSourceErrorMessage}
         </div>
       )}
 

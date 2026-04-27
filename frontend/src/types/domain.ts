@@ -84,6 +84,16 @@ export interface MatchExternalDetailBatchSyncResponse {
   items: MatchExternalDetailSyncItemResponse[]
 }
 
+export interface GolGgTournamentSourceResponse {
+  id: number
+  sourceUrl: string
+  label: string | null
+  status: 'PENDING' | 'SYNCED' | 'FAILED'
+  candidateCount: number
+  lastIndexedAt: string | null
+  errorMessage: string | null
+}
+
 export interface MatchResponse {
   id: number
   game: GameResponse

@@ -7,6 +7,7 @@ import type {
   MatchExternalDetailSummaryResponse,
   MatchExternalDetailSyncItemResponse,
   MatchExternalDetailValidationResponse,
+  GolGgTournamentSourceResponse,
   TeamResponse,
   PlayerResponse,
   MatchStatus,
@@ -299,6 +300,31 @@ export async function syncMatchExternalDetailsBatch(
     {
       timeout: 120_000,
     },
+  )
+  return res.data.data!
+}
+
+export async function fetchGolGgTournamentSources(): Promise<GolGgTournamentSourceResponse[]> {
+  const res = await apiClient.get<ApiResponse<GolGgTournamentSourceResponse[]>>('/api/admin/golgg/sources')
+  return res.data.data ?? []
+}
+
+export async function createGolGgTournamentSource(
+  sourceUrl: string,
+  label?: string,
+): Promise<GolGgTournamentSourceResponse> {
+  const res = await apiClient.post<ApiResponse<GolGgTournamentSourceResponse>>('/api/admin/golgg/sources', {
+    sourceUrl,
+    label: label || undefined,
+  })
+  return res.data.data!
+}
+
+export async function syncGolGgTournamentSource(sourceId: number): Promise<GolGgTournamentSourceResponse> {
+  const res = await apiClient.post<ApiResponse<GolGgTournamentSourceResponse>>(
+    `/api/admin/golgg/sources/${sourceId}/sync`,
+    null,
+    { timeout: 60_000 },
   )
   return res.data.data!
 }
