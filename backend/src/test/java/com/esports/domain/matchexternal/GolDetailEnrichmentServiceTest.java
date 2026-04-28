@@ -51,6 +51,8 @@ class GolDetailEnrichmentServiceTest {
     void setUp() {
         GolGgProperties properties = new GolGgProperties();
         properties.setParseVersion("gol-v1");
+        // 단위 테스트는 inter-game sleep 비활성 — 운영 기본값(500ms) 영향 없음
+        properties.setGameFetchDelayMs(0);
         service = new GolDetailEnrichmentService(
                 matchRepository,
                 detailRepository,
@@ -338,5 +340,206 @@ class GolDetailEnrichmentServiceTest {
 
         assertThat(response.candidates()).isEmpty();
         assertThat(response.detailSummary().errorMessage()).isEqualTo("No gol.gg candidates found. bind sourceUrl manually.");
+    }
+
+    // ---- T-1.7: enrichment 게임 stats 채움 ----
+
+    @Test
+    void syncOneEnrichesAllGamesForBo3WhenStatsFetchSucceeds() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+        detail.setSourceUrl("https://gol.gg/game/stats/73115/page-summary/");
+
+        ObjectNode summary = new ObjectMapper().createObjectNode().put("title", "BO3");
+        ObjectNode raw = new ObjectMapper().createObjectNode();
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(golGgClient.fetchDetail(any(), any())).thenReturn(new GolGgClient.GolGgParsedDetail(
+                "https://gol.gg/game/stats/73115/page-summary/",
+                List.of("73115", "73116"),
+                summary,
+                raw,
+                List.of(
+                        new GolGgClient.GolGgParsedGame(1, "73115"),
+                        new GolGgClient.GolGgParsedGame(2, "73116")
+                ),
+                95,
+                false
+        ));
+        when(golGgClient.fetchGameStats("73115")).thenReturn(buildGame73115Stats());
+        when(golGgClient.fetchGameStats("73116")).thenReturn(buildGame73116Stats());
+        when(detailRepository.saveAndFlush(any(MatchExternalDetail.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailSyncItemResponse response = service.syncOne(1L);
+
+        assertThat(response.status()).isEqualTo("SYNCED");
+        verify(golGgClient, times(1)).fetchGameStats("73115");
+        verify(golGgClient, times(1)).fetchGameStats("73116");
+
+        ArgumentCaptor<MatchExternalDetail> captor = ArgumentCaptor.forClass(MatchExternalDetail.class);
+        verify(detailRepository, atLeastOnce()).saveAndFlush(captor.capture());
+        MatchExternalDetail saved = captor.getValue();
+        assertThat(saved.getGames()).hasSize(2);
+
+        MatchExternalDetailGame game1 = saved.getGames().get(0);
+        assertThat(game1.getGameNo()).isEqualTo(1);
+        assertThat(game1.getProviderGameId()).isEqualTo("73115");
+        assertThat(game1.getDurationSec()).isEqualTo(1800);
+        assertThat(game1.getWinnerSide()).isEqualTo(ExternalDetailWinnerSide.RED);
+        assertThat(game1.getBlueKills()).isEqualTo(8);
+        assertThat(game1.getRedKills()).isEqualTo(15);
+        assertThat(game1.getErrorMessage()).isNull();
+        // 밴: 정규화된 DDragon ID
+        assertThat(toStringList(game1.getBlueBansJson())).containsExactly("Ahri", "Jhin", "Nautilus");
+        assertThat(toStringList(game1.getRedBansJson())).containsExactly("Leblanc", "Kaisa");
+
+        MatchExternalDetailGame game2 = saved.getGames().get(1);
+        assertThat(game2.getGameNo()).isEqualTo(2);
+        assertThat(game2.getProviderGameId()).isEqualTo("73116");
+        assertThat(game2.getDurationSec()).isEqualTo(1530);
+        assertThat(game2.getWinnerSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
+        assertThat(game2.getBlueKills()).isEqualTo(27);
+        assertThat(game2.getRedKills()).isEqualTo(7);
+        assertThat(game2.getErrorMessage()).isNull();
+        // 픽: championId(정규화) + playerName + position
+        var bluePicks = game2.getBluePicksJson();
+        assertThat(bluePicks).hasSize(5);
+        assertThat(bluePicks.get(0).get("championId").asText()).isEqualTo("Rumble");
+        assertThat(bluePicks.get(0).get("playerName").asText()).isEqualTo("Siwoo");
+        assertThat(bluePicks.get(0).get("position").asText()).isEqualTo("TOP");
+        assertThat(bluePicks.get(2).get("championId").asText()).isEqualTo("Leblanc"); // LeBlanc → Leblanc
+        assertThat(bluePicks.get(2).get("position").asText()).isEqualTo("MID");
+        var redPicks = game2.getRedPicksJson();
+        assertThat(redPicks).hasSize(5);
+        assertThat(redPicks.get(0).get("championId").asText()).isEqualTo("KSante");
+        assertThat(redPicks.get(0).get("playerName").asText()).isEqualTo("Casting");
+    }
+
+    @Test
+    void syncOnePartialFailureKeepsOtherGamesAndRecordsErrorMessage() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+        detail.setSourceUrl("https://gol.gg/game/stats/73115/page-summary/");
+
+        ObjectNode summary = new ObjectMapper().createObjectNode().put("title", "BO3");
+        ObjectNode raw = new ObjectMapper().createObjectNode();
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(golGgClient.fetchDetail(any(), any())).thenReturn(new GolGgClient.GolGgParsedDetail(
+                "https://gol.gg/game/stats/73115/page-summary/",
+                List.of("73115", "73116"),
+                summary,
+                raw,
+                List.of(
+                        new GolGgClient.GolGgParsedGame(1, "73115"),
+                        new GolGgClient.GolGgParsedGame(2, "73116")
+                ),
+                95,
+                false
+        ));
+        when(golGgClient.fetchGameStats("73115")).thenReturn(buildGame73115Stats());
+        when(golGgClient.fetchGameStats("73116"))
+                .thenThrow(new IllegalArgumentException("HTTP 503 fetching page-game/73116"));
+        when(detailRepository.saveAndFlush(any(MatchExternalDetail.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailSyncItemResponse response = service.syncOne(1L);
+
+        // 매치 단위 status는 SYNCED — 부분 실패는 게임 단위에 한정
+        assertThat(response.status()).isEqualTo("SYNCED");
+
+        ArgumentCaptor<MatchExternalDetail> captor = ArgumentCaptor.forClass(MatchExternalDetail.class);
+        verify(detailRepository, atLeastOnce()).saveAndFlush(captor.capture());
+        MatchExternalDetail saved = captor.getValue();
+        assertThat(saved.getGames()).hasSize(2);
+
+        MatchExternalDetailGame game1 = saved.getGames().get(0);
+        assertThat(game1.getDurationSec()).isEqualTo(1800);
+        assertThat(game1.getRedKills()).isEqualTo(15);
+        assertThat(game1.getErrorMessage()).isNull();
+
+        MatchExternalDetailGame game2 = saved.getGames().get(1);
+        // 부분 실패 — stats null/빈, errorMessage만 채워짐
+        assertThat(game2.getDurationSec()).isNull();
+        assertThat(game2.getWinnerSide()).isNull();
+        assertThat(game2.getBlueKills()).isNull();
+        assertThat(game2.getBluePicksJson()).isEmpty();
+        assertThat(game2.getRedPicksJson()).isEmpty();
+        assertThat(game2.getBlueBansJson()).isEmpty();
+        assertThat(game2.getErrorMessage()).contains("HTTP 503").contains("fetchGameStats failed");
+    }
+
+    // ---- 픽스처 헬퍼 ----
+
+    private GolGgClient.GolGgParsedGameStats buildGame73115Stats() {
+        // 73115: smoke-level 합성 데이터. 73116과 다른 winner/kills로 검증.
+        return new GolGgClient.GolGgParsedGameStats(
+                "73115",
+                "https://gol.gg/game/stats/73115/page-game/",
+                1800,
+                ExternalDetailWinnerSide.RED,
+                8, 15,
+                1, 3,
+                0, 1,
+                List.of("Ahri", "Jhin", "Nautilus"),
+                // 정규화 검증 — LeBlanc → Leblanc, Kai'Sa → Kaisa
+                List.of("LeBlanc", "Kai'Sa"),
+                List.of(
+                        new GolGgClient.GolGgPickEntry("Garen", "PlayerB1", "TOP"),
+                        new GolGgClient.GolGgPickEntry("Vi", "PlayerB2", "JUNGLE"),
+                        new GolGgClient.GolGgPickEntry("Annie", "PlayerB3", "MID"),
+                        new GolGgClient.GolGgPickEntry("Caitlyn", "PlayerB4", "ADC"),
+                        new GolGgClient.GolGgPickEntry("Bard", "PlayerB5", "SUPPORT")
+                ),
+                List.of(
+                        new GolGgClient.GolGgPickEntry("Darius", "PlayerR1", "TOP"),
+                        new GolGgClient.GolGgPickEntry("Pantheon", "PlayerR2", "JUNGLE"),
+                        new GolGgClient.GolGgPickEntry("Yasuo", "PlayerR3", "MID"),
+                        new GolGgClient.GolGgPickEntry("Lucian", "PlayerR4", "ADC"),
+                        new GolGgClient.GolGgPickEntry("Rakan", "PlayerR5", "SUPPORT")
+                )
+        );
+    }
+
+    private GolGgClient.GolGgParsedGameStats buildGame73116Stats() {
+        // 73116: 실제 GOL.GG 정답 시트(LCK Cup 2026 WEEK1, DK vs BRO Game 2)
+        return new GolGgClient.GolGgParsedGameStats(
+                "73116",
+                "https://gol.gg/game/stats/73116/page-game/",
+                1530,
+                ExternalDetailWinnerSide.BLUE,
+                27, 7,
+                2, 0,
+                1, 0,
+                List.of("Azir", "Jayce", "Vi", "Rakan", "Nautilus"),
+                List.of("Qiyana", "Malphite", "Akali", "Lucian", "Kalista"),
+                List.of(
+                        new GolGgClient.GolGgPickEntry("Rumble", "Siwoo", "TOP"),
+                        new GolGgClient.GolGgPickEntry("Pantheon", "Lucid", "JUNGLE"),
+                        // LeBlanc → Leblanc 정규화 검증용
+                        new GolGgClient.GolGgPickEntry("LeBlanc", "ShowMaker", "MID"),
+                        new GolGgClient.GolGgPickEntry("Sivir", "Smash", "ADC"),
+                        new GolGgClient.GolGgPickEntry("Bard", "Career", "SUPPORT")
+                ),
+                List.of(
+                        new GolGgClient.GolGgPickEntry("KSante", "Casting", "TOP"),
+                        new GolGgClient.GolGgPickEntry("Nocturne", "GIDEON", "JUNGLE"),
+                        new GolGgClient.GolGgPickEntry("Orianna", "Roamer", "MID"),
+                        new GolGgClient.GolGgPickEntry("Jhin", "Teddy", "ADC"),
+                        new GolGgClient.GolGgPickEntry("Elise", "Namgung", "SUPPORT")
+                )
+        );
+    }
+
+    private List<String> toStringList(com.fasterxml.jackson.databind.JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<String> out = new java.util.ArrayList<>();
+        node.forEach(item -> out.add(item.asText()));
+        return out;
     }
 }
