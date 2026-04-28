@@ -24,6 +24,10 @@ public record MatchExternalDetailPublicResponse(
             Integer gameNo,
             Integer durationSec,
             String winnerSide,
+            // GOL.GG 헤더에서 추출한 사이드 팀명. 결측 시 null. 프론트는 이 값으로 사이드 라벨 표시.
+            // 로컬 match.teamA/teamB와 사이드 순서가 다른 경우 swap 버그 방지가 목적.
+            String blueTeamName,
+            String redTeamName,
             Integer blueKills,
             Integer redKills,
             Integer blueDragons,

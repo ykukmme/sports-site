@@ -62,6 +62,8 @@ public class MatchPublicDetailService {
                 game.getGameNo(),
                 game.getDurationSec(),
                 game.getWinnerSide() != null ? game.getWinnerSide().name() : null,
+                game.getBlueTeamName(),
+                game.getRedTeamName(),
                 game.getBlueKills(),
                 game.getRedKills(),
                 game.getBlueDragons(),

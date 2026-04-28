@@ -36,12 +36,16 @@ function formatDuration(seconds: number | null) {
   return `${minutes}:${String(rest).padStart(2, '0')}`
 }
 
-export function GameObjectivesCard({ game, match }: GameObjectivesCardProps) {
+export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardProps) {
+  // 사이드 라벨/승자 표시는 GOL.GG 헤더에서 파싱한 game 단위 팀명을 사용한다.
+  // match.teamA/teamB는 사이드와 무관 — swap 버그 방지.
+  const blueTeamName = game.blueTeamName ?? '-'
+  const redTeamName = game.redTeamName ?? '-'
   const winnerLabel =
     game.winnerSide === 'BLUE'
-      ? match.teamA.name
+      ? blueTeamName
       : game.winnerSide === 'RED'
-        ? match.teamB.name
+        ? redTeamName
         : '-'
 
   return (
@@ -56,11 +60,11 @@ export function GameObjectivesCard({ game, match }: GameObjectivesCardProps) {
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
-            {match.teamA.name}
+            {blueTeamName}
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            {match.teamB.name}
+            {redTeamName}
           </span>
         </div>
       </div>

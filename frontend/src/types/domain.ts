@@ -54,6 +54,8 @@ export interface MatchExternalDetailPublicGame {
   gameNo: number | null
   durationSec: number | null
   winnerSide: string | null
+  blueTeamName: string | null
+  redTeamName: string | null
   blueKills: number | null
   redKills: number | null
   blueDragons: number | null

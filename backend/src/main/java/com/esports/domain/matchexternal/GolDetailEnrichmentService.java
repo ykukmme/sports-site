@@ -576,6 +576,8 @@ public class GolDetailEnrichmentService {
             }
             item.setDurationSec(stats.durationSec());
             item.setWinnerSide(stats.winnerSide());
+            item.setBlueTeamName(stats.blueTeamName());
+            item.setRedTeamName(stats.redTeamName());
             item.setBlueKills(stats.blueKills());
             item.setRedKills(stats.redKills());
             item.setBlueDragons(stats.blueDragons());

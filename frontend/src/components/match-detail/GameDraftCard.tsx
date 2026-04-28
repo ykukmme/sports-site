@@ -84,19 +84,23 @@ function TeamDraftColumn({
   )
 }
 
-export function GameDraftCard({ game, match }: GameDraftCardProps) {
+export function GameDraftCard({ game, match: _match }: GameDraftCardProps) {
+  // 사이드 라벨은 GOL.GG 헤더에서 파싱한 game 단위 팀명을 사용한다.
+  // match.teamA/teamB는 사이드와 무관하므로 사용하지 않는다 (swap 버그 방지).
+  const blueTeamName = game.blueTeamName ?? '-'
+  const redTeamName = game.redTeamName ?? '-'
   return (
     <section className="grid gap-4 lg:grid-cols-2">
       <TeamDraftColumn
         label="Blue"
-        teamName={match.teamA.name}
+        teamName={blueTeamName}
         picks={game.bluePicks}
         bans={game.blueBans}
         sideClassName="bg-blue-500"
       />
       <TeamDraftColumn
         label="Red"
-        teamName={match.teamB.name}
+        teamName={redTeamName}
         picks={game.redPicks}
         bans={game.redBans}
         sideClassName="bg-red-500"

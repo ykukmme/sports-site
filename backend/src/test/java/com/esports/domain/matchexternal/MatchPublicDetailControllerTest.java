@@ -60,6 +60,8 @@ class MatchPublicDetailControllerTest {
                 .andExpect(jsonPath("$.data.sourceUrl").value("https://gol.gg/game/stats/73115/page-summary/"))
                 .andExpect(jsonPath("$.data.games[0].gameNo").value(1))
                 .andExpect(jsonPath("$.data.games[0].winnerSide").value("BLUE"))
+                .andExpect(jsonPath("$.data.games[0].blueTeamName").value("Dplus KIA"))
+                .andExpect(jsonPath("$.data.games[0].redTeamName").value("T1"))
                 .andExpect(jsonPath("$.data.games[0].blueKills").value(27))
                 .andExpect(jsonPath("$.data.games[0].redKills").value(7))
                 .andExpect(jsonPath("$.data.games[0].blueBans[0]").value("Azir"))
@@ -111,6 +113,8 @@ class MatchPublicDetailControllerTest {
                 1,
                 1530,
                 "BLUE",
+                "Dplus KIA",
+                "T1",
                 27, 7,
                 2, 0,
                 1, 0,

@@ -42,6 +42,10 @@ class GolGgGameStatsParserTest {
         // 승자 = 블루 (Dplus KIA - WIN)
         assertThat(stats.winnerSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
 
+        // 헤더에서 사이드 팀명 추출 — " - WIN/LOSS" suffix 제거 후 팀명만
+        assertThat(stats.blueTeamName()).isEqualTo("Dplus KIA");
+        assertThat(stats.redTeamName()).isNotBlank();
+
         // 킬 / 드래곤 / 바론
         assertThat(stats.blueKills()).isEqualTo(27);
         assertThat(stats.redKills()).isEqualTo(7);
@@ -96,6 +100,9 @@ class GolGgGameStatsParserTest {
         assertThat(stats.redKills()).isNotNull().isGreaterThanOrEqualTo(0);
         // winnerSide는 BLUE 또는 RED — null이면 헤더 파싱 회귀.
         assertThat(stats.winnerSide()).isIn(ExternalDetailWinnerSide.BLUE, ExternalDetailWinnerSide.RED);
+        // 사이드 팀명 — 헤더 텍스트에서 " - WIN/LOSS" suffix 제거 후 비어있지 않아야 함.
+        assertThat(stats.blueTeamName()).isNotBlank();
+        assertThat(stats.redTeamName()).isNotBlank();
     }
 
     @Test

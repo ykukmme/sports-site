@@ -309,6 +309,10 @@ public class GolGgClient {
         // Winner 결정 — blue/red 헤더 텍스트 끝의 " - WIN"/" - LOSS" 교차 검증
         ExternalDetailWinnerSide winnerSide = resolveWinnerSide(blue.headerText, red.headerText);
 
+        // 헤더 텍스트("팀명 - WIN/LOSS")에서 사이드 팀명 추출. 결측 시 null (Hard Rule #4).
+        String blueTeamName = extractTeamNameFromHeader(blue.headerText);
+        String redTeamName = extractTeamNameFromHeader(red.headerText);
+
         // Picks (player table) — blue 첫 번째, red 두 번째
         Elements playerTables = doc.select("table.playersInfosLine");
         List<GolGgPickEntry> bluePicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "blue-line-header"));
@@ -319,6 +323,8 @@ public class GolGgClient {
                 sourceUrl,
                 durationSec,
                 winnerSide,
+                blueTeamName,
+                redTeamName,
                 blue.kills,
                 red.kills,
                 blue.dragons,
@@ -332,10 +338,35 @@ public class GolGgClient {
         );
     }
 
+    // 헤더 텍스트에서 " - WIN"/" - LOSS" suffix를 제거하고 팀명만 반환.
+    // 추측 보간 금지(Hard Rule #4) — suffix가 없거나 팀명이 비면 null.
+    private String extractTeamNameFromHeader(String header) {
+        if (header == null) {
+            return null;
+        }
+        String trimmed = header.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        String upper = trimmed.toUpperCase(Locale.ROOT);
+        int cutoff = -1;
+        for (String suffix : List.of(" - WIN", " - LOSS", "- WIN", "- LOSS", " -WIN", " -LOSS", "-WIN", "-LOSS")) {
+            int idx = upper.lastIndexOf(suffix);
+            if (idx > 0 && idx + suffix.length() == upper.length()) {
+                cutoff = idx;
+                break;
+            }
+        }
+        String name = (cutoff > 0 ? trimmed.substring(0, cutoff) : trimmed).trim();
+        return name.isEmpty() ? null : name;
+    }
+
     private GolGgParsedGameStats emptyGameStats(String providerGameId, String sourceUrl) {
         return new GolGgParsedGameStats(
                 providerGameId,
                 sourceUrl,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -1221,6 +1252,9 @@ public class GolGgClient {
             String sourceUrl,
             Integer durationSec,
             ExternalDetailWinnerSide winnerSide,
+            // GOL.GG 헤더에서 추출한 사이드 팀명. 결측 시 null (Hard Rule #4).
+            String blueTeamName,
+            String redTeamName,
             Integer blueKills,
             Integer redKills,
             Integer blueDragons,

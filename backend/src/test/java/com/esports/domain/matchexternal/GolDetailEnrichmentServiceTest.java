@@ -388,6 +388,9 @@ class GolDetailEnrichmentServiceTest {
         assertThat(game1.getProviderGameId()).isEqualTo("73115");
         assertThat(game1.getDurationSec()).isEqualTo(1800);
         assertThat(game1.getWinnerSide()).isEqualTo(ExternalDetailWinnerSide.RED);
+        // 사이드 팀명 — GOL.GG 헤더에서 파싱한 값이 그대로 저장돼야 함 (swap 방지)
+        assertThat(game1.getBlueTeamName()).isEqualTo("Dplus KIA");
+        assertThat(game1.getRedTeamName()).isEqualTo("T1");
         assertThat(game1.getBlueKills()).isEqualTo(8);
         assertThat(game1.getRedKills()).isEqualTo(15);
         assertThat(game1.getErrorMessage()).isNull();
@@ -400,6 +403,8 @@ class GolDetailEnrichmentServiceTest {
         assertThat(game2.getProviderGameId()).isEqualTo("73116");
         assertThat(game2.getDurationSec()).isEqualTo(1530);
         assertThat(game2.getWinnerSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
+        assertThat(game2.getBlueTeamName()).isEqualTo("Dplus KIA");
+        assertThat(game2.getRedTeamName()).isEqualTo("BRO");
         assertThat(game2.getBlueKills()).isEqualTo(27);
         assertThat(game2.getRedKills()).isEqualTo(7);
         assertThat(game2.getErrorMessage()).isNull();
@@ -481,6 +486,8 @@ class GolDetailEnrichmentServiceTest {
                 "https://gol.gg/game/stats/73115/page-game/",
                 1800,
                 ExternalDetailWinnerSide.RED,
+                "Dplus KIA",
+                "T1",
                 8, 15,
                 1, 3,
                 0, 1,
@@ -511,6 +518,8 @@ class GolDetailEnrichmentServiceTest {
                 "https://gol.gg/game/stats/73116/page-game/",
                 1530,
                 ExternalDetailWinnerSide.BLUE,
+                "Dplus KIA",
+                "BRO",
                 27, 7,
                 2, 0,
                 1, 0,

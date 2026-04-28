@@ -45,6 +45,13 @@ public class MatchExternalDetailGame {
     @Column(name = "winner_side", length = 10)
     private ExternalDetailWinnerSide winnerSide;
 
+    // GOL.GG page-game 헤더에서 추출한 실제 사이드 팀명. 결측 시 NULL (Hard Rule #4).
+    @Column(name = "blue_team_name", length = 100)
+    private String blueTeamName;
+
+    @Column(name = "red_team_name", length = 100)
+    private String redTeamName;
+
     @Column(name = "blue_kills")
     private Integer blueKills;
 
@@ -259,5 +266,21 @@ public class MatchExternalDetailGame {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+
+    public String getBlueTeamName() {
+        return blueTeamName;
+    }
+
+    public void setBlueTeamName(String blueTeamName) {
+        this.blueTeamName = blueTeamName;
+    }
+
+    public String getRedTeamName() {
+        return redTeamName;
+    }
+
+    public void setRedTeamName(String redTeamName) {
+        this.redTeamName = redTeamName;
     }
 }
