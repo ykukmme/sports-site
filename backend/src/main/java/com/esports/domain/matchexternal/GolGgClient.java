@@ -254,6 +254,48 @@ public class GolGgClient {
         return properties.getBaseUrl() + "/game/stats/" + providerGameId.trim() + "/page-summary/";
     }
 
+    // 게임 단위 상세 stats 페이지 URL — picks/bans/kills/objectives 추출 대상
+    public String buildGameDetailUrl(String providerGameId) {
+        if (providerGameId == null || providerGameId.isBlank()) {
+            throw new IllegalArgumentException("providerGameId is required");
+        }
+        return properties.getBaseUrl() + "/game/stats/" + providerGameId.trim() + "/page-game/";
+    }
+
+    // 단일 게임의 stats(드래프트, 킬, 오브젝트 등)를 page-game URL에서 가져온다.
+    // 실제 HTML selector 파싱은 T-1.2에서 fixture 확보 후 parseGameStatsHtml에 채워 넣는다.
+    public GolGgParsedGameStats fetchGameStats(String providerGameId) {
+        if (providerGameId == null || providerGameId.isBlank()) {
+            throw new IllegalArgumentException("providerGameId is required");
+        }
+        String trimmedId = providerGameId.trim();
+        String url = buildGameDetailUrl(trimmedId);
+        String html = fetchHtml(url);
+        return parseGameStatsHtml(trimmedId, url, html);
+    }
+
+    // page-game HTML에서 게임 stats를 추출한다.
+    // TODO(T-1.2): backend/src/test/resources/golgg/page-game/ 픽스처 확보 후 실제 selector를 채울 것.
+    // 현재는 호출 컨트랙트만 잡아 두고 모든 stats 필드는 null/빈 값으로 반환한다.
+    private GolGgParsedGameStats parseGameStatsHtml(String providerGameId, String sourceUrl, String html) {
+        return new GolGgParsedGameStats(
+                providerGameId,
+                sourceUrl,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+    }
+
     public List<GolGgRawCandidate> fetchRawCandidatesFromTournamentSource(String sourceUrl) {
         String normalizedUrl = normalizeUrl(sourceUrl);
         String html = fetchHtml(normalizedUrl);
@@ -881,6 +923,35 @@ public class GolGgClient {
             String providerGameId,
             String sourceUrl,
             String contextText
+    ) {
+    }
+
+    // 단일 게임 stats — page-game URL 1개에서 추출한 결과
+    // 결측 필드는 null/빈 리스트. fabrication 금지(Hard Rule #4) — 추측 보간 절대 안 함.
+    public record GolGgParsedGameStats(
+            String providerGameId,
+            String sourceUrl,
+            Integer durationSec,
+            ExternalDetailWinnerSide winnerSide,
+            Integer blueKills,
+            Integer redKills,
+            Integer blueDragons,
+            Integer redDragons,
+            Integer blueBarons,
+            Integer redBarons,
+            List<String> blueBans,
+            List<String> redBans,
+            List<GolGgPickEntry> bluePicks,
+            List<GolGgPickEntry> redPicks
+    ) {
+    }
+
+    // 픽 1건 — 챔피언/선수/포지션
+    // championId는 GOL.GG Display 포맷(공백·아포스트로피 포함). T-1.4 ChampionIdNormalizer 도입 후 정제된 DDragon ID 저장.
+    public record GolGgPickEntry(
+            String championId,
+            String playerName,
+            String position
     ) {
     }
 
