@@ -87,6 +87,10 @@ public class MatchExternalDetailGame {
     @Column(name = "objective_timeline_json", columnDefinition = "jsonb")
     private JsonNode objectiveTimelineJson;
 
+    // 게임 단위 부분 실패 메시지. NULL = 정상. (T-1.5 enrichment에서 set)
+    @Column(name = "error_message")
+    private String errorMessage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -247,5 +251,13 @@ public class MatchExternalDetailGame {
 
     public void setObjectiveTimelineJson(JsonNode objectiveTimelineJson) {
         this.objectiveTimelineJson = objectiveTimelineJson;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }
