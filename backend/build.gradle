@@ -42,6 +42,9 @@ dependencies {
     // Rate Limiting (챗봇 IP별 요청 제한)
     implementation 'com.bucket4j:bucket4j-core:8.10.1'
 
+    // GOL.GG HTML 파싱 (page-game 게임별 stats 추출용)
+    implementation 'org.jsoup:jsoup:1.17.2'
+
     // 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'

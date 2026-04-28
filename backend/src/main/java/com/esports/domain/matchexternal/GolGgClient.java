@@ -9,6 +9,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -274,10 +278,61 @@ public class GolGgClient {
         return parseGameStatsHtml(trimmedId, url, html);
     }
 
-    // page-game HTML에서 게임 stats를 추출한다.
-    // TODO(T-1.2): backend/src/test/resources/golgg/page-game/ 픽스처 확보 후 실제 selector를 채울 것.
-    // 현재는 호출 컨트랙트만 잡아 두고 모든 stats 필드는 null/빈 값으로 반환한다.
-    private GolGgParsedGameStats parseGameStatsHtml(String providerGameId, String sourceUrl, String html) {
+    // page-game HTML에서 게임 stats를 추출한다 (Jsoup 기반).
+    // 결측 필드는 null/빈 리스트 — Hard Rule #4 fabrication 금지: 추측 보간 절대 안 함.
+    // selector 스펙: docs/plans/2026-04-28-golgg-page-game-parser-spec.md
+    GolGgParsedGameStats parseGameStatsHtml(String providerGameId, String sourceUrl, String html) {
+        if (html == null || html.isBlank()) {
+            return emptyGameStats(providerGameId, sourceUrl);
+        }
+        Document doc;
+        try {
+            doc = Jsoup.parse(html);
+        } catch (RuntimeException ex) {
+            return emptyGameStats(providerGameId, sourceUrl);
+        }
+
+        // 게임 시간(MM:SS) — col-6.text-center 안 <h1>
+        Integer durationSec = null;
+        Element gameTimeH1 = doc.selectFirst("div.col-6.text-center > h1");
+        if (gameTimeH1 != null) {
+            durationSec = parseMmSsToSeconds(gameTimeH1.text());
+        }
+
+        // 양 사이드 컨테이너 — 각각 blue-line-header / red-line-header를 보유한 col-12.col-sm-6
+        Element blueSide = doc.selectFirst("div.col-12.col-sm-6:has(div.blue-line-header)");
+        Element redSide = doc.selectFirst("div.col-12.col-sm-6:has(div.red-line-header)");
+
+        SideStats blue = extractSideStats(blueSide, "blue_line");
+        SideStats red = extractSideStats(redSide, "red_line");
+
+        // Winner 결정 — blue/red 헤더 텍스트 끝의 " - WIN"/" - LOSS" 교차 검증
+        ExternalDetailWinnerSide winnerSide = resolveWinnerSide(blue.headerText, red.headerText);
+
+        // Picks (player table) — blue 첫 번째, red 두 번째
+        Elements playerTables = doc.select("table.playersInfosLine");
+        List<GolGgPickEntry> bluePicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "blue-line-header"));
+        List<GolGgPickEntry> redPicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "red-line-header"));
+
+        return new GolGgParsedGameStats(
+                providerGameId,
+                sourceUrl,
+                durationSec,
+                winnerSide,
+                blue.kills,
+                red.kills,
+                blue.dragons,
+                red.dragons,
+                blue.barons,
+                red.barons,
+                blue.bans,
+                red.bans,
+                bluePicks,
+                redPicks
+        );
+    }
+
+    private GolGgParsedGameStats emptyGameStats(String providerGameId, String sourceUrl) {
         return new GolGgParsedGameStats(
                 providerGameId,
                 sourceUrl,
@@ -294,6 +349,206 @@ public class GolGgClient {
                 List.of(),
                 List.of()
         );
+    }
+
+    // 단일 사이드(blue/red)에서 kills/dragons/barons/bans와 헤더 텍스트를 한 번에 뽑아낸다.
+    private SideStats extractSideStats(Element sideContainer, String scoreBoxClass) {
+        if (sideContainer == null) {
+            return new SideStats("", null, null, null, List.of());
+        }
+        String headerText = "";
+        Element header = sideContainer.selectFirst("div.blue-line-header, div.red-line-header");
+        if (header != null) {
+            headerText = header.text();
+        }
+        Integer kills = readScoreBoxInteger(sideContainer, scoreBoxClass, "Kills");
+        Integer dragons = readScoreBoxInteger(sideContainer, scoreBoxClass, "Dragons");
+        Integer barons = readScoreBoxInteger(sideContainer, scoreBoxClass, "Nashor");
+        List<String> bans = extractBans(sideContainer);
+        return new SideStats(headerText, kills, dragons, barons, bans);
+    }
+
+    // span.score-box.{blue_line|red_line} 중 img alt가 일치하는 박스를 찾아 텍스트의 선두 정수를 파싱한다.
+    private Integer readScoreBoxInteger(Element sideContainer, String scoreBoxClass, String iconAlt) {
+        Elements boxes = sideContainer.select("span.score-box." + scoreBoxClass);
+        for (Element box : boxes) {
+            Element img = box.selectFirst("img");
+            if (img != null && iconAlt.equalsIgnoreCase(img.attr("alt"))) {
+                return parseLeadingInteger(box.text());
+            }
+        }
+        return null;
+    }
+
+    // "Bans" 라벨 div 다음의 .col-10에서 챔피언 alt 5개 추출. 5개 미만이어도 발견된 만큼 반환.
+    private List<String> extractBans(Element sideContainer) {
+        Elements labels = sideContainer.select("div.col-2");
+        for (Element label : labels) {
+            if ("Bans".equalsIgnoreCase(label.ownText().trim())) {
+                Element next = label.nextElementSibling();
+                if (next != null) {
+                    Elements bannedImgs = next.select("a > img.champion_icon_medium");
+                    List<String> bans = new ArrayList<>(bannedImgs.size());
+                    for (Element img : bannedImgs) {
+                        String alt = img.attr("alt");
+                        if (alt != null && !alt.isBlank()) {
+                            bans.add(alt.trim());
+                        }
+                    }
+                    return List.copyOf(bans);
+                }
+            }
+        }
+        return List.of();
+    }
+
+    // playersInfosLine 테이블 중 thead가 지정 사이드 클래스(blue-line-header / red-line-header)인 첫 테이블 반환.
+    private Element findPlayerTable(Elements playerTables, String headerClass) {
+        for (Element table : playerTables) {
+            Element thead = table.selectFirst("thead tr." + headerClass);
+            if (thead != null) {
+                return table;
+            }
+        }
+        return null;
+    }
+
+    private static final List<String> ROLE_ORDER = List.of("TOP", "JUNGLE", "MID", "ADC", "SUPPORT");
+
+    // 단일 player 테이블에서 픽 5개를 추출. 행 순서가 곧 포지션(TOP→SUPPORT).
+    private List<GolGgPickEntry> extractPicksFromPlayerTable(Element table) {
+        if (table == null) {
+            return List.of();
+        }
+        // thead 제외한 직계 자식 tr (또는 tbody > tr)
+        Elements rows = table.select("> tbody > tr");
+        if (rows.isEmpty()) {
+            rows = table.select("> tr");
+        }
+        if (rows.isEmpty()) {
+            // 일부 GOL.GG HTML은 thead 직후 tr이 같은 레벨에 있다 — fallback
+            rows = table.select("tr");
+            if (!rows.isEmpty()) {
+                Element firstHeader = table.selectFirst("thead tr");
+                if (firstHeader != null) {
+                    rows.remove(firstHeader);
+                }
+            }
+        }
+        List<GolGgPickEntry> picks = new ArrayList<>();
+        int max = Math.min(rows.size(), ROLE_ORDER.size());
+        for (int i = 0; i < max; i++) {
+            Element row = rows.get(i);
+            Element champImg = row.selectFirst("img.champion_icon");
+            Element playerLink = row.selectFirst("a.link-blanc");
+            String champion = champImg != null ? champImg.attr("alt").trim() : null;
+            String player = playerLink != null ? playerLink.text().trim() : null;
+            String position = ROLE_ORDER.get(i);
+            if ((champion == null || champion.isBlank()) && (player == null || player.isBlank())) {
+                continue;
+            }
+            picks.add(new GolGgPickEntry(
+                    champion == null || champion.isBlank() ? null : champion,
+                    player == null || player.isBlank() ? null : player,
+                    position
+            ));
+        }
+        return List.copyOf(picks);
+    }
+
+    // 헤더 텍스트는 "팀명 - WIN" / "팀명 - LOSS" 패턴. 양쪽 모두 일관되어야 신뢰.
+    private ExternalDetailWinnerSide resolveWinnerSide(String blueHeader, String redHeader) {
+        Boolean blueWin = parseWinFromHeader(blueHeader);
+        Boolean redWin = parseWinFromHeader(redHeader);
+        if (blueWin == null && redWin == null) {
+            return null;
+        }
+        if (blueWin != null && redWin != null && blueWin.equals(redWin)) {
+            // 양쪽 모두 WIN 또는 양쪽 모두 LOSS — 모순 상태이므로 추측 금지(Hard Rule #4)
+            return null;
+        }
+        if (Boolean.TRUE.equals(blueWin) || Boolean.FALSE.equals(redWin)) {
+            return ExternalDetailWinnerSide.BLUE;
+        }
+        if (Boolean.TRUE.equals(redWin) || Boolean.FALSE.equals(blueWin)) {
+            return ExternalDetailWinnerSide.RED;
+        }
+        return null;
+    }
+
+    private Boolean parseWinFromHeader(String header) {
+        if (header == null) {
+            return null;
+        }
+        String upper = header.toUpperCase(Locale.ROOT);
+        if (upper.endsWith("- WIN") || upper.endsWith("-WIN") || upper.contains(" - WIN")) {
+            return Boolean.TRUE;
+        }
+        if (upper.endsWith("- LOSS") || upper.endsWith("-LOSS") || upper.contains(" - LOSS")) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    // "MM:SS" 또는 "HH:MM:SS" → 총 초. 형식 불일치 시 null.
+    private Integer parseMmSsToSeconds(String text) {
+        if (text == null) {
+            return null;
+        }
+        String trimmed = text.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        String[] parts = trimmed.split(":");
+        try {
+            if (parts.length == 2) {
+                int m = Integer.parseInt(parts[0].trim());
+                int s = Integer.parseInt(parts[1].trim());
+                if (m < 0 || s < 0 || s >= 60) {
+                    return null;
+                }
+                return m * 60 + s;
+            }
+            if (parts.length == 3) {
+                int h = Integer.parseInt(parts[0].trim());
+                int m = Integer.parseInt(parts[1].trim());
+                int s = Integer.parseInt(parts[2].trim());
+                if (h < 0 || m < 0 || m >= 60 || s < 0 || s >= 60) {
+                    return null;
+                }
+                return h * 3600 + m * 60 + s;
+            }
+        } catch (NumberFormatException ignored) {
+        }
+        return null;
+    }
+
+    // 텍스트에서 첫 번째로 등장하는 0 이상의 정수만 추출 (예: "Kills 27" → 27, " 0 " → 0).
+    private Integer parseLeadingInteger(String text) {
+        if (text == null) {
+            return null;
+        }
+        Matcher m = LEADING_INTEGER_PATTERN.matcher(text);
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static final Pattern LEADING_INTEGER_PATTERN = Pattern.compile("(\\d+)");
+
+    // 단일 사이드의 임시 보관용 — record로 둘 만큼 외부 노출 가치 없음.
+    private record SideStats(
+            String headerText,
+            Integer kills,
+            Integer dragons,
+            Integer barons,
+            List<String> bans
+    ) {
     }
 
     public List<GolGgRawCandidate> fetchRawCandidatesFromTournamentSource(String sourceUrl) {
