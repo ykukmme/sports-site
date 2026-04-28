@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchUpcomingMatches, fetchMatchResults, fetchMatchResultsPage, fetchMatchesByGame } from '../api/matches'
+import {
+  fetchUpcomingMatches,
+  fetchMatchResults,
+  fetchMatchResultsPage,
+  fetchMatchesByGame,
+} from '../api/matches'
 
 // 예정 경기 목록 훅
 export function useUpcomingMatches() {

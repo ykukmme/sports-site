@@ -1,6 +1,6 @@
 import apiClient from './client'
 import type { ApiResponse, PageResponse } from '../types/api'
-import type { MatchResponse } from '../types/domain'
+import type { MatchExternalDetailPublicResponse, MatchResponse } from '../types/domain'
 
 // 예정 경기 목록 조회 (최대 50건)
 export async function fetchUpcomingMatches(): Promise<MatchResponse[]> {
@@ -14,6 +14,24 @@ export async function fetchMatchResults(): Promise<MatchResponse[]> {
     params: { status: 'COMPLETED', hasResult: true, page: 0, size: 50, sort: 'scheduledAt,desc' },
   })
   return res.data.data?.content ?? []
+}
+
+// 경기 단건 조회
+export async function fetchMatch(id: number): Promise<MatchResponse> {
+  const res = await apiClient.get<ApiResponse<MatchResponse>>(`/api/v1/matches/${id}`)
+  if (!res.data.data) {
+    throw new Error('경기 정보를 찾을 수 없습니다.')
+  }
+  return res.data.data
+}
+
+// 경기 상세 데이터 조회
+export async function fetchMatchDetail(id: number): Promise<MatchExternalDetailPublicResponse> {
+  const res = await apiClient.get<ApiResponse<MatchExternalDetailPublicResponse>>(`/api/v1/matches/${id}/detail`)
+  if (!res.data.data) {
+    throw new Error('경기 상세 정보를 찾을 수 없습니다.')
+  }
+  return res.data.data
 }
 
 // 종목별 경기 목록 조회 (페이지네이션)

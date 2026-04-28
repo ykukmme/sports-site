@@ -44,6 +44,39 @@ export interface MatchExternalDetailSummaryResponse {
   errorMessage: string | null
 }
 
+export interface MatchExternalDetailPublicPick {
+  championId: string | null
+  playerName: string | null
+  position: string | null
+}
+
+export interface MatchExternalDetailPublicGame {
+  gameNo: number | null
+  durationSec: number | null
+  winnerSide: string | null
+  blueKills: number | null
+  redKills: number | null
+  blueDragons: number | null
+  redDragons: number | null
+  blueBarons: number | null
+  redBarons: number | null
+  blueBans: string[]
+  redBans: string[]
+  bluePicks: MatchExternalDetailPublicPick[]
+  redPicks: MatchExternalDetailPublicPick[]
+  errorMessage: string | null
+}
+
+export interface MatchExternalDetailPublicResponse {
+  available: boolean
+  reason: string | null
+  provider: string | null
+  status: string | null
+  sourceUrl: string | null
+  lastSyncedAt: string | null
+  games: MatchExternalDetailPublicGame[]
+}
+
 export interface MatchExternalDetailSyncItemResponse {
   matchId: number
   status: MatchExternalDetailStatus | 'FAILED'

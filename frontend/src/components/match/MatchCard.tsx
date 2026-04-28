@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { MatchStatusBadge } from './MatchStatusBadge'
 import type { MatchResponse } from '../../types/domain'
@@ -46,6 +47,15 @@ export function MatchCard({ match }: MatchCardProps) {
           {match.tournamentName && (
             <span className="ml-2">· {match.tournamentName}</span>
           )}
+        </div>
+
+        <div className="mt-4 flex justify-center">
+          <Link
+            to={`/matches/${match.id}`}
+            className="inline-flex h-9 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:border-primary/70 hover:text-primary"
+          >
+            상세 보기
+          </Link>
         </div>
       </CardContent>
     </Card>

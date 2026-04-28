@@ -7,6 +7,7 @@ import { ErrorMessage } from './components/common/ErrorMessage'
 import { HomePage } from './pages/HomePage'
 import { UpcomingMatchesPage } from './pages/UpcomingMatchesPage'
 import { MatchResultsPage } from './pages/MatchResultsPage'
+import { MatchDetailPage } from './pages/MatchDetailPage'
 import { TeamsPage } from './pages/TeamsPage'
 import { TeamDetailPage } from './pages/TeamDetailPage'
 import { PlayerDetailPage } from './pages/PlayerDetailPage'
@@ -46,6 +47,7 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="matches/upcoming" element={<UpcomingMatchesPage />} />
             <Route path="matches/results" element={<MatchResultsPage />} />
+            <Route path="matches/:id" element={<MatchDetailPage />} />
             <Route path="teams" element={<TeamsPage />} />
             <Route path="teams/:id" element={<TeamDetailPage />} />
             <Route path="players/:id" element={<PlayerDetailPage />} />
