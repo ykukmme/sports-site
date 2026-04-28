@@ -237,7 +237,12 @@ export function AdminMatchListPage() {
   }
 
   async function runBindSourceUrl(matchId: number, sourceUrl: string, skipValidation = false) {
-    const normalized = skipValidation ? sourceUrl.trim() : await validateSourceUrl(matchId, sourceUrl)
+    if (skipValidation) {
+      await runResolveSourceUrl(matchId, sourceUrl)
+      return
+    }
+
+    const normalized = await validateSourceUrl(matchId, sourceUrl)
     if (!normalized) return
     bindSourceMutation.mutate(
       { matchId, sourceUrl: normalized },
