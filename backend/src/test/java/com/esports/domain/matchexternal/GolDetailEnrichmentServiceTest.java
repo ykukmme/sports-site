@@ -231,6 +231,48 @@ class GolDetailEnrichmentServiceTest {
     }
 
     @Test
+    void findCandidatesMergesTargetedAndIndexedCandidates() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate(
+                        "76536",
+                        "https://gol.gg/game/stats/76536/page-summary/",
+                        "targeted candidate"
+                )
+        ));
+        when(tournamentIndexService.findIndexedCandidates()).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate(
+                        "74996",
+                        "https://gol.gg/game/stats/74996/page-summary/",
+                        "LCK Cup 2026 Gen.G vs BNK FearX FINALS 2026-03-01"
+                )
+        ));
+        when(candidateMatcher.rankCandidates(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "74996",
+                        "https://gol.gg/game/stats/74996/page-summary/",
+                        95,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailCandidatesResponse response = service.findCandidates(1L);
+
+        assertThat(response.candidates()).extracting(MatchExternalDetailCandidateResponse::providerGameId)
+                .containsExactly("74996");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GolGgClient.GolGgRawCandidate>> captor = ArgumentCaptor.forClass(List.class);
+        verify(candidateMatcher).rankCandidates(eq(match), captor.capture(), anyInt());
+        assertThat(captor.getValue()).extracting(GolGgClient.GolGgRawCandidate::providerGameId)
+                .contains("76536", "74996");
+    }
+
+    @Test
     void findCandidatesFailureDoesNotOverwritePersistedStatus() {
         Match match = mock(Match.class);
         MatchExternalDetail detail = new MatchExternalDetail(match);

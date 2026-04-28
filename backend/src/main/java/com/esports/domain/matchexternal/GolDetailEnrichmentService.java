@@ -397,11 +397,27 @@ public class GolDetailEnrichmentService {
             Supplier<List<GolGgClient.GolGgRawCandidate>> fallbackSupplier
     ) {
         List<GolGgClient.GolGgRawCandidate> targeted = golGgClient.fetchRawCandidatesForMatch(match);
-        if (targeted != null && !targeted.isEmpty()) {
-            return targeted;
-        }
         List<GolGgClient.GolGgRawCandidate> indexed = tournamentIndexService.findIndexedCandidates();
-        return indexed != null ? indexed : List.of();
+        List<GolGgClient.GolGgRawCandidate> merged = new ArrayList<>();
+        if (targeted != null) {
+            merged.addAll(targeted);
+        }
+        if (indexed != null) {
+            merged.addAll(indexed);
+        }
+        return merged.stream()
+                .filter(candidate -> candidate != null
+                        && candidate.providerGameId() != null
+                        && !candidate.providerGameId().isBlank())
+                .collect(java.util.stream.Collectors.toMap(
+                        GolGgClient.GolGgRawCandidate::providerGameId,
+                        item -> item,
+                        (left, right) -> left,
+                        java.util.LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .toList();
     }
 
     private List<GolDetailCandidateMatcher.ScoredCandidate> mergeBoundCandidate(
