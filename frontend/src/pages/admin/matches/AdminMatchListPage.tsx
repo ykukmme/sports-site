@@ -122,6 +122,8 @@ export function AdminMatchListPage() {
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
+  const [detailSyncMessage, setDetailSyncMessage] = useState<string | null>(null)
+  const [golGgSourceMessage, setGolGgSourceMessage] = useState<string | null>(null)
   const [candidateMap, setCandidateMap] = useState<Record<number, MatchExternalDetailCandidatesResponse>>({})
   const [selectedCandidateSourceMap, setSelectedCandidateSourceMap] = useState<Record<number, string>>({})
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
@@ -264,6 +266,11 @@ export function AdminMatchListPage() {
           failedCount: item.status === 'FAILED' ? 1 : 0,
           items: [item],
         })
+        setDetailSyncMessage(
+          item.status === 'FAILED'
+            ? `matchId ${matchId} 상세 동기화 실패`
+            : `matchId ${matchId} 상세 동기화 완료`,
+        )
       },
     })
   }
@@ -303,7 +310,18 @@ export function AdminMatchListPage() {
     detailSyncBatchMutation.mutate(selectedMatchIds, {
       onSuccess: (result) => {
         setDetailSyncResult(result)
+        setDetailSyncMessage(`상세 동기화 완료: 성공 ${result.syncedCount}건 / 실패 ${result.failedCount}건`)
         setSelectedMatchIds([])
+      },
+    })
+  }
+
+  function runSyncGolGgSource(sourceId: number, label: string) {
+    syncGolGgSourceMutation.mutate(sourceId, {
+      onSuccess: (source) => {
+        setGolGgSourceMessage(
+          `${source.label || label || source.sourceUrl} 재인덱싱 완료: 후보 ${source.candidateCount}건`,
+        )
       },
     })
   }
@@ -317,7 +335,7 @@ export function AdminMatchListPage() {
         onSuccess: (source) => {
           setGolGgSourceUrl('')
           setGolGgSourceLabel('')
-          syncGolGgSourceMutation.mutate(source.id)
+          runSyncGolGgSource(source.id, source.label || source.sourceUrl)
         },
       },
     )
@@ -420,6 +438,12 @@ export function AdminMatchListPage() {
       : null,
     bindResultMessage
       ? { key: 'bind-result', message: bindResultMessage, variant: 'success', onClose: () => setBindResultMessage(null) }
+      : null,
+    detailSyncMessage
+      ? { key: 'detail-sync-success', message: detailSyncMessage, variant: 'success', onClose: () => setDetailSyncMessage(null) }
+      : null,
+    golGgSourceMessage
+      ? { key: 'golgg-source-success', message: golGgSourceMessage, variant: 'success', onClose: () => setGolGgSourceMessage(null) }
       : null,
   ].filter((notice): notice is OperationNotice => notice != null)
 
@@ -587,16 +611,19 @@ export function AdminMatchListPage() {
           {(golGgSourcesData ?? []).slice(0, 6).map((source) => (
             <div
               key={source.id}
-              className="flex items-center gap-1 rounded-md border border-border px-2 py-1"
+              className="flex items-center gap-2 rounded-md border border-border px-2 py-1"
             >
+              <span className="text-left" title={source.errorMessage ?? source.sourceUrl}>
+                {source.label || source.sourceUrl} / {source.status} / {source.candidateCount}
+              </span>
               <button
                 type="button"
-                className="text-left"
+                className="rounded px-1 text-foreground hover:bg-muted"
                 disabled={syncGolGgSourceMutation.isPending}
-                onClick={() => syncGolGgSourceMutation.mutate(source.id)}
-                title={source.errorMessage ?? source.sourceUrl}
+                onClick={() => runSyncGolGgSource(source.id, source.label || source.sourceUrl)}
+                title="GOL.GG matchlist 다시 인덱싱"
               >
-                {source.label || source.sourceUrl} / {source.status} / {source.candidateCount}
+                재인덱싱
               </button>
               <button
                 type="button"
