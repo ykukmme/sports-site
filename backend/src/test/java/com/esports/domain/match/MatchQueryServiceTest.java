@@ -2,6 +2,7 @@ package com.esports.domain.match;
 
 import com.esports.common.exception.BusinessException;
 import com.esports.domain.game.Game;
+import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
 import com.esports.domain.team.Team;
@@ -34,6 +35,9 @@ class MatchQueryServiceTest {
 
     @Mock
     private MatchResultRepository matchResultRepository;
+
+    @Mock
+    private MatchExternalDetailRepository matchExternalDetailRepository;
 
     @InjectMocks
     private MatchQueryService matchQueryService;
@@ -125,6 +129,9 @@ class MatchQueryServiceTest {
                 .thenReturn(new PageImpl<>(List.of(withResult, withoutResult)));
         when(matchResultRepository.findByMatchIdIn(List.of(1L, 2L)))
                 .thenReturn(List.of(result));
+        // detail summary는 이 테스트의 관심사가 아니므로 빈 결과로 stub
+        when(matchExternalDetailRepository.findByMatchIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of());
 
         List<MatchResponse> responses = matchQueryService.findResults();
 
