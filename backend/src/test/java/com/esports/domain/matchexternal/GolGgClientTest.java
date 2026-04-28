@@ -409,6 +409,45 @@ class GolGgClientTest {
     }
 
     @Test
+    void extractRawCandidatesKeepsTournamentMatchRowsSeparate() throws Exception {
+        String html = """
+                <table><tbody>
+                  <tr>
+                    <td><a href="../game/stats/74996/page-summary/">Gen.G vs BNK FearX</a></td>
+                    <td>Gen.G</td>
+                    <td>3 - 0</td>
+                    <td>BNK FearX</td>
+                    <td>FINALS</td>
+                    <td>16.3</td>
+                    <td>2026-03-01</td>
+                  </tr>
+                  <tr>
+                    <td><a href="../game/stats/74822/page-summary/" title="BNK FearX vs Dplus KIA summary">BNK FearX vs Dplus KIA</a></td>
+                    <td>Dplus KIA</td>
+                    <td>0 - 3</td>
+                    <td>BNK FearX</td>
+                    <td>PLAYOFFS.ROUND4</td>
+                    <td>16.3</td>
+                    <td>2026-02-28</td>
+                  </tr>
+                </tbody></table>
+                """;
+
+        List<GolGgClient.GolGgRawCandidate> rawCandidates = invokeExtractRawCandidates(
+                html,
+                "https://gol.gg/tournament/tournament-matchlist/LCK%20Cup%202026/ LCK Cup 2026"
+        );
+
+        GolGgClient.GolGgRawCandidate finals = rawCandidates.stream()
+                .filter(candidate -> "74996".equals(candidate.providerGameId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(finals.sourceUrl()).isEqualTo("https://gol.gg/game/stats/74996/page-summary/");
+        assertThat(finals.contextText()).contains("Gen.G vs BNK FearX", "FINALS", "2026-03-01");
+        assertThat(finals.contextText()).doesNotContain("Dplus KIA", "PLAYOFFS.ROUND4", "74822");
+    }
+
+    @Test
     void extractRawCandidatesIndexesPlainGameStatsOccurrencesFromTournamentPages() throws Exception {
         String html = """
                 <html><body>

@@ -755,9 +755,13 @@ public class GolGgClient {
         }
         String normalizedPageContext = stripTags(pageContext == null ? "" : pageContext);
         String normalizedHtml = html.replace("\\/", "/");
-        Matcher matcher = CANDIDATE_LINK_PATTERN.matcher(normalizedHtml);
         Map<String, GolGgRawCandidate> byGameId = new LinkedHashMap<>();
 
+        for (GolGgRawCandidate candidate : extractTableRowCandidates(normalizedHtml, normalizedPageContext)) {
+            byGameId.put(candidate.providerGameId(), candidate);
+        }
+
+        Matcher matcher = CANDIDATE_LINK_PATTERN.matcher(normalizedHtml);
         while (matcher.find()) {
             String href = matcher.group(2);
             String gameId = matcher.group(3);
@@ -775,7 +779,7 @@ public class GolGgClient {
             );
 
             GolGgRawCandidate current = byGameId.get(gameId);
-            if (current == null || candidate.contextText().length() > current.contextText().length()) {
+            if (current == null) {
                 byGameId.put(gameId, candidate);
             }
         }
@@ -795,11 +799,39 @@ public class GolGgClient {
                     context
             );
             GolGgRawCandidate current = byGameId.get(gameId);
-            if (current == null || candidate.contextText().length() > current.contextText().length()) {
+            if (current == null) {
                 byGameId.put(gameId, candidate);
             }
         }
         return new ArrayList<>(byGameId.values());
+    }
+
+    private List<GolGgRawCandidate> extractTableRowCandidates(String html, String pageContext) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        List<GolGgRawCandidate> candidates = new ArrayList<>();
+        Document document = Jsoup.parse(html, properties.getBaseUrl());
+        for (Element row : document.select("tr:has(a[href*=game/stats/])")) {
+            String rowContext = row.text();
+            for (Element link : row.select("a[href*=game/stats/]")) {
+                String href = link.attr("href");
+                Matcher idMatcher = URL_GAME_ID_PATTERN.matcher(href);
+                if (!idMatcher.find()) {
+                    continue;
+                }
+                String gameId = idMatcher.group(1);
+                if (gameId == null || gameId.isBlank()) {
+                    continue;
+                }
+                candidates.add(new GolGgRawCandidate(
+                        gameId,
+                        normalizeCandidateHref(href, gameId),
+                        appendContext(rowContext, pageContext)
+                ));
+            }
+        }
+        return candidates;
     }
 
     private String appendContext(String rowContext, String pageContext) {
