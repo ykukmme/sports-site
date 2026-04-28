@@ -571,4 +571,36 @@ class GolGgClientTest {
 
         return match;
     }
+
+    // T-1.8 회귀 — BO3/BO5 시리즈 page-summary URL에서 sibling 게임 ID들을 모두 추출해야 한다.
+    // 기존 버그: urlIds.size()==1 분기에서 primary 1개만 반환 → BO3/BO5도 game row 1개만 저장됨.
+    @Test
+    void resolveProviderGameIdsExtractsSeriesSiblingsFromGameMenuNav() throws java.io.IOException {
+        String html;
+        try (java.io.InputStream in = getClass().getResourceAsStream("/golgg/page-summary/73115-page-summary.html")) {
+            assertThat(in).as("fixture missing").isNotNull();
+            html = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        String url = "https://gol.gg/game/stats/73115/page-summary/";
+
+        GolGgClient.ResolvedProviderGameIds resolved = client.resolveProviderGameIds(url, html, List.of());
+
+        // 73115 시리즈는 BO3 2-0 종료 — 게임 2개(73115, 73116)
+        assertThat(resolved.providerGameIds()).containsExactly("73115", "73116");
+        assertThat(resolved.needsReview()).isFalse();
+        assertThat(resolved.confidence()).isEqualTo(95);
+    }
+
+    // 시리즈 nav가 없는 단일 페이지(또는 이상 HTML)일 때는 기존 동작 유지 — primary 1개만 반환.
+    @Test
+    void resolveProviderGameIdsReturnsSingleIdWhenNoSeriesNavPresent() {
+        String url = "https://gol.gg/game/stats/99999/page-summary/";
+        String html = "<html><body><h1>not a series</h1></body></html>";
+
+        GolGgClient.ResolvedProviderGameIds resolved = client.resolveProviderGameIds(url, html, List.of());
+
+        assertThat(resolved.providerGameIds()).containsExactly("99999");
+        assertThat(resolved.needsReview()).isFalse();
+        assertThat(resolved.confidence()).isEqualTo(95);
+    }
 }

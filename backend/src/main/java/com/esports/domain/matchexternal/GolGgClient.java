@@ -576,6 +576,12 @@ public class GolGgClient {
                 List<String> merged = mergeInOrder(List.of(primary), boundIds, htmlUrlIds, inlineIds);
                 return new ResolvedProviderGameIds(merged, true, 65);
             }
+            // BO3/BO5: page-summary HTML의 nav.gamemenu에서 sibling 게임 ID들을 추출해 합친다.
+            // primary가 시리즈 ID일 때 같은 시리즈의 다른 게임도 같은 nav에 노출돼 있다.
+            List<String> seriesIds = extractSeriesGameIdsFromHtml(html);
+            if (seriesIds.size() > 1 && seriesIds.contains(primary)) {
+                return new ResolvedProviderGameIds(seriesIds, false, 95);
+            }
             return new ResolvedProviderGameIds(List.of(primary), false, 95);
         }
 
@@ -583,6 +589,33 @@ public class GolGgClient {
         boolean needsReview = merged.size() > 1;
         int confidence = merged.isEmpty() ? 45 : (needsReview ? 70 : 90);
         return new ResolvedProviderGameIds(merged, needsReview, confidence);
+    }
+
+    // 시리즈 page-summary 또는 page-game HTML의 nav.gamemenu 에서
+    // 같은 시리즈에 속한 게임 ID들을 순서대로 추출한다 (BO3=2~3개, BO5=3~5개).
+    // selector를 nav 영역으로 한정해 사이드바·관련 매치 링크를 잡지 않는다.
+    private List<String> extractSeriesGameIdsFromHtml(String html) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        try {
+            Document doc = Jsoup.parse(html);
+            Elements links = doc.select("nav.gamemenu a[href*=/page-game/]");
+            LinkedHashSet<String> ids = new LinkedHashSet<>();
+            for (Element link : links) {
+                String href = link.attr("href");
+                if (href == null || href.isBlank()) {
+                    continue;
+                }
+                Matcher m = URL_GAME_ID_PATTERN.matcher(href);
+                if (m.find()) {
+                    ids.add(m.group(1));
+                }
+            }
+            return List.copyOf(ids);
+        } catch (RuntimeException ex) {
+            return List.of();
+        }
     }
 
     private String fetchHtml(String normalizedUrl) {
