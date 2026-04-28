@@ -259,14 +259,27 @@ public class GolDetailEnrichmentService {
                     ? ExternalDetailStatus.NEEDS_REVIEW
                     : ExternalDetailStatus.SYNCED);
 
-            List<MatchExternalDetailGame> refreshedGames = parsed.games().stream()
-                    .map(game -> {
-                        MatchExternalDetailGame item = new MatchExternalDetailGame();
-                        item.setGameNo(game.gameNo());
-                        item.setProviderGameId(game.providerGameId());
-                        return item;
-                    })
-                    .toList();
+            // 게임별 page-game URL을 직렬로 fetch해 stats 채움.
+            // 부분 실패: 한 게임이 실패해도 나머지 게임은 정상 저장하고 실패 게임만 errorMessage 기록.
+            List<MatchExternalDetailGame> refreshedGames = new ArrayList<>();
+            List<? extends GolGgClient.GolGgParsedGame> sourceGames = parsed.games();
+            for (int i = 0; i < sourceGames.size(); i++) {
+                GolGgClient.GolGgParsedGame game = sourceGames.get(i);
+                MatchExternalDetailGame item = new MatchExternalDetailGame();
+                item.setGameNo(game.gameNo());
+                item.setProviderGameId(game.providerGameId());
+                enrichGameWithStats(item, game.providerGameId());
+                refreshedGames.add(item);
+                // 마지막 게임 뒤에는 sleep 불필요. delay=0이면 테스트 모드.
+                if (i < sourceGames.size() - 1 && golGgProperties.getGameFetchDelayMs() > 0) {
+                    try {
+                        Thread.sleep(golGgProperties.getGameFetchDelayMs());
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
 
             if (!detail.getGames().isEmpty()) {
                 detail.replaceGames(List.of());
@@ -546,6 +559,79 @@ public class GolDetailEnrichmentService {
                 "Match not found. id=" + matchId,
                 HttpStatus.NOT_FOUND
         ));
+    }
+
+    // 단일 game에 대해 page-game stats fetch + entity 필드 채움.
+    // 실패 시 stats 필드는 null/빈 리스트로 두고 errorMessage만 기록 (Hard Rule #4 fabrication 금지).
+    private void enrichGameWithStats(MatchExternalDetailGame item, String providerGameId) {
+        if (providerGameId == null || providerGameId.isBlank()) {
+            item.setErrorMessage("providerGameId is missing");
+            return;
+        }
+        try {
+            GolGgClient.GolGgParsedGameStats stats = golGgClient.fetchGameStats(providerGameId);
+            if (stats == null) {
+                item.setErrorMessage("game stats not parsed");
+                return;
+            }
+            item.setDurationSec(stats.durationSec());
+            item.setWinnerSide(stats.winnerSide());
+            item.setBlueKills(stats.blueKills());
+            item.setRedKills(stats.redKills());
+            item.setBlueDragons(stats.blueDragons());
+            item.setRedDragons(stats.redDragons());
+            item.setBlueBarons(stats.blueBarons());
+            item.setRedBarons(stats.redBarons());
+            item.setBlueBansJson(bansToJson(stats.blueBans()));
+            item.setRedBansJson(bansToJson(stats.redBans()));
+            item.setBluePicksJson(picksToJson(stats.bluePicks()));
+            item.setRedPicksJson(picksToJson(stats.redPicks()));
+            item.setErrorMessage(null);
+        } catch (IllegalArgumentException | RestClientException e) {
+            // 부분 실패 — 다른 게임은 영향받지 않게 stats 비우고 메시지만 기록.
+            item.setErrorMessage("fetchGameStats failed: " + safeMessage(e));
+        }
+    }
+
+    // 챔피언 표시명 리스트 → DDragon ID 정규화 후 JSON array.
+    private ArrayNode bansToJson(List<String> bans) {
+        ArrayNode array = objectMapper.createArrayNode();
+        if (bans == null) {
+            return array;
+        }
+        for (String raw : bans) {
+            String normalized = ChampionIdNormalizer.toDdragonId(raw);
+            if (normalized != null && !normalized.isBlank()) {
+                array.add(normalized);
+            } else if (raw != null && !raw.isBlank()) {
+                // 정규화 실패 시 원본 유지 (UI에서 placeholder 처리)
+                array.add(raw);
+            }
+        }
+        return array;
+    }
+
+    // GolGgPickEntry 리스트 → {championId, playerName, position} JSON array.
+    private ArrayNode picksToJson(List<GolGgClient.GolGgPickEntry> picks) {
+        ArrayNode array = objectMapper.createArrayNode();
+        if (picks == null) {
+            return array;
+        }
+        for (GolGgClient.GolGgPickEntry pick : picks) {
+            ObjectNode node = objectMapper.createObjectNode();
+            String championRaw = pick.championId();
+            String championDdragon = ChampionIdNormalizer.toDdragonId(championRaw);
+            node.put("championId", championDdragon != null ? championDdragon : championRaw);
+            node.put("playerName", pick.playerName());
+            node.put("position", pick.position());
+            array.add(node);
+        }
+        return array;
+    }
+
+    private String safeMessage(Exception e) {
+        String msg = e.getMessage();
+        return (msg == null || msg.isBlank()) ? e.getClass().getSimpleName() : msg;
     }
 
     private void markFailed(MatchExternalDetail detail, String message) {
