@@ -578,7 +578,9 @@ public class GolGgClient {
                     lineStats.kills,
                     lineStats.deaths,
                     lineStats.assists,
-                    lineStats.cs
+                    lineStats.cs,
+                    extractSummonerSpells(row),
+                    extractItems(row)
             ));
         }
         return List.copyOf(picks);
@@ -671,6 +673,51 @@ public class GolGgClient {
                 kda[2],
                 parseLeadingInteger(csCell.text())
         );
+    }
+
+    private List<String> extractSummonerSpells(Element row) {
+        return extractAssetIds(row, "img/spell/", "Summoner");
+    }
+
+    private List<String> extractItems(Element row) {
+        return extractAssetIds(row, "img/item/", "Item_");
+    }
+
+    private List<String> extractAssetIds(Element row, String srcMarker, String altPrefix) {
+        Elements imgs = row.select("img[src*=\"" + srcMarker + "\"]");
+        List<String> ids = new ArrayList<>(imgs.size());
+        for (Element img : imgs) {
+            String id = assetIdFromSrc(img.attr("src"));
+            if (id == null) {
+                id = assetIdFromAlt(img.attr("alt"), altPrefix);
+            }
+            if (id != null && !id.isBlank()) {
+                ids.add(id);
+            }
+        }
+        return List.copyOf(ids);
+    }
+
+    private String assetIdFromSrc(String src) {
+        if (src == null || src.isBlank()) {
+            return null;
+        }
+        Matcher matcher = Pattern.compile("/([^/?#]+)\\.png(?:[?#].*)?$").matcher(src.trim());
+        if (!matcher.find()) {
+            return null;
+        }
+        return matcher.group(1).trim();
+    }
+
+    private String assetIdFromAlt(String alt, String prefix) {
+        if (alt == null || alt.isBlank()) {
+            return null;
+        }
+        String text = alt.trim();
+        if (prefix != null && !prefix.isBlank() && text.startsWith(prefix)) {
+            text = text.substring(prefix.length()).trim();
+        }
+        return text.isBlank() ? null : text;
     }
 
     private Integer[] parseKda(String text) {
@@ -1529,10 +1576,22 @@ public class GolGgClient {
             Integer kills,
             Integer deaths,
             Integer assists,
-            Integer cs
+            Integer cs,
+            List<String> summonerSpells,
+            List<String> items
     ) {
         public GolGgPickEntry(String championId, String playerName, String position) {
-            this(championId, playerName, position, null, null, null, null);
+            this(championId, playerName, position, null, null, null, null, List.of(), List.of());
+        }
+
+        public GolGgPickEntry(String championId,
+                              String playerName,
+                              String position,
+                              Integer kills,
+                              Integer deaths,
+                              Integer assists,
+                              Integer cs) {
+            this(championId, playerName, position, kills, deaths, assists, cs, List.of(), List.of());
         }
     }
 

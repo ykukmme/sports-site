@@ -127,10 +127,26 @@ public class MatchPublicDetailService {
                     integerOrNull(item.get("kills")),
                     integerOrNull(item.get("deaths")),
                     integerOrNull(item.get("assists")),
-                    integerOrNull(item.get("cs"))
+                    integerOrNull(item.get("cs")),
+                    stringListFromJson(item.get("summonerSpells")),
+                    stringListFromJson(item.get("items"))
             ));
         });
         return List.copyOf(list);
+    }
+
+    private List<String> stringListFromJson(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<String> values = new ArrayList<>();
+        node.forEach(item -> {
+            String value = textOrNull(item);
+            if (value != null && !value.isBlank()) {
+                values.add(value);
+            }
+        });
+        return List.copyOf(values);
     }
 
     private List<MatchExternalDetailPublicResponse.PublicObjectiveEvent> objectiveTimelineFromJson(JsonNode node) {

@@ -75,6 +75,10 @@ class GolGgGameStatsParserTest {
         assertThat(stats.bluePicks().get(0).deaths()).isEqualTo(1);
         assertThat(stats.bluePicks().get(0).assists()).isEqualTo(6);
         assertThat(stats.bluePicks().get(0).cs()).isEqualTo(249);
+        assertThat(stats.bluePicks().get(0).summonerSpells())
+                .containsExactly("SummonerTeleport", "SummonerFlash");
+        assertThat(stats.bluePicks().get(0).items())
+                .containsExactly("3364", "6653", "2421", "2055", "3047", "4633", "1221");
         assertPick(stats.bluePicks().get(1), "Pantheon", "Lucid", "JUNGLE");
         assertPick(stats.bluePicks().get(2), "LeBlanc", "ShowMaker", "MID");
         assertPick(stats.bluePicks().get(3), "Sivir", "Smash", "ADC");
@@ -86,6 +90,10 @@ class GolGgGameStatsParserTest {
         assertPick(stats.redPicks().get(2), "Orianna", "Roamer", "MID");
         assertPick(stats.redPicks().get(3), "Jhin", "Teddy", "ADC");
         assertPick(stats.redPicks().get(4), "Elise", "Namgung", "SUPPORT");
+        assertThat(stats.redPicks().get(4).summonerSpells())
+                .containsExactly("SummonerDot", "SummonerFlash");
+        assertThat(stats.redPicks().get(4).items())
+                .containsExactly("3364", "3152", "3877", "3916", "2031", "3020", "1208");
 
         assertThat(stats.objectiveTimeline()).hasSize(6);
         assertThat(stats.objectiveTimeline().get(0).timeSec()).isEqualTo(202);

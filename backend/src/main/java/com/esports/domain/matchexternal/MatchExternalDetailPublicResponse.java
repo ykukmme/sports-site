@@ -51,10 +51,22 @@ public record MatchExternalDetailPublicResponse(
             Integer kills,
             Integer deaths,
             Integer assists,
-            Integer cs
+            Integer cs,
+            List<String> summonerSpells,
+            List<String> items
     ) {
         public PublicPick(String championId, String playerName, String position) {
-            this(championId, playerName, position, null, null, null, null);
+            this(championId, playerName, position, null, null, null, null, List.of(), List.of());
+        }
+
+        public PublicPick(String championId,
+                          String playerName,
+                          String position,
+                          Integer kills,
+                          Integer deaths,
+                          Integer assists,
+                          Integer cs) {
+            this(championId, playerName, position, kills, deaths, assists, cs, List.of(), List.of());
         }
     }
 

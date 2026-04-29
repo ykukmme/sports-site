@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { MatchExternalDetailPublicGame, MatchExternalDetailPublicPick, MatchResponse } from '../../types/domain'
 import { ChampionIcon } from '../champion/ChampionIcon'
+import { DdragonAssetIcon } from '../champion/DdragonAssetIcon'
 
 interface GameDraftCardProps {
   game: MatchExternalDetailPublicGame
@@ -11,6 +12,8 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
   const champion = pick.championId ?? '-'
   const player = pick.playerName ?? '-'
   const position = pick.position ?? '-'
+  const summonerSpells = pick.summonerSpells ?? []
+  const items = pick.items ?? []
   const kda =
     pick.kills == null || pick.deaths == null || pick.assists == null
       ? '-'
@@ -20,13 +23,25 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
   return (
     <div className="grid grid-cols-[44px_1fr_54px_42px] items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-sm sm:grid-cols-[64px_1fr_64px_48px]">
       <span className="text-xs text-muted-foreground">{position}</span>
-      <span className="flex min-w-0 items-center gap-2">
-        <ChampionIcon championId={pick.championId} />
-        <span className="min-w-0">
-          <span className="block truncate font-medium text-foreground">{champion}</span>
-          <span className="block truncate text-xs text-muted-foreground">{player}</span>
+      <div className="min-w-0">
+        <span className="flex min-w-0 items-center gap-2">
+          <ChampionIcon championId={pick.championId} />
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-foreground">{champion}</span>
+            <span className="block truncate text-xs text-muted-foreground">{player}</span>
+          </span>
         </span>
-      </span>
+        {(summonerSpells.length > 0 || items.length > 0) && (
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1">
+            {summonerSpells.map((spell, index) => (
+              <DdragonAssetIcon key={`spell-${spell}-${index}`} id={spell} type="spell" />
+            ))}
+            {items.map((item, index) => (
+              <DdragonAssetIcon key={`item-${item}-${index}`} id={item} type="item" />
+            ))}
+          </div>
+        )}
+      </div>
       <span className="text-right text-xs text-muted-foreground">{kda}</span>
       <span className="text-right text-xs text-muted-foreground">{cs}</span>
     </div>

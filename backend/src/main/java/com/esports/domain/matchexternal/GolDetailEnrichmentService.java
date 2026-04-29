@@ -665,7 +665,22 @@ public class GolDetailEnrichmentService {
             node.put("deaths", pick.deaths());
             node.put("assists", pick.assists());
             node.put("cs", pick.cs());
+            node.set("summonerSpells", stringListToJson(pick.summonerSpells()));
+            node.set("items", stringListToJson(pick.items()));
             array.add(node);
+        }
+        return array;
+    }
+
+    private ArrayNode stringListToJson(List<String> values) {
+        ArrayNode array = objectMapper.createArrayNode();
+        if (values == null) {
+            return array;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                array.add(value);
+            }
         }
         return array;
     }

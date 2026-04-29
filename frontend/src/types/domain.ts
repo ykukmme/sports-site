@@ -52,6 +52,8 @@ export interface MatchExternalDetailPublicPick {
   deaths: number | null
   assists: number | null
   cs: number | null
+  summonerSpells: string[]
+  items: string[]
 }
 
 export interface MatchExternalDetailPublicObjectiveEvent {

@@ -520,6 +520,10 @@ class GolDetailEnrichmentServiceTest {
         assertThat(toStringList(game1.getRedDragonTypesJson())).containsExactly("OCEAN", "HEXTECH");
         assertThat(game1.getRedPicksJson().get(0).get("kills").asInt()).isEqualTo(6);
         assertThat(game1.getRedPicksJson().get(0).get("cs").asInt()).isEqualTo(301);
+        assertThat(toStringList(game1.getRedPicksJson().get(0).get("summonerSpells")))
+                .containsExactly("SummonerFlash", "SummonerTeleport");
+        assertThat(toStringList(game1.getRedPicksJson().get(0).get("items")))
+                .containsExactly("3364", "3078");
         assertThat(game1.getObjectiveTimelineJson().get(0).get("type").asText()).isEqualTo("FIRST_BLOOD");
         assertThat(game1.getObjectiveTimelineJson().get(0).get("side").asText()).isEqualTo("RED");
         assertThat(game1.getErrorMessage()).isNull();
@@ -566,7 +570,17 @@ class GolDetailEnrichmentServiceTest {
                         new GolGgClient.GolGgPickEntry("Bard", "PlayerB5", "SUPPORT")
                 ),
                 List.of(
-                        new GolGgClient.GolGgPickEntry("Darius", "PlayerR1", "TOP", 6, 1, 7, 301),
+                        new GolGgClient.GolGgPickEntry(
+                                "Darius",
+                                "PlayerR1",
+                                "TOP",
+                                6,
+                                1,
+                                7,
+                                301,
+                                List.of("SummonerFlash", "SummonerTeleport"),
+                                List.of("3364", "3078")
+                        ),
                         new GolGgClient.GolGgPickEntry("Pantheon", "PlayerR2", "JUNGLE"),
                         new GolGgClient.GolGgPickEntry("Yasuo", "PlayerR3", "MID"),
                         new GolGgClient.GolGgPickEntry("Lucian", "PlayerR4", "ADC"),
