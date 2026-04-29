@@ -514,6 +514,10 @@ class GolDetailEnrichmentServiceTest {
         MatchExternalDetailGame game1 = saved.getGames().get(0);
         assertThat(game1.getDurationSec()).isEqualTo(1800);
         assertThat(game1.getRedKills()).isEqualTo(15);
+        assertThat(game1.getBlueTowers()).isEqualTo(4);
+        assertThat(game1.getRedTeamGold()).isEqualTo(62000);
+        assertThat(game1.getFirstBloodSide()).isEqualTo(ExternalDetailWinnerSide.RED);
+        assertThat(toStringList(game1.getRedDragonTypesJson())).containsExactly("OCEAN", "HEXTECH");
         assertThat(game1.getErrorMessage()).isNull();
 
         MatchExternalDetailGame game2 = saved.getGames().get(1);
@@ -541,6 +545,12 @@ class GolDetailEnrichmentServiceTest {
                 8, 15,
                 1, 3,
                 0, 1,
+                4, 9,
+                51100, 62000,
+                ExternalDetailWinnerSide.RED,
+                ExternalDetailWinnerSide.RED,
+                List.of("MOUNTAIN"),
+                List.of("OCEAN", "HEXTECH"),
                 List.of("Ahri", "Jhin", "Nautilus"),
                 // 정규화 검증 — LeBlanc → Leblanc, Kai'Sa → Kaisa
                 List.of("LeBlanc", "Kai'Sa"),
@@ -573,6 +583,12 @@ class GolDetailEnrichmentServiceTest {
                 27, 7,
                 2, 0,
                 1, 0,
+                8, 0,
+                59100, 42900,
+                ExternalDetailWinnerSide.BLUE,
+                ExternalDetailWinnerSide.BLUE,
+                List.of("MOUNTAIN", "HEXTECH"),
+                List.of(),
                 List.of("Azir", "Jayce", "Vi", "Rakan", "Nautilus"),
                 List.of("Qiyana", "Malphite", "Akali", "Lucian", "Kalista"),
                 List.of(

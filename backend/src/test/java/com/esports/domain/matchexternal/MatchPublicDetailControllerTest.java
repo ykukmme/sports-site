@@ -66,6 +66,10 @@ class MatchPublicDetailControllerTest {
                 .andExpect(jsonPath("$.data.games[0].redTeamId").value(20))
                 .andExpect(jsonPath("$.data.games[0].blueKills").value(27))
                 .andExpect(jsonPath("$.data.games[0].redKills").value(7))
+                .andExpect(jsonPath("$.data.games[0].blueTowers").value(8))
+                .andExpect(jsonPath("$.data.games[0].redTeamGold").value(42900))
+                .andExpect(jsonPath("$.data.games[0].firstBloodSide").value("BLUE"))
+                .andExpect(jsonPath("$.data.games[0].blueDragonTypes[0]").value("MOUNTAIN"))
                 .andExpect(jsonPath("$.data.games[0].blueBans[0]").value("Azir"))
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].championId").value("Rumble"))
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].playerName").value("Siwoo"))
@@ -122,6 +126,12 @@ class MatchPublicDetailControllerTest {
                 27, 7,
                 2, 0,
                 1, 0,
+                8, 0,
+                59100, 42900,
+                "BLUE",
+                "BLUE",
+                List.of("MOUNTAIN", "HEXTECH"),
+                List.of(),
                 List.of("Azir", "Jayce", "Vi", "Rakan", "Nautilus"),
                 List.of("Qiyana", "Malphite", "Akali", "Lucian", "Kalista"),
                 List.of(

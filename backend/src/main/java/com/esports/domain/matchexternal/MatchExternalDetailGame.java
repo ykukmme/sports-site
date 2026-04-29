@@ -76,6 +76,34 @@ public class MatchExternalDetailGame {
     @Column(name = "red_barons")
     private Integer redBarons;
 
+    @Column(name = "blue_towers")
+    private Integer blueTowers;
+
+    @Column(name = "red_towers")
+    private Integer redTowers;
+
+    @Column(name = "blue_team_gold")
+    private Integer blueTeamGold;
+
+    @Column(name = "red_team_gold")
+    private Integer redTeamGold;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "first_blood_side", length = 10)
+    private ExternalDetailWinnerSide firstBloodSide;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "first_tower_side", length = 10)
+    private ExternalDetailWinnerSide firstTowerSide;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "blue_dragon_types_json", nullable = false, columnDefinition = "jsonb")
+    private JsonNode blueDragonTypesJson = JsonNodeFactory.instance.arrayNode();
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "red_dragon_types_json", nullable = false, columnDefinition = "jsonb")
+    private JsonNode redDragonTypesJson = JsonNodeFactory.instance.arrayNode();
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "blue_bans_json", nullable = false, columnDefinition = "jsonb")
     private JsonNode blueBansJson = JsonNodeFactory.instance.arrayNode();
@@ -119,6 +147,8 @@ public class MatchExternalDetailGame {
         if (this.redBansJson == null) this.redBansJson = JsonNodeFactory.instance.arrayNode();
         if (this.bluePicksJson == null) this.bluePicksJson = JsonNodeFactory.instance.arrayNode();
         if (this.redPicksJson == null) this.redPicksJson = JsonNodeFactory.instance.arrayNode();
+        if (this.blueDragonTypesJson == null) this.blueDragonTypesJson = JsonNodeFactory.instance.arrayNode();
+        if (this.redDragonTypesJson == null) this.redDragonTypesJson = JsonNodeFactory.instance.arrayNode();
     }
 
     @PreUpdate
@@ -172,6 +202,38 @@ public class MatchExternalDetailGame {
 
     public Integer getRedBarons() {
         return redBarons;
+    }
+
+    public Integer getBlueTowers() {
+        return blueTowers;
+    }
+
+    public Integer getRedTowers() {
+        return redTowers;
+    }
+
+    public Integer getBlueTeamGold() {
+        return blueTeamGold;
+    }
+
+    public Integer getRedTeamGold() {
+        return redTeamGold;
+    }
+
+    public ExternalDetailWinnerSide getFirstBloodSide() {
+        return firstBloodSide;
+    }
+
+    public ExternalDetailWinnerSide getFirstTowerSide() {
+        return firstTowerSide;
+    }
+
+    public JsonNode getBlueDragonTypesJson() {
+        return blueDragonTypesJson;
+    }
+
+    public JsonNode getRedDragonTypesJson() {
+        return redDragonTypesJson;
     }
 
     public JsonNode getBlueBansJson() {
@@ -240,6 +302,38 @@ public class MatchExternalDetailGame {
 
     public void setRedBarons(Integer redBarons) {
         this.redBarons = redBarons;
+    }
+
+    public void setBlueTowers(Integer blueTowers) {
+        this.blueTowers = blueTowers;
+    }
+
+    public void setRedTowers(Integer redTowers) {
+        this.redTowers = redTowers;
+    }
+
+    public void setBlueTeamGold(Integer blueTeamGold) {
+        this.blueTeamGold = blueTeamGold;
+    }
+
+    public void setRedTeamGold(Integer redTeamGold) {
+        this.redTeamGold = redTeamGold;
+    }
+
+    public void setFirstBloodSide(ExternalDetailWinnerSide firstBloodSide) {
+        this.firstBloodSide = firstBloodSide;
+    }
+
+    public void setFirstTowerSide(ExternalDetailWinnerSide firstTowerSide) {
+        this.firstTowerSide = firstTowerSide;
+    }
+
+    public void setBlueDragonTypesJson(JsonNode blueDragonTypesJson) {
+        this.blueDragonTypesJson = blueDragonTypesJson == null ? JsonNodeFactory.instance.arrayNode() : blueDragonTypesJson;
+    }
+
+    public void setRedDragonTypesJson(JsonNode redDragonTypesJson) {
+        this.redDragonTypesJson = redDragonTypesJson == null ? JsonNodeFactory.instance.arrayNode() : redDragonTypesJson;
     }
 
     public void setBlueBansJson(JsonNode blueBansJson) {

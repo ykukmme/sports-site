@@ -610,6 +610,14 @@ public class GolDetailEnrichmentService {
             item.setRedDragons(stats.redDragons());
             item.setBlueBarons(stats.blueBarons());
             item.setRedBarons(stats.redBarons());
+            item.setBlueTowers(stats.blueTowers());
+            item.setRedTowers(stats.redTowers());
+            item.setBlueTeamGold(stats.blueTeamGold());
+            item.setRedTeamGold(stats.redTeamGold());
+            item.setFirstBloodSide(stats.firstBloodSide());
+            item.setFirstTowerSide(stats.firstTowerSide());
+            item.setBlueDragonTypesJson(toJsonArray(stats.blueDragonTypes()));
+            item.setRedDragonTypesJson(toJsonArray(stats.redDragonTypes()));
             item.setBlueBansJson(bansToJson(stats.blueBans()));
             item.setRedBansJson(bansToJson(stats.redBans()));
             item.setBluePicksJson(picksToJson(stats.bluePicks()));

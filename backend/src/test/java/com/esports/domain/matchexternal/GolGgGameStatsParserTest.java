@@ -53,6 +53,14 @@ class GolGgGameStatsParserTest {
         assertThat(stats.redDragons()).isEqualTo(0);
         assertThat(stats.blueBarons()).isEqualTo(1);
         assertThat(stats.redBarons()).isEqualTo(0);
+        assertThat(stats.blueTowers()).isEqualTo(8);
+        assertThat(stats.redTowers()).isEqualTo(0);
+        assertThat(stats.blueTeamGold()).isEqualTo(59100);
+        assertThat(stats.redTeamGold()).isEqualTo(42900);
+        assertThat(stats.firstBloodSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
+        assertThat(stats.firstTowerSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
+        assertThat(stats.blueDragonTypes()).containsExactly("MOUNTAIN", "HEXTECH");
+        assertThat(stats.redDragonTypes()).isEmpty();
 
         // 밴 5개씩
         assertThat(stats.blueBans())
@@ -118,6 +126,10 @@ class GolGgGameStatsParserTest {
         assertThat(stats.winnerSide()).isNull();
         assertThat(stats.blueKills()).isNull();
         assertThat(stats.redKills()).isNull();
+        assertThat(stats.blueTowers()).isNull();
+        assertThat(stats.redTowers()).isNull();
+        assertThat(stats.blueDragonTypes()).isEmpty();
+        assertThat(stats.redDragonTypes()).isEmpty();
         assertThat(stats.blueBans()).isEmpty();
         assertThat(stats.redBans()).isEmpty();
         assertThat(stats.bluePicks()).isEmpty();

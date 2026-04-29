@@ -331,6 +331,14 @@ public class GolGgClient {
                 red.dragons,
                 blue.barons,
                 red.barons,
+                blue.towers,
+                red.towers,
+                blue.teamGold,
+                red.teamGold,
+                resolveFirstObjectiveSide(blue.firstBlood, red.firstBlood),
+                resolveFirstObjectiveSide(blue.firstTower, red.firstTower),
+                blue.dragonTypes,
+                red.dragonTypes,
                 blue.bans,
                 red.bans,
                 bluePicks,
@@ -375,6 +383,14 @@ public class GolGgClient {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -385,7 +401,7 @@ public class GolGgClient {
     // 단일 사이드(blue/red)에서 kills/dragons/barons/bans와 헤더 텍스트를 한 번에 뽑아낸다.
     private SideStats extractSideStats(Element sideContainer, String scoreBoxClass) {
         if (sideContainer == null) {
-            return new SideStats("", null, null, null, List.of());
+            return new SideStats("", null, null, null, null, null, false, false, List.of(), List.of());
         }
         String headerText = "";
         Element header = sideContainer.selectFirst("div.blue-line-header, div.red-line-header");
@@ -395,8 +411,13 @@ public class GolGgClient {
         Integer kills = readScoreBoxInteger(sideContainer, scoreBoxClass, "Kills");
         Integer dragons = readScoreBoxInteger(sideContainer, scoreBoxClass, "Dragons");
         Integer barons = readScoreBoxInteger(sideContainer, scoreBoxClass, "Nashor");
+        Integer towers = readScoreBoxInteger(sideContainer, scoreBoxClass, "Towers");
+        Integer teamGold = readScoreBoxGold(sideContainer, scoreBoxClass, "Team Gold");
+        boolean firstBlood = hasObjectiveIcon(sideContainer, "First Blood");
+        boolean firstTower = hasObjectiveIcon(sideContainer, "First Tower");
+        List<String> dragonTypes = extractDragonTypes(sideContainer);
         List<String> bans = extractBans(sideContainer);
-        return new SideStats(headerText, kills, dragons, barons, bans);
+        return new SideStats(headerText, kills, dragons, barons, towers, teamGold, firstBlood, firstTower, dragonTypes, bans);
     }
 
     // span.score-box.{blue_line|red_line} 중 img alt가 일치하는 박스를 찾아 텍스트의 선두 정수를 파싱한다.
@@ -409,6 +430,74 @@ public class GolGgClient {
             }
         }
         return null;
+    }
+
+    private Integer readScoreBoxGold(Element sideContainer, String scoreBoxClass, String iconAlt) {
+        Elements boxes = sideContainer.select("span.score-box." + scoreBoxClass);
+        for (Element box : boxes) {
+            Element img = box.selectFirst("img");
+            if (img != null && iconAlt.equalsIgnoreCase(img.attr("alt"))) {
+                return parseGoldValue(box.text());
+            }
+        }
+        return null;
+    }
+
+    private Integer parseGoldValue(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String normalized = text.trim().toLowerCase(Locale.ROOT).replace(",", "");
+        Matcher matcher = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*k?").matcher(normalized);
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            double value = Double.parseDouble(matcher.group(1));
+            if (normalized.substring(matcher.start(), Math.min(normalized.length(), matcher.end() + 1)).contains("k")
+                    || normalized.contains("k")) {
+                value *= 1000;
+            }
+            return (int) Math.round(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private boolean hasObjectiveIcon(Element sideContainer, String iconAlt) {
+        return sideContainer.selectFirst("img[alt=\"" + iconAlt + "\"]") != null;
+    }
+
+    private ExternalDetailWinnerSide resolveFirstObjectiveSide(boolean blue, boolean red) {
+        if (blue == red) {
+            return null;
+        }
+        return blue ? ExternalDetailWinnerSide.BLUE : ExternalDetailWinnerSide.RED;
+    }
+
+    private List<String> extractDragonTypes(Element sideContainer) {
+        Elements imgs = sideContainer.select("img.champion_icon_XS[alt]");
+        List<String> types = new ArrayList<>();
+        for (Element img : imgs) {
+            String type = normalizeDragonType(img.attr("alt"));
+            if (type != null && !types.contains(type)) {
+                types.add(type);
+            }
+        }
+        return List.copyOf(types);
+    }
+
+    private String normalizeDragonType(String alt) {
+        if (alt == null || alt.isBlank()) {
+            return null;
+        }
+        String text = alt.trim()
+                .replaceAll("(?i)\\s*(drake|dragon)\\s*$", "")
+                .trim();
+        if (text.isBlank()) {
+            return null;
+        }
+        return text.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "_");
     }
 
     // "Bans" 라벨 div 다음의 .col-10에서 챔피언 alt 5개 추출. 5개 미만이어도 발견된 만큼 반환.
@@ -578,6 +667,11 @@ public class GolGgClient {
             Integer kills,
             Integer dragons,
             Integer barons,
+            Integer towers,
+            Integer teamGold,
+            boolean firstBlood,
+            boolean firstTower,
+            List<String> dragonTypes,
             List<String> bans
     ) {
     }
@@ -1293,6 +1387,14 @@ public class GolGgClient {
             Integer redDragons,
             Integer blueBarons,
             Integer redBarons,
+            Integer blueTowers,
+            Integer redTowers,
+            Integer blueTeamGold,
+            Integer redTeamGold,
+            ExternalDetailWinnerSide firstBloodSide,
+            ExternalDetailWinnerSide firstTowerSide,
+            List<String> blueDragonTypes,
+            List<String> redDragonTypes,
             List<String> blueBans,
             List<String> redBans,
             List<GolGgPickEntry> bluePicks,

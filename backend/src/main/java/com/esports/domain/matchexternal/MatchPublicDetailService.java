@@ -72,6 +72,14 @@ public class MatchPublicDetailService {
                 game.getRedDragons(),
                 game.getBlueBarons(),
                 game.getRedBarons(),
+                game.getBlueTowers(),
+                game.getRedTowers(),
+                game.getBlueTeamGold(),
+                game.getRedTeamGold(),
+                game.getFirstBloodSide() != null ? game.getFirstBloodSide().name() : null,
+                game.getFirstTowerSide() != null ? game.getFirstTowerSide().name() : null,
+                stringsFromJson(game.getBlueDragonTypesJson()),
+                stringsFromJson(game.getRedDragonTypesJson()),
                 bansFromJson(game.getBlueBansJson()),
                 bansFromJson(game.getRedBansJson()),
                 picksFromJson(game.getBluePicksJson()),
@@ -82,6 +90,10 @@ public class MatchPublicDetailService {
 
     // JSON 배열 → 챔피언 ID 문자열 리스트. 배열이 아니거나 null이면 빈 리스트.
     private List<String> bansFromJson(JsonNode node) {
+        return stringsFromJson(node);
+    }
+
+    private List<String> stringsFromJson(JsonNode node) {
         if (node == null || !node.isArray()) {
             return List.of();
         }

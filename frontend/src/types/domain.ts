@@ -64,6 +64,14 @@ export interface MatchExternalDetailPublicGame {
   redDragons: number | null
   blueBarons: number | null
   redBarons: number | null
+  blueTowers: number | null
+  redTowers: number | null
+  blueTeamGold: number | null
+  redTeamGold: number | null
+  firstBloodSide: string | null
+  firstTowerSide: string | null
+  blueDragonTypes: string[]
+  redDragonTypes: string[]
   blueBans: string[]
   redBans: string[]
   bluePicks: MatchExternalDetailPublicPick[]
