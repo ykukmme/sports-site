@@ -62,7 +62,8 @@ class GolDetailEnrichmentServiceTest {
                 new ObjectMapper(),
                 candidateMatcher,
                 tournamentIndexService,
-                new GameSideTeamResolver()
+                new GameSideTeamResolver(),
+                new GolDetailQualityValidationService()
         );
     }
 
@@ -178,6 +179,28 @@ class GolDetailEnrichmentServiceTest {
                 90,
                 false
         ));
+        when(golGgClient.fetchGameStats("123")).thenReturn(new GolGgClient.GolGgParsedGameStats(
+                "123",
+                "https://gol.gg/game/stats/123/page-game/",
+                1500,
+                null,
+                null,
+                null,
+                null, null,
+                null, null,
+                null, null,
+                null, null,
+                null, null,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
         when(detailRepository.saveAndFlush(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MatchExternalDetailSyncItemResponse response = service.syncOne(1L);
@@ -223,6 +246,28 @@ class GolDetailEnrichmentServiceTest {
                 List.of(new GolGgClient.GolGgParsedGame(1, "123")),
                 90,
                 false
+        ));
+        when(golGgClient.fetchGameStats("123")).thenReturn(new GolGgClient.GolGgParsedGameStats(
+                "123",
+                "https://gol.gg/game/stats/123/page-game/",
+                1500,
+                null,
+                null,
+                null,
+                null, null,
+                null, null,
+                null, null,
+                null, null,
+                null, null,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
         ));
         when(detailRepository.saveAndFlush(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -427,6 +472,9 @@ class GolDetailEnrichmentServiceTest {
         verify(detailRepository, atLeastOnce()).saveAndFlush(captor.capture());
         MatchExternalDetail saved = captor.getValue();
         assertThat(saved.getGames()).hasSize(2);
+        assertThat(saved.getExpectedGameCount()).isEqualTo(2);
+        assertThat(saved.getSyncedGameCount()).isEqualTo(2);
+        assertThat(saved.getValidationStatus()).isIn("OK", "DATE_UNVERIFIED");
 
         MatchExternalDetailGame game1 = saved.getGames().get(0);
         assertThat(game1.getGameNo()).isEqualTo(1);
@@ -451,9 +499,9 @@ class GolDetailEnrichmentServiceTest {
         assertThat(game2.getDurationSec()).isEqualTo(1530);
         assertThat(game2.getWinnerSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
         assertThat(game2.getBlueTeamName()).isEqualTo("Dplus KIA");
-        assertThat(game2.getRedTeamName()).isEqualTo("BRO");
+        assertThat(game2.getRedTeamName()).isEqualTo("T1");
         assertThat(game2.getBlueTeamId()).isEqualTo(10L);
-        assertThat(game2.getRedTeamId()).isNull();
+        assertThat(game2.getRedTeamId()).isEqualTo(20L);
         assertThat(game2.getBlueKills()).isEqualTo(27);
         assertThat(game2.getRedKills()).isEqualTo(7);
         assertThat(game2.getErrorMessage()).isNull();
@@ -504,12 +552,15 @@ class GolDetailEnrichmentServiceTest {
         MatchExternalDetailSyncItemResponse response = service.syncOne(1L);
 
         // 매치 단위 status는 SYNCED — 부분 실패는 게임 단위에 한정
-        assertThat(response.status()).isEqualTo("SYNCED");
+        assertThat(response.status()).isEqualTo("PARTIAL_SYNC");
 
         ArgumentCaptor<MatchExternalDetail> captor = ArgumentCaptor.forClass(MatchExternalDetail.class);
         verify(detailRepository, atLeastOnce()).saveAndFlush(captor.capture());
         MatchExternalDetail saved = captor.getValue();
         assertThat(saved.getGames()).hasSize(2);
+        assertThat(saved.getExpectedGameCount()).isEqualTo(2);
+        assertThat(saved.getSyncedGameCount()).isEqualTo(1);
+        assertThat(saved.getValidationStatus()).isEqualTo("PARTIAL_SYNC");
 
         MatchExternalDetailGame game1 = saved.getGames().get(0);
         assertThat(game1.getDurationSec()).isEqualTo(1800);
@@ -598,7 +649,7 @@ class GolDetailEnrichmentServiceTest {
                 1530,
                 ExternalDetailWinnerSide.BLUE,
                 "Dplus KIA",
-                "BRO",
+                "T1",
                 27, 7,
                 2, 0,
                 1, 0,

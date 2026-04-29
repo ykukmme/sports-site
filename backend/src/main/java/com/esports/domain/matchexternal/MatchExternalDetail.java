@@ -63,6 +63,24 @@ public class MatchExternalDetail {
     @Column(nullable = false)
     private Integer confidence = 0;
 
+    @Column(name = "expected_game_count")
+    private Integer expectedGameCount;
+
+    @Column(name = "synced_game_count")
+    private Integer syncedGameCount;
+
+    @Column(name = "validation_status", length = 30)
+    private String validationStatus;
+
+    @Column(name = "validation_message")
+    private String validationMessage;
+
+    @Column(name = "team_match_confidence")
+    private Integer teamMatchConfidence;
+
+    @Column(name = "date_match_confidence")
+    private Integer dateMatchConfidence;
+
     @Column(name = "last_synced_at")
     private OffsetDateTime lastSyncedAt;
 
@@ -163,6 +181,30 @@ public class MatchExternalDetail {
         return confidence;
     }
 
+    public Integer getExpectedGameCount() {
+        return expectedGameCount;
+    }
+
+    public Integer getSyncedGameCount() {
+        return syncedGameCount;
+    }
+
+    public String getValidationStatus() {
+        return validationStatus;
+    }
+
+    public String getValidationMessage() {
+        return validationMessage;
+    }
+
+    public Integer getTeamMatchConfidence() {
+        return teamMatchConfidence;
+    }
+
+    public Integer getDateMatchConfidence() {
+        return dateMatchConfidence;
+    }
+
     public OffsetDateTime getLastSyncedAt() {
         return lastSyncedAt;
     }
@@ -215,6 +257,30 @@ public class MatchExternalDetail {
 
     public void setConfidence(Integer confidence) {
         this.confidence = confidence;
+    }
+
+    public void setExpectedGameCount(Integer expectedGameCount) {
+        this.expectedGameCount = expectedGameCount;
+    }
+
+    public void setSyncedGameCount(Integer syncedGameCount) {
+        this.syncedGameCount = syncedGameCount;
+    }
+
+    public void setValidationStatus(String validationStatus) {
+        this.validationStatus = validationStatus;
+    }
+
+    public void setValidationMessage(String validationMessage) {
+        this.validationMessage = validationMessage;
+    }
+
+    public void setTeamMatchConfidence(Integer teamMatchConfidence) {
+        this.teamMatchConfidence = teamMatchConfidence;
+    }
+
+    public void setDateMatchConfidence(Integer dateMatchConfidence) {
+        this.dateMatchConfidence = dateMatchConfidence;
     }
 
     public void setLastSyncedAt(OffsetDateTime lastSyncedAt) {

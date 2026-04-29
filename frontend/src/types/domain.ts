@@ -33,13 +33,19 @@ export type MatchStatus = 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
 export type MatchExternalSource = 'MANUAL' | 'PANDASCORE'
 export type PlayerStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED'
 export type PlayerExternalSource = 'MANUAL' | 'PANDASCORE'
-export type MatchExternalDetailStatus = 'PENDING' | 'SYNCED' | 'FAILED' | 'NEEDS_REVIEW'
+export type MatchExternalDetailStatus = 'PENDING' | 'SYNCED' | 'PARTIAL_SYNC' | 'FAILED' | 'NEEDS_REVIEW'
 
 export interface MatchExternalDetailSummaryResponse {
   provider: string | null
   status: MatchExternalDetailStatus | null
   sourceUrl: string | null
   confidence: number | null
+  expectedGameCount: number | null
+  syncedGameCount: number | null
+  validationStatus: string | null
+  validationMessage: string | null
+  teamMatchConfidence: number | null
+  dateMatchConfidence: number | null
   lastSyncedAt: string | null
   errorMessage: string | null
 }

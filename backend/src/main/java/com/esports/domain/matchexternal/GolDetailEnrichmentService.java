@@ -50,6 +50,7 @@ public class GolDetailEnrichmentService {
     private final GolDetailCandidateMatcher candidateMatcher;
     private final GolGgTournamentIndexService tournamentIndexService;
     private final GameSideTeamResolver sideTeamResolver;
+    private final GolDetailQualityValidationService qualityValidationService;
 
     public GolDetailEnrichmentService(MatchRepository matchRepository,
                                       MatchExternalDetailRepository detailRepository,
@@ -58,7 +59,8 @@ public class GolDetailEnrichmentService {
                                       ObjectMapper objectMapper,
                                       GolDetailCandidateMatcher candidateMatcher,
                                       GolGgTournamentIndexService tournamentIndexService,
-                                      GameSideTeamResolver sideTeamResolver) {
+                                      GameSideTeamResolver sideTeamResolver,
+                                      GolDetailQualityValidationService qualityValidationService) {
         this.matchRepository = matchRepository;
         this.detailRepository = detailRepository;
         this.golGgClient = golGgClient;
@@ -67,6 +69,7 @@ public class GolDetailEnrichmentService {
         this.candidateMatcher = candidateMatcher;
         this.tournamentIndexService = tournamentIndexService;
         this.sideTeamResolver = sideTeamResolver;
+        this.qualityValidationService = qualityValidationService;
     }
 
     public MatchExternalDetailSummaryResponse bindSourceUrl(Long matchId, String sourceUrl) {
@@ -257,10 +260,6 @@ public class GolDetailEnrichmentService {
             detail.setConfidence(parsed.confidence());
             detail.setLastSyncedAt(OffsetDateTime.now());
             detail.setParseVersion(golGgProperties.getParseVersion());
-            detail.setErrorMessage(null);
-            detail.setStatus(parsed.needsReview()
-                    ? ExternalDetailStatus.NEEDS_REVIEW
-                    : ExternalDetailStatus.SYNCED);
 
             // 게임별 page-game URL을 직렬로 fetch해 stats 채움.
             // 부분 실패: 한 게임이 실패해도 나머지 게임은 정상 저장하고 실패 게임만 errorMessage 기록.
@@ -284,6 +283,14 @@ public class GolDetailEnrichmentService {
                 }
             }
 
+            GolDetailQualityValidationService.QualityResult quality = qualityValidationService.validate(
+                    match,
+                    detail,
+                    parsed,
+                    refreshedGames
+            );
+            applyQualityResult(detail, quality);
+
             if (!detail.getGames().isEmpty()) {
                 detail.replaceGames(List.of());
                 detailRepository.saveAndFlush(detail);
@@ -291,9 +298,9 @@ public class GolDetailEnrichmentService {
 
             detail.replaceGames(refreshedGames);
             MatchExternalDetail saved = detailRepository.saveAndFlush(detail);
-            String message = parsed.needsReview()
-                    ? "Multiple game ids detected. review needed."
-                    : "Synced";
+            String message = saved.getStatus() == ExternalDetailStatus.SYNCED
+                    ? "Synced"
+                    : quality.validationMessage();
             return new MatchExternalDetailSyncItemResponse(
                     matchId,
                     saved.getStatus().name(),
@@ -308,6 +315,20 @@ public class GolDetailEnrichmentService {
             markFailed(detail, e.getMessage());
             return failedItem(matchId, detail, e.getMessage());
         }
+    }
+
+    private void applyQualityResult(MatchExternalDetail detail,
+                                    GolDetailQualityValidationService.QualityResult quality) {
+        detail.setStatus(quality.status());
+        detail.setExpectedGameCount(quality.expectedGameCount());
+        detail.setSyncedGameCount(quality.syncedGameCount());
+        detail.setValidationStatus(quality.validationStatus());
+        detail.setValidationMessage(quality.validationMessage());
+        detail.setTeamMatchConfidence(quality.teamMatchConfidence());
+        detail.setDateMatchConfidence(quality.dateMatchConfidence());
+        detail.setErrorMessage(quality.status() == ExternalDetailStatus.SYNCED
+                ? null
+                : quality.validationMessage());
     }
 
     public MatchExternalDetailBatchSyncResponse syncBatch(List<Long> matchIds) {

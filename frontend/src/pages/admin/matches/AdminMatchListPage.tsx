@@ -55,6 +55,7 @@ const RESULT_SYNC_VARIANTS: Record<PandaScoreImportResultStatus, 'default' | 'se
 const DETAIL_SYNC_STATUS_LABELS: Record<MatchExternalDetailStatus, string> = {
   PENDING: '대기',
   SYNCED: '동기화 완료',
+  PARTIAL_SYNC: '부분 동기화',
   FAILED: '실패',
   NEEDS_REVIEW: '검토 필요',
 }
@@ -65,6 +66,7 @@ const DETAIL_SYNC_STATUS_VARIANTS: Record<
 > = {
   PENDING: 'outline',
   SYNCED: 'default',
+  PARTIAL_SYNC: 'secondary',
   FAILED: 'destructive',
   NEEDS_REVIEW: 'secondary',
 }
@@ -788,6 +790,21 @@ export function AdminMatchListPage() {
                             </Badge>
                             {detailSummary?.confidence != null && (
                               <span className="text-xs text-muted-foreground">신뢰도 {detailSummary.confidence}</span>
+                            )}
+                            {detailSummary?.expectedGameCount != null && (
+                              <span className="text-xs text-muted-foreground">
+                                세트 {detailSummary.syncedGameCount ?? 0}/{detailSummary.expectedGameCount}
+                              </span>
+                            )}
+                            {detailSummary?.teamMatchConfidence != null && (
+                              <span className="text-xs text-muted-foreground">
+                                팀 검증 {detailSummary.teamMatchConfidence}%
+                              </span>
+                            )}
+                            {detailSummary?.validationStatus && detailSummary.validationStatus !== 'OK' && (
+                              <span className="text-xs text-muted-foreground">
+                                검증 {detailSummary.validationStatus}
+                              </span>
                             )}
                             {detailSummary?.errorMessage && (
                               <span className="text-xs text-destructive">{detailSummary.errorMessage}</span>
