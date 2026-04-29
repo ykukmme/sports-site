@@ -3,6 +3,7 @@ package com.esports.domain.matchexternal;
 import com.esports.config.GolGgProperties;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
+import com.esports.domain.team.Team;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +61,8 @@ class GolDetailEnrichmentServiceTest {
                 properties,
                 new ObjectMapper(),
                 candidateMatcher,
-                tournamentIndexService
+                tournamentIndexService,
+                new GameSideTeamResolver()
         );
     }
 
@@ -389,6 +391,7 @@ class GolDetailEnrichmentServiceTest {
     @Test
     void syncOneEnrichesAllGamesForBo3WhenStatsFetchSucceeds() {
         Match match = mock(Match.class);
+        stubMatchTeams(match, "Dplus KIA", "DK", 10L, "T1", "T1", 20L);
         MatchExternalDetail detail = new MatchExternalDetail(match);
         detail.setSourceUrl("https://gol.gg/game/stats/73115/page-summary/");
 
@@ -433,6 +436,8 @@ class GolDetailEnrichmentServiceTest {
         // 사이드 팀명 — GOL.GG 헤더에서 파싱한 값이 그대로 저장돼야 함 (swap 방지)
         assertThat(game1.getBlueTeamName()).isEqualTo("Dplus KIA");
         assertThat(game1.getRedTeamName()).isEqualTo("T1");
+        assertThat(game1.getBlueTeamId()).isEqualTo(10L);
+        assertThat(game1.getRedTeamId()).isEqualTo(20L);
         assertThat(game1.getBlueKills()).isEqualTo(8);
         assertThat(game1.getRedKills()).isEqualTo(15);
         assertThat(game1.getErrorMessage()).isNull();
@@ -447,6 +452,8 @@ class GolDetailEnrichmentServiceTest {
         assertThat(game2.getWinnerSide()).isEqualTo(ExternalDetailWinnerSide.BLUE);
         assertThat(game2.getBlueTeamName()).isEqualTo("Dplus KIA");
         assertThat(game2.getRedTeamName()).isEqualTo("BRO");
+        assertThat(game2.getBlueTeamId()).isEqualTo(10L);
+        assertThat(game2.getRedTeamId()).isNull();
         assertThat(game2.getBlueKills()).isEqualTo(27);
         assertThat(game2.getRedKills()).isEqualTo(7);
         assertThat(game2.getErrorMessage()).isNull();
@@ -467,6 +474,7 @@ class GolDetailEnrichmentServiceTest {
     @Test
     void syncOnePartialFailureKeepsOtherGamesAndRecordsErrorMessage() {
         Match match = mock(Match.class);
+        stubMatchTeams(match, "Dplus KIA", "DK", 10L, "T1", "T1", 20L);
         MatchExternalDetail detail = new MatchExternalDetail(match);
         detail.setSourceUrl("https://gol.gg/game/stats/73115/page-summary/");
 
@@ -592,5 +600,26 @@ class GolDetailEnrichmentServiceTest {
         List<String> out = new java.util.ArrayList<>();
         node.forEach(item -> out.add(item.asText()));
         return out;
+    }
+
+    private void stubMatchTeams(Match match,
+                                String teamAName,
+                                String teamAShortName,
+                                Long teamAId,
+                                String teamBName,
+                                String teamBShortName,
+                                Long teamBId) {
+        Team teamA = mockTeam(teamAName, teamAShortName, teamAId);
+        Team teamB = mockTeam(teamBName, teamBShortName, teamBId);
+        when(match.getTeamA()).thenReturn(teamA);
+        when(match.getTeamB()).thenReturn(teamB);
+    }
+
+    private Team mockTeam(String name, String shortName, Long id) {
+        Team team = mock(Team.class);
+        when(team.getId()).thenReturn(id);
+        when(team.getName()).thenReturn(name);
+        when(team.getShortName()).thenReturn(shortName);
+        return team;
     }
 }

@@ -28,6 +28,8 @@ public record MatchExternalDetailPublicResponse(
             // 로컬 match.teamA/teamB와 사이드 순서가 다른 경우 swap 버그 방지가 목적.
             String blueTeamName,
             String redTeamName,
+            Long blueTeamId,
+            Long redTeamId,
             Integer blueKills,
             Integer redKills,
             Integer blueDragons,

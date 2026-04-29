@@ -49,6 +49,7 @@ public class GolDetailEnrichmentService {
     private final ObjectMapper objectMapper;
     private final GolDetailCandidateMatcher candidateMatcher;
     private final GolGgTournamentIndexService tournamentIndexService;
+    private final GameSideTeamResolver sideTeamResolver;
 
     public GolDetailEnrichmentService(MatchRepository matchRepository,
                                       MatchExternalDetailRepository detailRepository,
@@ -56,7 +57,8 @@ public class GolDetailEnrichmentService {
                                       GolGgProperties golGgProperties,
                                       ObjectMapper objectMapper,
                                       GolDetailCandidateMatcher candidateMatcher,
-                                      GolGgTournamentIndexService tournamentIndexService) {
+                                      GolGgTournamentIndexService tournamentIndexService,
+                                      GameSideTeamResolver sideTeamResolver) {
         this.matchRepository = matchRepository;
         this.detailRepository = detailRepository;
         this.golGgClient = golGgClient;
@@ -64,6 +66,7 @@ public class GolDetailEnrichmentService {
         this.objectMapper = objectMapper;
         this.candidateMatcher = candidateMatcher;
         this.tournamentIndexService = tournamentIndexService;
+        this.sideTeamResolver = sideTeamResolver;
     }
 
     public MatchExternalDetailSummaryResponse bindSourceUrl(Long matchId, String sourceUrl) {
@@ -268,7 +271,7 @@ public class GolDetailEnrichmentService {
                 MatchExternalDetailGame item = new MatchExternalDetailGame();
                 item.setGameNo(game.gameNo());
                 item.setProviderGameId(game.providerGameId());
-                enrichGameWithStats(item, game.providerGameId());
+                enrichGameWithStats(item, game.providerGameId(), match);
                 refreshedGames.add(item);
                 // 마지막 게임 뒤에는 sleep 불필요. delay=0이면 테스트 모드.
                 if (i < sourceGames.size() - 1 && golGgProperties.getGameFetchDelayMs() > 0) {
@@ -579,7 +582,7 @@ public class GolDetailEnrichmentService {
 
     // 단일 game에 대해 page-game stats fetch + entity 필드 채움.
     // 실패 시 stats 필드는 null/빈 리스트로 두고 errorMessage만 기록 (Hard Rule #4 fabrication 금지).
-    private void enrichGameWithStats(MatchExternalDetailGame item, String providerGameId) {
+    private void enrichGameWithStats(MatchExternalDetailGame item, String providerGameId, Match match) {
         if (providerGameId == null || providerGameId.isBlank()) {
             item.setErrorMessage("providerGameId is missing");
             return;
@@ -594,6 +597,13 @@ public class GolDetailEnrichmentService {
             item.setWinnerSide(stats.winnerSide());
             item.setBlueTeamName(stats.blueTeamName());
             item.setRedTeamName(stats.redTeamName());
+            GameSideTeamResolver.ResolvedSideTeams sideTeams = sideTeamResolver.resolve(
+                    match,
+                    stats.blueTeamName(),
+                    stats.redTeamName()
+            );
+            item.setBlueTeamId(sideTeams.blueTeamId());
+            item.setRedTeamId(sideTeams.redTeamId());
             item.setBlueKills(stats.blueKills());
             item.setRedKills(stats.redKills());
             item.setBlueDragons(stats.blueDragons());

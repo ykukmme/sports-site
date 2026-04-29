@@ -62,6 +62,8 @@ class MatchPublicDetailControllerTest {
                 .andExpect(jsonPath("$.data.games[0].winnerSide").value("BLUE"))
                 .andExpect(jsonPath("$.data.games[0].blueTeamName").value("Dplus KIA"))
                 .andExpect(jsonPath("$.data.games[0].redTeamName").value("T1"))
+                .andExpect(jsonPath("$.data.games[0].blueTeamId").value(10))
+                .andExpect(jsonPath("$.data.games[0].redTeamId").value(20))
                 .andExpect(jsonPath("$.data.games[0].blueKills").value(27))
                 .andExpect(jsonPath("$.data.games[0].redKills").value(7))
                 .andExpect(jsonPath("$.data.games[0].blueBans[0]").value("Azir"))
@@ -115,6 +117,8 @@ class MatchPublicDetailControllerTest {
                 "BLUE",
                 "Dplus KIA",
                 "T1",
+                10L,
+                20L,
                 27, 7,
                 2, 0,
                 1, 0,

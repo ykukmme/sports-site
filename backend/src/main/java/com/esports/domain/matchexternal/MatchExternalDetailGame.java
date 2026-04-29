@@ -52,6 +52,12 @@ public class MatchExternalDetailGame {
     @Column(name = "red_team_name", length = 100)
     private String redTeamName;
 
+    @Column(name = "blue_team_id")
+    private Long blueTeamId;
+
+    @Column(name = "red_team_id")
+    private Long redTeamId;
+
     @Column(name = "blue_kills")
     private Integer blueKills;
 
@@ -282,5 +288,21 @@ public class MatchExternalDetailGame {
 
     public void setRedTeamName(String redTeamName) {
         this.redTeamName = redTeamName;
+    }
+
+    public Long getBlueTeamId() {
+        return blueTeamId;
+    }
+
+    public void setBlueTeamId(Long blueTeamId) {
+        this.blueTeamId = blueTeamId;
+    }
+
+    public Long getRedTeamId() {
+        return redTeamId;
+    }
+
+    public void setRedTeamId(Long redTeamId) {
+        this.redTeamId = redTeamId;
     }
 }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { MatchExternalDetailPublicGame, MatchResponse } from '../../types/domain'
 
 interface GameObjectivesCardProps {
@@ -36,9 +37,19 @@ function formatDuration(seconds: number | null) {
   return `${minutes}:${String(rest).padStart(2, '0')}`
 }
 
+function SideLegendName({ teamId, teamName }: { teamId: number | null; teamName: string }) {
+  if (teamId == null) {
+    return <span>{teamName}</span>
+  }
+
+  return (
+    <Link to={`/teams/${teamId}`} className="underline-offset-4 hover:underline">
+      {teamName}
+    </Link>
+  )
+}
+
 export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardProps) {
-  // 사이드 라벨/승자 표시는 GOL.GG 헤더에서 파싱한 game 단위 팀명을 사용한다.
-  // match.teamA/teamB는 사이드와 무관 — swap 버그 방지.
   const blueTeamName = game.blueTeamName ?? '-'
   const redTeamName = game.redTeamName ?? '-'
   const winnerLabel =
@@ -60,11 +71,11 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
-            {blueTeamName}
+            <SideLegendName teamId={game.blueTeamId} teamName={blueTeamName} />
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            {redTeamName}
+            <SideLegendName teamId={game.redTeamId} teamName={redTeamName} />
           </span>
         </div>
       </div>

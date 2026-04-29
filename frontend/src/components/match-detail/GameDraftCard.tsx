@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { MatchExternalDetailPublicGame, MatchExternalDetailPublicPick, MatchResponse } from '../../types/domain'
 import { ChampionIcon } from '../champion/ChampionIcon'
 
@@ -43,15 +44,32 @@ function BanList({ bans }: { bans: string[] }) {
   )
 }
 
+function SideTeamName({ teamId, teamName }: { teamId: number | null; teamName: string }) {
+  if (teamId == null) {
+    return <span className="mt-1 block text-base font-medium text-foreground">{teamName}</span>
+  }
+
+  return (
+    <Link
+      to={`/teams/${teamId}`}
+      className="mt-1 block text-base font-medium text-foreground underline-offset-4 hover:underline"
+    >
+      {teamName}
+    </Link>
+  )
+}
+
 function TeamDraftColumn({
   label,
   teamName,
+  teamId,
   picks,
   bans,
   sideClassName,
 }: {
   label: string
   teamName: string
+  teamId: number | null
   picks: MatchExternalDetailPublicPick[]
   bans: string[]
   sideClassName: string
@@ -61,7 +79,7 @@ function TeamDraftColumn({
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="mt-1 text-base font-medium text-foreground">{teamName}</div>
+          <SideTeamName teamId={teamId} teamName={teamName} />
         </div>
         <span className={`h-3 w-3 rounded-full ${sideClassName}`} />
       </div>
@@ -69,7 +87,7 @@ function TeamDraftColumn({
       <div className="mt-4 grid gap-2">
         {picks.length === 0 ? (
           <div className="rounded-md border border-border bg-background/40 px-3 py-2 text-sm text-muted-foreground">
-            픽 데이터가 없습니다.
+            데이터가 없습니다.
           </div>
         ) : (
           picks.map((pick, index) => <PickRow key={`${pick.championId ?? 'pick'}-${index}`} pick={pick} />)
@@ -85,15 +103,15 @@ function TeamDraftColumn({
 }
 
 export function GameDraftCard({ game, match: _match }: GameDraftCardProps) {
-  // 사이드 라벨은 GOL.GG 헤더에서 파싱한 game 단위 팀명을 사용한다.
-  // match.teamA/teamB는 사이드와 무관하므로 사용하지 않는다 (swap 버그 방지).
   const blueTeamName = game.blueTeamName ?? '-'
   const redTeamName = game.redTeamName ?? '-'
+
   return (
     <section className="grid gap-4 lg:grid-cols-2">
       <TeamDraftColumn
         label="Blue"
         teamName={blueTeamName}
+        teamId={game.blueTeamId}
         picks={game.bluePicks}
         bans={game.blueBans}
         sideClassName="bg-blue-500"
@@ -101,6 +119,7 @@ export function GameDraftCard({ game, match: _match }: GameDraftCardProps) {
       <TeamDraftColumn
         label="Red"
         teamName={redTeamName}
+        teamId={game.redTeamId}
         picks={game.redPicks}
         bans={game.redBans}
         sideClassName="bg-red-500"
