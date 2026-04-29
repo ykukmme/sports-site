@@ -33,14 +33,14 @@ export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderPr
   return (
     <header className="flex flex-col gap-5 border-b border-border pb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={match.status === 'COMPLETED' ? 'default' : 'secondary'}>
               {statusLabels[match.status] ?? match.status}
             </Badge>
             <span className="text-sm text-muted-foreground">Match #{match.id}</span>
           </div>
-          <h1 className="mt-3 text-3xl font-semibold leading-tight text-foreground">
+          <h1 className="mt-3 text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
             {match.teamA.name} vs {match.teamB.name}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -48,7 +48,7 @@ export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderPr
             {match.stage ? ` · ${match.stage}` : ''} · {formatDate(match.scheduledAt)}
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={onBack}>
+        <Button type="button" variant="outline" className="w-fit" onClick={onBack}>
           뒤로가기
         </Button>
       </div>

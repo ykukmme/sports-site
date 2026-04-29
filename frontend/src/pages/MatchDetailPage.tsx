@@ -14,6 +14,15 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('ko-KR')
 }
 
+function PartialFailureNotice({ message }: { message: string }) {
+  return (
+    <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+      <div className="font-medium">이 세트의 상세 동기화가 일부 실패했습니다.</div>
+      <p className="mt-1 break-words text-xs">{message}</p>
+    </div>
+  )
+}
+
 export function MatchDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -56,27 +65,23 @@ export function MatchDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {match && <MatchDetailHeader match={match} detail={detail} onBack={() => navigate(-1)} />}
+      <MatchDetailHeader match={match} detail={detail} onBack={() => navigate(-1)} />
 
-      <section className="rounded-lg border border-border bg-card p-5">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="text-sm font-medium text-foreground">경기 정보</div>
-        {match ? (
-          <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <div>
-              <span className="text-foreground">{match.teamA.name}</span>
-              <span className="mx-2">vs</span>
-              <span className="text-foreground">{match.teamB.name}</span>
-            </div>
-            <div>상태: {match.status}</div>
-            <div>대회: {match.tournamentName}</div>
-            <div>일정: {formatDate(match.scheduledAt)}</div>
+        <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+          <div>
+            <span className="text-foreground">{match.teamA.name}</span>
+            <span className="mx-2">vs</span>
+            <span className="text-foreground">{match.teamB.name}</span>
           </div>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">경기 정보를 불러오는 중입니다.</p>
-        )}
+          <div>상태: {match.status}</div>
+          <div>대회: {match.tournamentName}</div>
+          <div>일정: {formatDate(match.scheduledAt)}</div>
+        </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-5">
+      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="text-sm font-medium text-foreground">GOL.GG 상세 데이터</div>
         {detailQuery.isLoading ? (
           <p className="mt-2 text-sm text-muted-foreground">상세 데이터를 불러오는 중입니다.</p>
@@ -93,11 +98,7 @@ export function MatchDetailPage() {
             </div>
             {activeGame && (
               <div className="mt-4">
-                {activeGame.errorMessage && (
-                  <p className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {activeGame.errorMessage}
-                  </p>
-                )}
+                {activeGame.errorMessage && <PartialFailureNotice message={activeGame.errorMessage} />}
                 <div className="grid gap-4">
                   <GameObjectivesCard game={activeGame} match={match} />
                   <GameDraftCard game={activeGame} match={match} />

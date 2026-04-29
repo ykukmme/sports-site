@@ -13,7 +13,11 @@ export function GameTabBar({ games, activeGameNo, onChange }: GameTabBarProps) {
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="게임 선택">
+    <div
+      className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0"
+      role="tablist"
+      aria-label="게임 선택"
+    >
       {games.map((game, index) => {
         const gameNo = game.gameNo ?? index + 1
         const isActive = gameNo === activeGameNo
@@ -26,6 +30,7 @@ export function GameTabBar({ games, activeGameNo, onChange }: GameTabBarProps) {
             size="sm"
             role="tab"
             aria-selected={isActive}
+            className="min-w-20"
             onClick={() => onChange(gameNo)}
           >
             Game {gameNo}
