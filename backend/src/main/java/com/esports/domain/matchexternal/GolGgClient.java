@@ -317,6 +317,7 @@ public class GolGgClient {
         Elements playerTables = doc.select("table.playersInfosLine");
         List<GolGgPickEntry> bluePicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "blue-line-header"));
         List<GolGgPickEntry> redPicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "red-line-header"));
+        List<GolGgObjectiveEvent> objectiveTimeline = extractObjectiveTimeline(doc);
 
         return new GolGgParsedGameStats(
                 providerGameId,
@@ -342,7 +343,8 @@ public class GolGgClient {
                 blue.bans,
                 red.bans,
                 bluePicks,
-                redPicks
+                redPicks,
+                objectiveTimeline
         );
     }
 
@@ -389,6 +391,7 @@ public class GolGgClient {
                 null,
                 null,
                 null,
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -579,6 +582,79 @@ public class GolGgClient {
             ));
         }
         return List.copyOf(picks);
+    }
+
+    private List<GolGgObjectiveEvent> extractObjectiveTimeline(Document doc) {
+        Element timelineTable = doc.selectFirst("table.table_list:has(th:contains(Gold graph & Timeline))");
+        if (timelineTable == null) {
+            return List.of();
+        }
+        Elements actionSpans = timelineTable.select("span.blue_action, span.red_action");
+        List<GolGgObjectiveEvent> events = new ArrayList<>();
+        for (Element action : actionSpans) {
+            Element img = action.selectFirst("img[alt]");
+            if (img == null) {
+                continue;
+            }
+            String label = cleanText(img.attr("alt"));
+            Integer timeSec = parseTimelineActionTime(action);
+            ExternalDetailWinnerSide side = action.hasClass("blue_action")
+                    ? ExternalDetailWinnerSide.BLUE
+                    : ExternalDetailWinnerSide.RED;
+            String type = normalizeObjectiveType(label);
+            if (label == null || timeSec == null || type == null) {
+                continue;
+            }
+            events.add(new GolGgObjectiveEvent(timeSec, side, type, label));
+        }
+        events.sort((a, b) -> {
+            int time = Integer.compare(a.timeSec(), b.timeSec());
+            if (time != 0) {
+                return time;
+            }
+            return a.side().compareTo(b.side());
+        });
+        return List.copyOf(events);
+    }
+
+    private Integer parseTimelineActionTime(Element action) {
+        String text = action.wholeText();
+        Matcher matcher = Pattern.compile("(\\d{1,2}:\\d{2})").matcher(text == null ? "" : text);
+        if (!matcher.find()) {
+            return null;
+        }
+        return parseMmSsToSeconds(matcher.group(1));
+    }
+
+    private String normalizeObjectiveType(String label) {
+        if (label == null || label.isBlank()) {
+            return null;
+        }
+        String lower = label.toLowerCase(Locale.ROOT);
+        if (lower.contains("first blood")) {
+            return "FIRST_BLOOD";
+        }
+        if (lower.contains("first tower")) {
+            return "FIRST_TOWER";
+        }
+        if (lower.contains("nashor") || lower.contains("baron")) {
+            return "BARON";
+        }
+        if (lower.contains("herald")) {
+            return "HERALD";
+        }
+        if (lower.contains("drake") || lower.contains("dragon")) {
+            return "DRAGON";
+        }
+        return "UNKNOWN";
+    }
+
+    private String cleanText(String text) {
+        if (text == null) {
+            return null;
+        }
+        String cleaned = text.replace('\u00A0', ' ').trim();
+        return cleaned.isEmpty() ? null : cleaned;
     }
 
     private PlayerLineStats extractPlayerLineStats(Element row) {
@@ -1439,7 +1515,8 @@ public class GolGgClient {
             List<String> blueBans,
             List<String> redBans,
             List<GolGgPickEntry> bluePicks,
-            List<GolGgPickEntry> redPicks
+            List<GolGgPickEntry> redPicks,
+            List<GolGgObjectiveEvent> objectiveTimeline
     ) {
     }
 
@@ -1464,6 +1541,14 @@ public class GolGgClient {
             Integer deaths,
             Integer assists,
             Integer cs
+    ) {
+    }
+
+    public record GolGgObjectiveEvent(
+            Integer timeSec,
+            ExternalDetailWinnerSide side,
+            String type,
+            String label
     ) {
     }
 

@@ -77,7 +77,9 @@ class MatchPublicDetailControllerTest {
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].kills").value(2))
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].deaths").value(1))
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].assists").value(6))
-                .andExpect(jsonPath("$.data.games[0].bluePicks[0].cs").value(249));
+                .andExpect(jsonPath("$.data.games[0].bluePicks[0].cs").value(249))
+                .andExpect(jsonPath("$.data.games[0].objectiveTimeline[0].timeSec").value(202))
+                .andExpect(jsonPath("$.data.games[0].objectiveTimeline[0].type").value("FIRST_BLOOD"));
     }
 
     @Test
@@ -152,6 +154,7 @@ class MatchPublicDetailControllerTest {
                         new MatchExternalDetailPublicResponse.PublicPick("Jhin", "Teddy", "ADC"),
                         new MatchExternalDetailPublicResponse.PublicPick("Elise", "Namgung", "SUPPORT")
                 ),
+                List.of(new MatchExternalDetailPublicResponse.PublicObjectiveEvent(202, "BLUE", "FIRST_BLOOD", "First blood")),
                 null
         );
     }

@@ -622,6 +622,7 @@ public class GolDetailEnrichmentService {
             item.setRedBansJson(bansToJson(stats.redBans()));
             item.setBluePicksJson(picksToJson(stats.bluePicks()));
             item.setRedPicksJson(picksToJson(stats.redPicks()));
+            item.setObjectiveTimelineJson(objectiveTimelineToJson(stats.objectiveTimeline()));
             item.setErrorMessage(null);
         } catch (IllegalArgumentException | RestClientException e) {
             // 부분 실패 — 다른 게임은 영향받지 않게 stats 비우고 메시지만 기록.
@@ -664,6 +665,22 @@ public class GolDetailEnrichmentService {
             node.put("deaths", pick.deaths());
             node.put("assists", pick.assists());
             node.put("cs", pick.cs());
+            array.add(node);
+        }
+        return array;
+    }
+
+    private ArrayNode objectiveTimelineToJson(List<GolGgClient.GolGgObjectiveEvent> events) {
+        ArrayNode array = objectMapper.createArrayNode();
+        if (events == null) {
+            return array;
+        }
+        for (GolGgClient.GolGgObjectiveEvent event : events) {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("timeSec", event.timeSec());
+            node.put("side", event.side() != null ? event.side().name() : null);
+            node.put("type", event.type());
+            node.put("label", event.label());
             array.add(node);
         }
         return array;

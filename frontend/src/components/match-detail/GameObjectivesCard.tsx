@@ -14,19 +14,21 @@ function goldText(value: number | null) {
   if (value == null) {
     return '-'
   }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}k`
+  return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value)
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds == null) {
+    return '-'
   }
-  return String(value)
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  return `${minutes}:${String(rest).padStart(2, '0')}`
 }
 
 function formatSide(side: string | null, blueTeamName: string, redTeamName: string) {
-  if (side === 'BLUE') {
-    return blueTeamName
-  }
-  if (side === 'RED') {
-    return redTeamName
-  }
+  if (side === 'BLUE') return blueTeamName
+  if (side === 'RED') return redTeamName
   return '-'
 }
 
@@ -41,6 +43,29 @@ function dragonLabel(value: string) {
     ELDER: '장로',
   }
   return labels[value] ?? value
+}
+
+function objectiveLabel(type: string | null, label: string | null) {
+  const labels: Record<string, string> = {
+    FIRST_BLOOD: '첫 킬',
+    FIRST_TOWER: '첫 타워',
+    DRAGON: label != null ? dragonLabel(label.replace(/\s+(Drake|Dragon)$/i, '').toUpperCase()) : '드래곤',
+    HERALD: '전령',
+    BARON: '바론',
+  }
+  return type != null ? labels[type] ?? label ?? type : label ?? '-'
+}
+
+function SideLegendName({ teamId, teamName }: { teamId: number | null; teamName: string }) {
+  if (teamId == null) {
+    return <span>{teamName}</span>
+  }
+
+  return (
+    <Link to={`/teams/${teamId}`} className="underline-offset-4 hover:underline">
+      {teamName}
+    </Link>
+  )
 }
 
 function ObjectiveRow({
@@ -63,27 +88,6 @@ function ObjectiveRow({
   )
 }
 
-function formatDuration(seconds: number | null) {
-  if (seconds == null) {
-    return '-'
-  }
-  const minutes = Math.floor(seconds / 60)
-  const rest = seconds % 60
-  return `${minutes}:${String(rest).padStart(2, '0')}`
-}
-
-function SideLegendName({ teamId, teamName }: { teamId: number | null; teamName: string }) {
-  if (teamId == null) {
-    return <span>{teamName}</span>
-  }
-
-  return (
-    <Link to={`/teams/${teamId}`} className="underline-offset-4 hover:underline">
-      {teamName}
-    </Link>
-  )
-}
-
 function DragonTypeList({ values, align }: { values: string[]; align: 'left' | 'right' }) {
   if (values.length === 0) {
     return <span className="text-muted-foreground">-</span>
@@ -103,6 +107,7 @@ function DragonTypeList({ values, align }: { values: string[]; align: 'left' | '
 export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardProps) {
   const blueTeamName = game.blueTeamName ?? '-'
   const redTeamName = game.redTeamName ?? '-'
+  const objectiveTimeline = game.objectiveTimeline ?? []
   const winnerLabel =
     game.winnerSide === 'BLUE'
       ? blueTeamName
@@ -155,6 +160,28 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         <div className="text-center font-medium text-muted-foreground">드래곤 종류</div>
         <DragonTypeList values={game.redDragonTypes} align="left" />
       </div>
+
+      {objectiveTimeline.length > 0 && (
+        <div className="mt-4 border-t border-border pt-4">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">오브젝트 타임라인</div>
+          <div className="flex flex-wrap gap-2">
+            {objectiveTimeline.map((event, index) => {
+              const teamName = formatSide(event.side, blueTeamName, redTeamName)
+              const sideClass = event.side === 'BLUE' ? 'border-blue-500/40' : 'border-red-500/40'
+              return (
+                <span
+                  key={`${event.timeSec ?? 'time'}-${event.type ?? 'event'}-${index}`}
+                  className={`inline-flex items-center gap-2 rounded border ${sideClass} px-2 py-1 text-xs text-muted-foreground`}
+                >
+                  <span className="font-medium text-foreground">{formatDuration(event.timeSec)}</span>
+                  <span>{objectiveLabel(event.type, event.label)}</span>
+                  <span>{teamName}</span>
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </section>
   )
 }

@@ -86,6 +86,13 @@ class GolGgGameStatsParserTest {
         assertPick(stats.redPicks().get(2), "Orianna", "Roamer", "MID");
         assertPick(stats.redPicks().get(3), "Jhin", "Teddy", "ADC");
         assertPick(stats.redPicks().get(4), "Elise", "Namgung", "SUPPORT");
+
+        assertThat(stats.objectiveTimeline()).hasSize(6);
+        assertThat(stats.objectiveTimeline().get(0).timeSec()).isEqualTo(202);
+        assertThat(stats.objectiveTimeline().get(0).side()).isEqualTo(ExternalDetailWinnerSide.BLUE);
+        assertThat(stats.objectiveTimeline().get(0).type()).isEqualTo("FIRST_BLOOD");
+        assertThat(stats.objectiveTimeline().get(1).type()).isEqualTo("DRAGON");
+        assertThat(stats.objectiveTimeline().get(5).type()).isEqualTo("BARON");
     }
 
     @Test
@@ -138,6 +145,7 @@ class GolGgGameStatsParserTest {
         assertThat(stats.redBans()).isEmpty();
         assertThat(stats.bluePicks()).isEmpty();
         assertThat(stats.redPicks()).isEmpty();
+        assertThat(stats.objectiveTimeline()).isEmpty();
     }
 
     @Test

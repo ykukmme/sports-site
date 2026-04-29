@@ -54,6 +54,13 @@ export interface MatchExternalDetailPublicPick {
   cs: number | null
 }
 
+export interface MatchExternalDetailPublicObjectiveEvent {
+  timeSec: number | null
+  side: string | null
+  type: string | null
+  label: string | null
+}
+
 export interface MatchExternalDetailPublicGame {
   gameNo: number | null
   durationSec: number | null
@@ -80,6 +87,7 @@ export interface MatchExternalDetailPublicGame {
   redBans: string[]
   bluePicks: MatchExternalDetailPublicPick[]
   redPicks: MatchExternalDetailPublicPick[]
+  objectiveTimeline: MatchExternalDetailPublicObjectiveEvent[]
   errorMessage: string | null
 }
 

@@ -84,6 +84,7 @@ public class MatchPublicDetailService {
                 bansFromJson(game.getRedBansJson()),
                 picksFromJson(game.getBluePicksJson()),
                 picksFromJson(game.getRedPicksJson()),
+                objectiveTimelineFromJson(game.getObjectiveTimelineJson()),
                 game.getErrorMessage()
         );
     }
@@ -127,6 +128,25 @@ public class MatchPublicDetailService {
                     integerOrNull(item.get("deaths")),
                     integerOrNull(item.get("assists")),
                     integerOrNull(item.get("cs"))
+            ));
+        });
+        return List.copyOf(list);
+    }
+
+    private List<MatchExternalDetailPublicResponse.PublicObjectiveEvent> objectiveTimelineFromJson(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<MatchExternalDetailPublicResponse.PublicObjectiveEvent> list = new ArrayList<>();
+        node.forEach(item -> {
+            if (item == null || !item.isObject()) {
+                return;
+            }
+            list.add(new MatchExternalDetailPublicResponse.PublicObjectiveEvent(
+                    integerOrNull(item.get("timeSec")),
+                    textOrNull(item.get("side")),
+                    textOrNull(item.get("type")),
+                    textOrNull(item.get("label"))
             ));
         });
         return List.copyOf(list);

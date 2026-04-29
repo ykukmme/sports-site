@@ -520,6 +520,8 @@ class GolDetailEnrichmentServiceTest {
         assertThat(toStringList(game1.getRedDragonTypesJson())).containsExactly("OCEAN", "HEXTECH");
         assertThat(game1.getRedPicksJson().get(0).get("kills").asInt()).isEqualTo(6);
         assertThat(game1.getRedPicksJson().get(0).get("cs").asInt()).isEqualTo(301);
+        assertThat(game1.getObjectiveTimelineJson().get(0).get("type").asText()).isEqualTo("FIRST_BLOOD");
+        assertThat(game1.getObjectiveTimelineJson().get(0).get("side").asText()).isEqualTo("RED");
         assertThat(game1.getErrorMessage()).isNull();
 
         MatchExternalDetailGame game2 = saved.getGames().get(1);
@@ -569,7 +571,8 @@ class GolDetailEnrichmentServiceTest {
                         new GolGgClient.GolGgPickEntry("Yasuo", "PlayerR3", "MID"),
                         new GolGgClient.GolGgPickEntry("Lucian", "PlayerR4", "ADC"),
                         new GolGgClient.GolGgPickEntry("Rakan", "PlayerR5", "SUPPORT")
-                )
+                ),
+                List.of(new GolGgClient.GolGgObjectiveEvent(202, ExternalDetailWinnerSide.RED, "FIRST_BLOOD", "First blood"))
         );
     }
 
@@ -607,7 +610,8 @@ class GolDetailEnrichmentServiceTest {
                         new GolGgClient.GolGgPickEntry("Orianna", "Roamer", "MID"),
                         new GolGgClient.GolGgPickEntry("Jhin", "Teddy", "ADC"),
                         new GolGgClient.GolGgPickEntry("Elise", "Namgung", "SUPPORT")
-                )
+                ),
+                List.of(new GolGgClient.GolGgObjectiveEvent(202, ExternalDetailWinnerSide.BLUE, "FIRST_BLOOD", "First blood"))
         );
     }
 
