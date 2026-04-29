@@ -6,7 +6,7 @@ interface DdragonAssetIconProps {
   size?: 'xs' | 'sm'
 }
 
-const DDRAGON_VERSION = import.meta.env.VITE_DDRAGON_VERSION ?? '15.24.1'
+const DDRAGON_VERSION = import.meta.env.VITE_DDRAGON_VERSION ?? '16.8.1'
 
 const sizeClasses = {
   xs: 'h-5 w-5 text-[9px]',

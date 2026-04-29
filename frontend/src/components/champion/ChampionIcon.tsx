@@ -5,7 +5,7 @@ interface ChampionIconProps {
   size?: 'sm' | 'md'
 }
 
-const DDRAGON_VERSION = import.meta.env.VITE_DDRAGON_VERSION ?? '15.24.1'
+const DDRAGON_VERSION = import.meta.env.VITE_DDRAGON_VERSION ?? '16.8.1'
 
 const sizeClasses = {
   sm: 'h-6 w-6 text-[10px]',
