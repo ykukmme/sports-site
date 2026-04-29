@@ -266,6 +266,11 @@ export async function validateMatchExternalDetailSource(
   return res.data.data!
 }
 
+// detail 언바인딩 — detail row 삭제 (CASCADE로 detail_game도 정리). 204 No Content.
+export async function unbindMatchExternalDetail(matchId: number): Promise<void> {
+  await apiClient.delete(`/api/admin/matches/${matchId}/details`)
+}
+
 export async function syncMatchExternalDetail(matchId: number): Promise<MatchExternalDetailSyncItemResponse> {
   const res = await apiClient.post<ApiResponse<MatchExternalDetailSyncItemResponse>>(
     `/api/admin/matches/${matchId}/details/sync`,

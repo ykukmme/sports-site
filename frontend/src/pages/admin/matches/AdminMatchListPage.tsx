@@ -27,6 +27,7 @@ import {
   useSyncGolGgTournamentSource,
   useSyncMatchExternalDetail,
   useSyncMatchExternalDetailsBatch,
+  useUnbindMatchExternalDetail,
   useValidateMatchExternalDetailSource,
 } from '../../../hooks/useAdminMatches'
 import { useAdminTeamList } from '../../../hooks/useAdminTeams'
@@ -122,6 +123,7 @@ export function AdminMatchListPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [detailStatusFilter, setDetailStatusFilter] = useState<string>('ALL')
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+  const [unbindTargetId, setUnbindTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
@@ -160,6 +162,7 @@ export function AdminMatchListPage() {
   const resolveSourceMutation = useResolveMatchExternalDetailSource()
   const detailSyncMutation = useSyncMatchExternalDetail()
   const detailSyncBatchMutation = useSyncMatchExternalDetailsBatch()
+  const unbindDetailMutation = useUnbindMatchExternalDetail()
 
   const teams = useMemo(() => {
     const source = teamsData ?? []
@@ -185,6 +188,26 @@ export function AdminMatchListPage() {
   function closeDeleteDialog() {
     deleteMutation.reset()
     setDeleteTargetId(null)
+  }
+
+  function openUnbindDialog(id: number) {
+    unbindDetailMutation.reset()
+    setUnbindTargetId(id)
+  }
+
+  function closeUnbindDialog() {
+    unbindDetailMutation.reset()
+    setUnbindTargetId(null)
+  }
+
+  function handleUnbindConfirm() {
+    if (unbindTargetId == null) return
+    unbindDetailMutation.mutate(unbindTargetId, {
+      onSuccess: () => {
+        setBindResultMessage(`matchId ${unbindTargetId} detail 언바인딩 완료`)
+        setUnbindTargetId(null)
+      },
+    })
   }
 
   function resetFilters() {
@@ -858,6 +881,17 @@ export function AdminMatchListPage() {
                           <Button variant="outline" size="sm" onClick={() => openGolSearch(match)}>
                             검색 열기
                           </Button>
+                          {detailSummary && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={unbindDetailMutation.isPending}
+                              onClick={() => openUnbindDialog(match.id)}
+                              title="이 경기의 detail 바인딩을 삭제합니다"
+                            >
+                              언바인딩
+                            </Button>
+                          )}
                         </div>
                         {validationResult && (
                           <span className={`text-xs ${validationResult.valid ? 'text-muted-foreground' : 'text-destructive'}`}>
@@ -1032,6 +1066,20 @@ export function AdminMatchListPage() {
         onCancel={closeDeleteDialog}
         isLoading={deleteMutation.isPending}
         errorMessage={deleteErrorMessage}
+      />
+
+      <AdminConfirmDialog
+        open={unbindTargetId != null}
+        title="detail 언바인딩"
+        description="이 경기의 detail 바인딩을 삭제합니다. 동기화된 게임 정보도 함께 제거됩니다. 계속하시겠습니까?"
+        onConfirm={handleUnbindConfirm}
+        onCancel={closeUnbindDialog}
+        isLoading={unbindDetailMutation.isPending}
+        errorMessage={
+          unbindDetailMutation.error instanceof ApiError
+            ? unbindDetailMutation.error.message
+            : unbindDetailMutation.error?.message
+        }
       />
     </div>
   )

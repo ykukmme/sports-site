@@ -72,6 +72,17 @@ public class GolDetailEnrichmentService {
         this.qualityValidationService = qualityValidationService;
     }
 
+    // detail 언바인딩: detail row 삭제 (match_external_detail_game은 ON DELETE CASCADE로 자동 정리)
+    // 미존재 시 idempotent — no-op
+    public void unbindDetail(Long matchId) {
+        loadMatch(matchId);
+        Optional<MatchExternalDetail> detail = detailRepository.findByMatchId(matchId);
+        if (detail.isEmpty()) {
+            return;
+        }
+        detailRepository.delete(detail.get());
+    }
+
     public MatchExternalDetailSummaryResponse bindSourceUrl(Long matchId, String sourceUrl) {
         assertSourceUrlValid(matchId, sourceUrl);
         Match match = loadMatch(matchId);

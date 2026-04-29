@@ -81,6 +81,13 @@ public class AdminMatchController {
         return ApiResponse.ok(golDetailEnrichmentService.syncOne(id));
     }
 
+    // DELETE /api/admin/matches/{id}/details — detail 언바인딩 (잘못 바인딩된 detail 정리)
+    @DeleteMapping("/{id}/details")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unbindMatchDetail(@PathVariable Long id) {
+        golDetailEnrichmentService.unbindDetail(id);
+    }
+
     @PostMapping("/details/sync")
     public ApiResponse<MatchExternalDetailBatchSyncResponse> syncMatchDetails(
             @RequestBody(required = false) MatchExternalDetailBatchSyncRequest request) {
