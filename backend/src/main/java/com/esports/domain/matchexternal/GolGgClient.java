@@ -567,13 +567,54 @@ public class GolGgClient {
             if ((champion == null || champion.isBlank()) && (player == null || player.isBlank())) {
                 continue;
             }
+            PlayerLineStats lineStats = extractPlayerLineStats(row);
             picks.add(new GolGgPickEntry(
                     champion == null || champion.isBlank() ? null : champion,
                     player == null || player.isBlank() ? null : player,
-                    position
+                    position,
+                    lineStats.kills,
+                    lineStats.deaths,
+                    lineStats.assists,
+                    lineStats.cs
             ));
         }
         return List.copyOf(picks);
+    }
+
+    private PlayerLineStats extractPlayerLineStats(Element row) {
+        Elements cells = row.select("> td");
+        if (cells.size() < 2) {
+            return new PlayerLineStats(null, null, null, null);
+        }
+        Element kdaCell = cells.get(cells.size() - 2);
+        Element csCell = cells.get(cells.size() - 1);
+        Integer[] kda = parseKda(kdaCell.text());
+        return new PlayerLineStats(
+                kda[0],
+                kda[1],
+                kda[2],
+                parseLeadingInteger(csCell.text())
+        );
+    }
+
+    private Integer[] parseKda(String text) {
+        Integer[] empty = new Integer[]{null, null, null};
+        if (text == null || text.isBlank()) {
+            return empty;
+        }
+        Matcher matcher = Pattern.compile("(\\d+)\\s*/\\s*(\\d+)\\s*/\\s*(\\d+)").matcher(text);
+        if (!matcher.find()) {
+            return empty;
+        }
+        try {
+            return new Integer[]{
+                    Integer.parseInt(matcher.group(1)),
+                    Integer.parseInt(matcher.group(2)),
+                    Integer.parseInt(matcher.group(3))
+            };
+        } catch (NumberFormatException ignored) {
+            return empty;
+        }
     }
 
     // 헤더 텍스트는 "팀명 - WIN" / "팀명 - LOSS" 패턴. 양쪽 모두 일관되어야 신뢰.
@@ -1407,7 +1448,22 @@ public class GolGgClient {
     public record GolGgPickEntry(
             String championId,
             String playerName,
-            String position
+            String position,
+            Integer kills,
+            Integer deaths,
+            Integer assists,
+            Integer cs
+    ) {
+        public GolGgPickEntry(String championId, String playerName, String position) {
+            this(championId, playerName, position, null, null, null, null);
+        }
+    }
+
+    private record PlayerLineStats(
+            Integer kills,
+            Integer deaths,
+            Integer assists,
+            Integer cs
     ) {
     }
 

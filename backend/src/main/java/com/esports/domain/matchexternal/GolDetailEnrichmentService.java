@@ -660,6 +660,10 @@ public class GolDetailEnrichmentService {
             node.put("championId", championDdragon != null ? championDdragon : championRaw);
             node.put("playerName", pick.playerName());
             node.put("position", pick.position());
+            node.put("kills", pick.kills());
+            node.put("deaths", pick.deaths());
+            node.put("assists", pick.assists());
+            node.put("cs", pick.cs());
             array.add(node);
         }
         return array;

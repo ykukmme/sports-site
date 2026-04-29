@@ -73,7 +73,11 @@ class MatchPublicDetailControllerTest {
                 .andExpect(jsonPath("$.data.games[0].blueBans[0]").value("Azir"))
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].championId").value("Rumble"))
                 .andExpect(jsonPath("$.data.games[0].bluePicks[0].playerName").value("Siwoo"))
-                .andExpect(jsonPath("$.data.games[0].bluePicks[0].position").value("TOP"));
+                .andExpect(jsonPath("$.data.games[0].bluePicks[0].position").value("TOP"))
+                .andExpect(jsonPath("$.data.games[0].bluePicks[0].kills").value(2))
+                .andExpect(jsonPath("$.data.games[0].bluePicks[0].deaths").value(1))
+                .andExpect(jsonPath("$.data.games[0].bluePicks[0].assists").value(6))
+                .andExpect(jsonPath("$.data.games[0].bluePicks[0].cs").value(249));
     }
 
     @Test
@@ -135,7 +139,7 @@ class MatchPublicDetailControllerTest {
                 List.of("Azir", "Jayce", "Vi", "Rakan", "Nautilus"),
                 List.of("Qiyana", "Malphite", "Akali", "Lucian", "Kalista"),
                 List.of(
-                        new MatchExternalDetailPublicResponse.PublicPick("Rumble", "Siwoo", "TOP"),
+                        new MatchExternalDetailPublicResponse.PublicPick("Rumble", "Siwoo", "TOP", 2, 1, 6, 249),
                         new MatchExternalDetailPublicResponse.PublicPick("Pantheon", "Lucid", "JUNGLE"),
                         new MatchExternalDetailPublicResponse.PublicPick("Leblanc", "ShowMaker", "MID"),
                         new MatchExternalDetailPublicResponse.PublicPick("Sivir", "Smash", "ADC"),

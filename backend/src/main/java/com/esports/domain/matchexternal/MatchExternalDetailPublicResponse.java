@@ -58,8 +58,15 @@ public record MatchExternalDetailPublicResponse(
     public record PublicPick(
             String championId,
             String playerName,
-            String position
+            String position,
+            Integer kills,
+            Integer deaths,
+            Integer assists,
+            Integer cs
     ) {
+        public PublicPick(String championId, String playerName, String position) {
+            this(championId, playerName, position, null, null, null, null);
+        }
     }
 
     // detail 없음 / status≠SYNCED 케이스에서 사용.

@@ -122,10 +122,21 @@ public class MatchPublicDetailService {
             list.add(new MatchExternalDetailPublicResponse.PublicPick(
                     textOrNull(item.get("championId")),
                     textOrNull(item.get("playerName")),
-                    textOrNull(item.get("position"))
+                    textOrNull(item.get("position")),
+                    integerOrNull(item.get("kills")),
+                    integerOrNull(item.get("deaths")),
+                    integerOrNull(item.get("assists")),
+                    integerOrNull(item.get("cs"))
             ));
         });
         return List.copyOf(list);
+    }
+
+    private Integer integerOrNull(JsonNode node) {
+        if (node == null || node.isNull() || !node.canConvertToInt()) {
+            return null;
+        }
+        return node.asInt();
     }
 
     private String textOrNull(JsonNode node) {

@@ -518,6 +518,8 @@ class GolDetailEnrichmentServiceTest {
         assertThat(game1.getRedTeamGold()).isEqualTo(62000);
         assertThat(game1.getFirstBloodSide()).isEqualTo(ExternalDetailWinnerSide.RED);
         assertThat(toStringList(game1.getRedDragonTypesJson())).containsExactly("OCEAN", "HEXTECH");
+        assertThat(game1.getRedPicksJson().get(0).get("kills").asInt()).isEqualTo(6);
+        assertThat(game1.getRedPicksJson().get(0).get("cs").asInt()).isEqualTo(301);
         assertThat(game1.getErrorMessage()).isNull();
 
         MatchExternalDetailGame game2 = saved.getGames().get(1);
@@ -562,7 +564,7 @@ class GolDetailEnrichmentServiceTest {
                         new GolGgClient.GolGgPickEntry("Bard", "PlayerB5", "SUPPORT")
                 ),
                 List.of(
-                        new GolGgClient.GolGgPickEntry("Darius", "PlayerR1", "TOP"),
+                        new GolGgClient.GolGgPickEntry("Darius", "PlayerR1", "TOP", 6, 1, 7, 301),
                         new GolGgClient.GolGgPickEntry("Pantheon", "PlayerR2", "JUNGLE"),
                         new GolGgClient.GolGgPickEntry("Yasuo", "PlayerR3", "MID"),
                         new GolGgClient.GolGgPickEntry("Lucian", "PlayerR4", "ADC"),

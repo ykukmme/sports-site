@@ -11,15 +11,24 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
   const champion = pick.championId ?? '-'
   const player = pick.playerName ?? '-'
   const position = pick.position ?? '-'
+  const kda =
+    pick.kills == null || pick.deaths == null || pick.assists == null
+      ? '-'
+      : `${pick.kills}/${pick.deaths}/${pick.assists}`
+  const cs = pick.cs == null ? '-' : String(pick.cs)
 
   return (
-    <div className="grid grid-cols-[56px_1fr_72px] items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-sm sm:grid-cols-[72px_1fr_72px]">
+    <div className="grid grid-cols-[44px_1fr_54px_42px] items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-sm sm:grid-cols-[64px_1fr_64px_48px]">
       <span className="text-xs text-muted-foreground">{position}</span>
-      <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+      <span className="flex min-w-0 items-center gap-2">
         <ChampionIcon championId={pick.championId} />
-        <span className="truncate">{champion}</span>
+        <span className="min-w-0">
+          <span className="block truncate font-medium text-foreground">{champion}</span>
+          <span className="block truncate text-xs text-muted-foreground">{player}</span>
+        </span>
       </span>
-      <span className="truncate text-right text-xs text-muted-foreground">{player}</span>
+      <span className="text-right text-xs text-muted-foreground">{kda}</span>
+      <span className="text-right text-xs text-muted-foreground">{cs}</span>
     </div>
   )
 }
@@ -90,7 +99,17 @@ function TeamDraftColumn({
             데이터가 없습니다.
           </div>
         ) : (
-          picks.map((pick, index) => <PickRow key={`${pick.championId ?? 'pick'}-${index}`} pick={pick} />)
+          <>
+            <div className="grid grid-cols-[44px_1fr_54px_42px] gap-2 px-3 text-[11px] text-muted-foreground sm:grid-cols-[64px_1fr_64px_48px]">
+              <span>포지션</span>
+              <span>챔피언</span>
+              <span className="text-right">KDA</span>
+              <span className="text-right">CS</span>
+            </div>
+            {picks.map((pick, index) => (
+              <PickRow key={`${pick.championId ?? 'pick'}-${index}`} pick={pick} />
+            ))}
+          </>
         )}
       </div>
 

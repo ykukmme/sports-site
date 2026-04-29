@@ -48,6 +48,10 @@ export interface MatchExternalDetailPublicPick {
   championId: string | null
   playerName: string | null
   position: string | null
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  cs: number | null
 }
 
 export interface MatchExternalDetailPublicGame {

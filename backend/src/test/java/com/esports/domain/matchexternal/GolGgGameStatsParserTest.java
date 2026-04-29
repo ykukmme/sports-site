@@ -71,6 +71,10 @@ class GolGgGameStatsParserTest {
         // 픽 5개씩 (행 순서 = TOP→JUNGLE→MID→ADC→SUPPORT)
         assertThat(stats.bluePicks()).hasSize(5);
         assertPick(stats.bluePicks().get(0), "Rumble", "Siwoo", "TOP");
+        assertThat(stats.bluePicks().get(0).kills()).isEqualTo(2);
+        assertThat(stats.bluePicks().get(0).deaths()).isEqualTo(1);
+        assertThat(stats.bluePicks().get(0).assists()).isEqualTo(6);
+        assertThat(stats.bluePicks().get(0).cs()).isEqualTo(249);
         assertPick(stats.bluePicks().get(1), "Pantheon", "Lucid", "JUNGLE");
         assertPick(stats.bluePicks().get(2), "LeBlanc", "ShowMaker", "MID");
         assertPick(stats.bluePicks().get(3), "Sivir", "Smash", "ADC");
