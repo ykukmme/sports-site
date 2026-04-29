@@ -120,6 +120,7 @@ export function AdminMatchListPage() {
   const [teamFilter, setTeamFilter] = useState<string>('ALL')
   const [sinceDate, setSinceDate] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [detailStatusFilter, setDetailStatusFilter] = useState<string>('ALL')
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
@@ -144,6 +145,7 @@ export function AdminMatchListPage() {
     teamId,
     sinceDate || undefined,
     sortDirection,
+    detailStatusFilter === 'ALL' ? undefined : detailStatusFilter,
   )
   const { data: teamsData } = useAdminTeamList()
   const { data: golGgSourcesData } = useGolGgTournamentSources()
@@ -190,6 +192,7 @@ export function AdminMatchListPage() {
     setTeamFilter('ALL')
     setSinceDate('')
     setSortDirection('desc')
+    setDetailStatusFilter('ALL')
     setPage(0)
     setSelectedMatchIds([])
   }
@@ -501,7 +504,7 @@ export function AdminMatchListPage() {
         </div>
       </div>
 
-      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 md:grid-cols-5">
+      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 md:grid-cols-6">
         <label className="text-sm">
           <span className="mb-1 block text-muted-foreground">리그</span>
           <select
@@ -570,6 +573,27 @@ export function AdminMatchListPage() {
           >
             <option value="desc">최신순</option>
             <option value="asc">오래된순</option>
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-muted-foreground">상세 상태</span>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
+            value={detailStatusFilter}
+            onChange={(event) => {
+              setDetailStatusFilter(event.target.value)
+              setPage(0)
+              setSelectedMatchIds([])
+            }}
+          >
+            <option value="ALL">전체</option>
+            <option value="NONE">미바인딩</option>
+            <option value="PENDING">대기</option>
+            <option value="SYNCED">동기화 완료</option>
+            <option value="PARTIAL_SYNC">부분 동기화</option>
+            <option value="NEEDS_REVIEW">검토 필요</option>
+            <option value="FAILED">실패</option>
           </select>
         </label>
 

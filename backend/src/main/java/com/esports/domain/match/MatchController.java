@@ -22,7 +22,8 @@ public class MatchController {
         this.matchQueryService = matchQueryService;
     }
 
-    // GET /api/v1/matches — 경기 목록 (status, gameId, date 필터 + 페이지네이션)
+    // GET /api/v1/matches — 경기 목록 (status, gameId, date, detailStatus 필터 + 페이지네이션)
+    // detailStatus 값: ExternalDetailStatus enum (SYNCED, PARTIAL_SYNC, NEEDS_REVIEW, FAILED, PENDING) 또는 "NONE"(detail 미바인딩)
     @GetMapping
     public ApiResponse<Page<MatchResponse>> list(
             @RequestParam(required = false) MatchStatus status,
@@ -31,8 +32,9 @@ public class MatchController {
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate sinceDate,
             @RequestParam(required = false) Boolean hasResult,
+            @RequestParam(required = false) String detailStatus,
             @PageableDefault(size = 20, sort = "scheduledAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ApiResponse.ok(matchQueryService.findMatches(status, gameId, league, teamId, sinceDate, hasResult, pageable));
+        return ApiResponse.ok(matchQueryService.findMatches(status, gameId, league, teamId, sinceDate, hasResult, detailStatus, pageable));
     }
 
     // GET /api/v1/matches/upcoming — 예정 경기 목록

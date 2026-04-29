@@ -1,6 +1,8 @@
 package com.esports.domain.match;
 
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.matchexternal.ExternalDetailStatus;
+import com.esports.domain.matchexternal.MatchExternalDetail;
 import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchresult.MatchResult;
@@ -47,6 +49,7 @@ public class MatchQueryService {
                                            Long teamId,
                                            LocalDate sinceDate,
                                            Boolean hasResult,
+                                           String detailStatus,
                                            Pageable pageable) {
         Specification<Match> spec = Specification.where(null);
 
@@ -97,6 +100,33 @@ public class MatchQueryService {
                 subquery.where(cb.equal(matchResultRoot.get("match").get("id"), root.get("id")));
                 return cb.exists(subquery);
             });
+        }
+        if (detailStatus != null && !detailStatus.isBlank()) {
+            String normalized = detailStatus.trim().toUpperCase();
+            // "NONE" = detail 미바인딩 경기 (NOT EXISTS), 그 외는 ExternalDetailStatus enum 일치
+            if ("NONE".equals(normalized)) {
+                spec = spec.and((root, query, cb) -> {
+                    var subquery = query.subquery(Long.class);
+                    var detailRoot = subquery.from(MatchExternalDetail.class);
+                    subquery.select(detailRoot.get("id"));
+                    subquery.where(cb.equal(detailRoot.get("match").get("id"), root.get("id")));
+                    return cb.not(cb.exists(subquery));
+                });
+            } else {
+                ExternalDetailStatus parsed = parseDetailStatus(normalized);
+                if (parsed != null) {
+                    spec = spec.and((root, query, cb) -> {
+                        var subquery = query.subquery(Long.class);
+                        var detailRoot = subquery.from(MatchExternalDetail.class);
+                        subquery.select(detailRoot.get("id"));
+                        subquery.where(
+                                cb.equal(detailRoot.get("match").get("id"), root.get("id")),
+                                cb.equal(detailRoot.get("status"), parsed)
+                        );
+                        return cb.exists(subquery);
+                    });
+                }
+            }
         }
 
         Page<Match> matchPage = matchRepository.findAll(spec, pageable);
@@ -183,6 +213,15 @@ public class MatchQueryService {
                         detail -> detail.getMatch().getId(),
                         MatchExternalDetailSummaryResponse::from
                 ));
+    }
+
+    // detailStatus 파라미터를 ExternalDetailStatus enum으로 안전하게 파싱. 미일치 시 null 반환(필터 무시)
+    private static ExternalDetailStatus parseDetailStatus(String value) {
+        try {
+            return ExternalDetailStatus.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private static jakarta.persistence.criteria.Predicate internationalCompetitionPredicate(

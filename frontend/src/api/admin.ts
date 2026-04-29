@@ -64,12 +64,14 @@ export async function fetchAdminMatches(
   teamId?: number,
   sinceDate?: string,
   sortDirection: 'asc' | 'desc' = 'desc',
+  detailStatus?: string,
 ): Promise<PageResponse<MatchResponse>> {
   const params: Record<string, unknown> = { page, size: 20, sort: `scheduledAt,${sortDirection}` }
   if (status) params.status = status
   if (league && league !== 'ALL') params.league = league
   if (teamId && teamId > 0) params.teamId = teamId
   if (sinceDate) params.sinceDate = sinceDate
+  if (detailStatus && detailStatus !== 'ALL') params.detailStatus = detailStatus
   const res = await apiClient.get<ApiResponse<PageResponse<MatchResponse>>>('/api/v1/matches', { params })
   return res.data.data ?? {
     content: [],

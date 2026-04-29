@@ -30,7 +30,8 @@ const MATCHES_KEY = (
   teamId?: number,
   sinceDate?: string,
   sortDirection: 'asc' | 'desc' = 'desc',
-) => ['admin', 'matches', { page, status, league, teamId, sinceDate, sortDirection }] as const
+  detailStatus?: string,
+) => ['admin', 'matches', { page, status, league, teamId, sinceDate, sortDirection, detailStatus }] as const
 
 export function useAdminMatchList(
   page = 0,
@@ -39,10 +40,11 @@ export function useAdminMatchList(
   teamId?: number,
   sinceDate?: string,
   sortDirection: 'asc' | 'desc' = 'desc',
+  detailStatus?: string,
 ) {
   return useQuery({
-    queryKey: MATCHES_KEY(page, status, league, teamId, sinceDate, sortDirection),
-    queryFn: () => fetchAdminMatches(page, status, league, teamId, sinceDate, sortDirection),
+    queryKey: MATCHES_KEY(page, status, league, teamId, sinceDate, sortDirection, detailStatus),
+    queryFn: () => fetchAdminMatches(page, status, league, teamId, sinceDate, sortDirection, detailStatus),
     staleTime: 30_000,
   })
 }
