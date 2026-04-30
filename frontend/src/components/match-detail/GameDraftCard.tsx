@@ -29,9 +29,9 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
   const cs = pick.cs == null ? '-' : String(pick.cs)
 
   return (
-    <div className="grid grid-cols-[44px_1fr_54px_42px] items-center gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-sm sm:grid-cols-[64px_1fr_64px_48px]">
-      <span className="text-xs text-muted-foreground">{position}</span>
-      <div className="min-w-0">
+    <div className="grid grid-cols-[52px_1fr] items-start gap-2 rounded-md border border-border bg-background/40 px-3 py-3 text-sm sm:grid-cols-[64px_1fr_64px_48px] sm:items-center sm:py-2">
+      <span className="pt-2 text-xs text-muted-foreground sm:pt-0">{position}</span>
+      <div className="min-w-0 overflow-hidden">
         <span className="flex min-w-0 items-center gap-2">
           <ChampionIcon championId={pick.championId} />
           <span className="min-w-0">
@@ -50,8 +50,14 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
           </div>
         )}
       </div>
-      <span className="text-right text-xs text-muted-foreground">{kda}</span>
-      <span className="text-right text-xs text-muted-foreground">{cs}</span>
+      <div className="col-start-2 flex justify-end gap-1 text-xs text-muted-foreground sm:col-start-auto sm:block sm:text-right">
+        <span className="sm:hidden">KDA </span>
+        {kda}
+      </div>
+      <div className="col-start-2 flex justify-end gap-1 text-xs text-muted-foreground sm:col-start-auto sm:block sm:text-right">
+        <span className="sm:hidden">CS </span>
+        {cs}
+      </div>
     </div>
   )
 }
@@ -107,9 +113,9 @@ function TeamDraftColumn({
   sideClassName: string
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="text-xs text-muted-foreground">{label}</div>
           <SideTeamName teamId={teamId} teamName={teamName} />
         </div>
@@ -123,7 +129,7 @@ function TeamDraftColumn({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-[44px_1fr_54px_42px] gap-2 px-3 text-[11px] text-muted-foreground sm:grid-cols-[64px_1fr_64px_48px]">
+            <div className="hidden grid-cols-[64px_1fr_64px_48px] gap-2 px-3 text-[11px] text-muted-foreground sm:grid">
               <span>포지션</span>
               <span>챔피언</span>
               <span className="text-right">KDA</span>
@@ -149,7 +155,7 @@ export function GameDraftCard({ game, match: _match }: GameDraftCardProps) {
   const redTeamName = game.redTeamName ?? '-'
 
   return (
-    <section className="grid gap-4 lg:grid-cols-2">
+    <section className="grid gap-3 lg:grid-cols-2 lg:gap-4">
       <TeamDraftColumn
         label="블루 진영"
         teamName={blueTeamName}

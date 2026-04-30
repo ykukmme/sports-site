@@ -14,7 +14,7 @@ export function GameTabBar({ games, activeGameNo, onChange }: GameTabBarProps) {
 
   return (
     <div
-      className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0"
+      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
       role="tablist"
       aria-label="세트 선택"
     >
@@ -36,7 +36,7 @@ export function GameTabBar({ games, activeGameNo, onChange }: GameTabBarProps) {
             size="sm"
             role="tab"
             aria-selected={isActive}
-            className="min-w-24"
+            className="min-w-24 shrink-0"
             onClick={() => onChange(gameNo)}
             title={winnerName ? `승리: ${winnerName}` : undefined}
           >

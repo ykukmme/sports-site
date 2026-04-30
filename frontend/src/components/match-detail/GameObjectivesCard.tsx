@@ -105,10 +105,10 @@ function ObjectiveRow({
   formatter?: (value: number | null) => string
 }) {
   return (
-    <div className="grid grid-cols-[1fr_96px_1fr] items-center gap-3 border-t border-border py-3 first:border-t-0">
-      <div className="text-right text-lg font-semibold text-foreground">{formatter(blue)}</div>
+    <div className="grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] items-center gap-2 border-t border-border py-3 first:border-t-0 sm:grid-cols-[1fr_96px_1fr] sm:gap-3">
+      <div className="text-right text-base font-semibold text-foreground sm:text-lg">{formatter(blue)}</div>
       <div className="text-center text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="text-lg font-semibold text-foreground">{formatter(red)}</div>
+      <div className="text-base font-semibold text-foreground sm:text-lg">{formatter(red)}</div>
     </div>
   )
 }
@@ -143,7 +143,7 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         : '-'
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
+    <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-medium text-foreground">게임 요약</div>
@@ -163,8 +163,12 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-4">
-        <SummaryTile label="승리 팀" value={winnerLabel} helper={game.winnerSide === 'BLUE' ? '블루 진영' : game.winnerSide === 'RED' ? '레드 진영' : undefined} />
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryTile
+          label="승리 팀"
+          value={winnerLabel}
+          helper={game.winnerSide === 'BLUE' ? '블루 진영' : game.winnerSide === 'RED' ? '레드 진영' : undefined}
+        />
         <SummaryTile label="경기 시간" value={formatDuration(game.durationSec)} />
         <SummaryTile label="킬 스코어" value={`${valueText(game.blueKills)} : ${valueText(game.redKills)}`} helper="블루 : 레드" />
         <SummaryTile
@@ -193,7 +197,7 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-[1fr_96px_1fr] items-start gap-3 border-t border-border pt-3 text-xs">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] items-start gap-2 border-t border-border pt-3 text-xs sm:grid-cols-[1fr_96px_1fr] sm:gap-3">
         <DragonTypeList values={game.blueDragonTypes} align="right" />
         <div className="text-center font-medium text-muted-foreground">드래곤 종류</div>
         <DragonTypeList values={game.redDragonTypes} align="left" />
