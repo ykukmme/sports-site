@@ -73,6 +73,8 @@ const DETAIL_SYNC_STATUS_VARIANTS: Record<
   NEEDS_REVIEW: 'secondary',
 }
 
+const GOLGG_SOURCE_PAGE_SIZE = 6
+
 function formatDate(value: string) {
   return new Date(value).toLocaleString('ko-KR')
 }
@@ -153,6 +155,7 @@ export function AdminMatchListPage() {
   const [validationMap, setValidationMap] = useState<Record<number, MatchExternalDetailValidationResponse>>({})
   const [golGgSourceUrl, setGolGgSourceUrl] = useState('')
   const [golGgSourceLabel, setGolGgSourceLabel] = useState('')
+  const [golGgSourcePage, setGolGgSourcePage] = useState(0)
 
   const teamId = teamFilter === 'ALL' ? undefined : Number(teamFilter)
   const league = leagueFilter === 'ALL' ? undefined : leagueFilter
@@ -190,6 +193,13 @@ export function AdminMatchListPage() {
         : source.filter((team) => (team.league ?? '').toUpperCase() === leagueFilter)
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name))
   }, [teamsData, leagueFilter])
+
+  const golGgSources = golGgSourcesData ?? []
+  const golGgSourcePageCount = Math.max(1, Math.ceil(golGgSources.length / GOLGG_SOURCE_PAGE_SIZE))
+  const normalizedGolGgSourcePage = Math.min(golGgSourcePage, golGgSourcePageCount - 1)
+  const golGgSourceStart = normalizedGolGgSourcePage * GOLGG_SOURCE_PAGE_SIZE
+  const golGgSourceEnd = Math.min(golGgSourceStart + GOLGG_SOURCE_PAGE_SIZE, golGgSources.length)
+  const pagedGolGgSources = golGgSources.slice(golGgSourceStart, golGgSourceEnd)
 
   function handleDeleteConfirm() {
     if (deleteTargetId == null) return
@@ -394,6 +404,7 @@ export function AdminMatchListPage() {
         onSuccess: (source) => {
           setGolGgSourceUrl('')
           setGolGgSourceLabel('')
+          setGolGgSourcePage(0)
           runSyncGolGgSource(source.id, source.label || source.sourceUrl)
         },
       },
@@ -710,7 +721,7 @@ export function AdminMatchListPage() {
           </Button>
         </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {(golGgSourcesData ?? []).slice(0, 6).map((source) => (
+          {pagedGolGgSources.map((source) => (
             <div
               key={source.id}
               className="flex items-center gap-2 rounded-md border border-border px-2 py-1"
@@ -739,6 +750,38 @@ export function AdminMatchListPage() {
             </div>
           ))}
         </div>
+        {golGgSources.length > GOLGG_SOURCE_PAGE_SIZE && (
+          <div className="mt-2 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {golGgSources.length}개 중 {golGgSourceStart + 1}-{golGgSourceEnd} 표시
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={normalizedGolGgSourcePage === 0}
+                onClick={() => setGolGgSourcePage((current) => Math.max(0, current - 1))}
+              >
+                이전
+              </Button>
+              <span>
+                {normalizedGolGgSourcePage + 1} / {golGgSourcePageCount}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={normalizedGolGgSourcePage >= golGgSourcePageCount - 1}
+                onClick={() =>
+                  setGolGgSourcePage((current) => Math.min(golGgSourcePageCount - 1, current + 1))
+                }
+              >
+                다음
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {resultSyncResult && (
