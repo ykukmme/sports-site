@@ -48,6 +48,9 @@ export interface MatchExternalDetailSummaryResponse {
   dateMatchConfidence: number | null
   lastSyncedAt: string | null
   errorMessage: string | null
+  boundBy: 'AUTO' | 'MANUAL' | null
+  boundAt: string | null
+  boundScore: number | null
 }
 
 export interface MatchExternalDetailPublicPick {

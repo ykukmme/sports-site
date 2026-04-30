@@ -77,6 +77,22 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('ko-KR')
 }
 
+function formatBoundBy(value: string | null | undefined) {
+  if (value === 'AUTO') return '자동'
+  if (value === 'MANUAL') return '수동'
+  return null
+}
+
+function formatShortDateTime(value: string | null | undefined) {
+  if (!value) return null
+  return new Date(value).toLocaleString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 type OperationNotice = {
   key: string
   message: string
@@ -831,6 +847,8 @@ export function AdminMatchListPage() {
                 const detailSummary = match.detailSummary
                 const detailStatus = detailSummary?.status
                 const effectiveSourceUrl = detailSummary?.sourceUrl ?? null
+                const boundByLabel = formatBoundBy(detailSummary?.boundBy)
+                const boundAtLabel = formatShortDateTime(detailSummary?.boundAt)
                 const bindInputValue = getBindInputValue(match.id, effectiveSourceUrl)
                 const canBind = bindInputValue.trim().length > 0
                 const canSync = Boolean(effectiveSourceUrl)
@@ -874,6 +892,13 @@ export function AdminMatchListPage() {
                             </Badge>
                             {detailSummary?.confidence != null && (
                               <span className="text-xs text-muted-foreground">신뢰도 {detailSummary.confidence}</span>
+                            )}
+                            {boundByLabel && (
+                              <span className="text-xs text-muted-foreground">
+                                바인딩 {boundByLabel}
+                                {detailSummary?.boundScore != null ? ` (${detailSummary.boundScore}점)` : ''}
+                                {boundAtLabel ? ` · ${boundAtLabel}` : ''}
+                              </span>
                             )}
                             {detailSummary?.expectedGameCount != null && (
                               <span className="text-xs text-muted-foreground">
