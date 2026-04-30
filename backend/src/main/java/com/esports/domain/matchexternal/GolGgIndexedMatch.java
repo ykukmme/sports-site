@@ -25,6 +25,9 @@ public class GolGgIndexedMatch {
     @Column(name = "context_text")
     private String contextText;
 
+    @Column(name = "patch_version", length = 20)
+    private String patchVersion;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -37,11 +40,13 @@ public class GolGgIndexedMatch {
     public GolGgIndexedMatch(GolGgTournamentSource tournamentSource,
                              String providerGameId,
                              String sourceUrl,
-                             String contextText) {
+                             String contextText,
+                             String patchVersion) {
         this.tournamentSource = tournamentSource;
         this.providerGameId = providerGameId;
         this.sourceUrl = sourceUrl;
         this.contextText = contextText;
+        this.patchVersion = patchVersion;
     }
 
     @PrePersist
@@ -61,14 +66,16 @@ public class GolGgIndexedMatch {
     public String getProviderGameId() { return providerGameId; }
     public String getSourceUrl() { return sourceUrl; }
     public String getContextText() { return contextText; }
+    public String getPatchVersion() { return patchVersion; }
 
-    public void updateFrom(GolGgTournamentSource tournamentSource, String sourceUrl, String contextText) {
+    public void updateFrom(GolGgTournamentSource tournamentSource, String sourceUrl, String contextText, String patchVersion) {
         this.tournamentSource = tournamentSource;
         this.sourceUrl = sourceUrl;
         this.contextText = contextText;
+        this.patchVersion = patchVersion;
     }
 
     public GolGgClient.GolGgRawCandidate toRawCandidate() {
-        return new GolGgClient.GolGgRawCandidate(providerGameId, sourceUrl, contextText);
+        return new GolGgClient.GolGgRawCandidate(providerGameId, sourceUrl, contextText, patchVersion);
     }
 }

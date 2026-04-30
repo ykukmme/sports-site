@@ -182,11 +182,12 @@ public class GolGgTournamentIndexService {
                         source,
                         candidate.providerGameId(),
                         candidate.sourceUrl(),
-                        candidate.contextText()
+                        candidate.contextText(),
+                        candidate.patchVersion()
                 ));
                 continue;
             }
-            item.updateFrom(source, candidate.sourceUrl(), candidate.contextText());
+            item.updateFrom(source, candidate.sourceUrl(), candidate.contextText(), candidate.patchVersion());
         }
     }
 

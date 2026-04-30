@@ -101,6 +101,9 @@ public class MatchExternalDetail {
     @Column(name = "parse_version", length = 30)
     private String parseVersion;
 
+    @Column(name = "patch_version", length = 20)
+    private String patchVersion;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -240,6 +243,10 @@ public class MatchExternalDetail {
         return parseVersion;
     }
 
+    public String getPatchVersion() {
+        return patchVersion;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -328,5 +335,9 @@ public class MatchExternalDetail {
 
     public void setParseVersion(String parseVersion) {
         this.parseVersion = parseVersion;
+    }
+
+    public void setPatchVersion(String patchVersion) {
+        this.patchVersion = patchVersion;
     }
 }

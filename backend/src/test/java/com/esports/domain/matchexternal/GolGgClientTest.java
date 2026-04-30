@@ -141,6 +141,31 @@ class GolGgClientTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void extractsPatchVersionFromTournamentMatchlistRow() throws Exception {
+        Method method = GolGgClient.class.getDeclaredMethod("extractTableRowCandidates", String.class, String.class);
+        method.setAccessible(true);
+        String html = """
+                <table>
+                  <tr>
+                    <td><a href="../game/stats/74996/page-summary/">Gen.G vs BNK FearX</a></td>
+                    <td>Gen.G 3 - 0 BNK FearX</td>
+                    <td>FINALS</td>
+                    <td>16.3</td>
+                    <td>2026-03-01</td>
+                  </tr>
+                </table>
+                """;
+
+        List<GolGgClient.GolGgRawCandidate> candidates =
+                (List<GolGgClient.GolGgRawCandidate>) method.invoke(client, html, "LCK Cup 2026");
+
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.get(0).providerGameId()).isEqualTo("74996");
+        assertThat(candidates.get(0).patchVersion()).isEqualTo("16.3");
+    }
+
+    @Test
     void filterCandidatesByTargetDoesNotKeepYearOnlyMatches() throws Exception {
         Match match = buildMatch(
                 "DN SOOPers",

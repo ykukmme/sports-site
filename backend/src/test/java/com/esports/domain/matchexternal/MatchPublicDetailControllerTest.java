@@ -47,6 +47,7 @@ class MatchPublicDetailControllerTest {
                         "GOL_GG",
                         "SYNCED",
                         "https://gol.gg/game/stats/73115/page-summary/",
+                        "16.3",
                         OffsetDateTime.parse("2026-04-28T10:00:00Z"),
                         List.of(buildSampleGame())
                 )
@@ -58,6 +59,7 @@ class MatchPublicDetailControllerTest {
                 .andExpect(jsonPath("$.data.available").value(true))
                 .andExpect(jsonPath("$.data.status").value("SYNCED"))
                 .andExpect(jsonPath("$.data.sourceUrl").value("https://gol.gg/game/stats/73115/page-summary/"))
+                .andExpect(jsonPath("$.data.patchVersion").value("16.3"))
                 .andExpect(jsonPath("$.data.games[0].gameNo").value(1))
                 .andExpect(jsonPath("$.data.games[0].winnerSide").value("BLUE"))
                 .andExpect(jsonPath("$.data.games[0].blueTeamName").value("Dplus KIA"))

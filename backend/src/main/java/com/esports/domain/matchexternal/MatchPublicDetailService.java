@@ -52,6 +52,7 @@ public class MatchPublicDetailService {
                 detail.getProvider() != null ? detail.getProvider().name() : null,
                 status.name(),
                 detail.getSourceUrl(),
+                detail.getPatchVersion(),
                 detail.getLastSyncedAt(),
                 games
         );

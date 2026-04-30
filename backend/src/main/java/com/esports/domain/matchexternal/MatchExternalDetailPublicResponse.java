@@ -9,6 +9,7 @@ public record MatchExternalDetailPublicResponse(
         String provider,
         String status,
         String sourceUrl,
+        String patchVersion,
         OffsetDateTime lastSyncedAt,
         List<PublicGame> games
 ) {
@@ -94,6 +95,7 @@ public record MatchExternalDetailPublicResponse(
         return new MatchExternalDetailPublicResponse(
                 false,
                 reason,
+                null,
                 null,
                 null,
                 null,

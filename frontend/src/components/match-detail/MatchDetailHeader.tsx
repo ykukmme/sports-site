@@ -30,6 +30,7 @@ export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderPr
   const scoreText = getScoreText(match)
   const sourceUrl = detail?.sourceUrl ?? match.detailSummary?.sourceUrl ?? null
   const detailStatus = detail?.status ?? match.detailSummary?.status ?? null
+  const patchVersion = detail?.patchVersion ?? null
 
   return (
     <header className="flex flex-col gap-5 border-b border-border pb-6">
@@ -40,6 +41,7 @@ export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderPr
               {statusLabels[match.status] ?? match.status}
             </Badge>
             <span className="text-sm text-muted-foreground">Match #{match.id}</span>
+            {patchVersion && <span className="text-sm text-muted-foreground">패치 {patchVersion}</span>}
             {detailStatus && <span className="text-sm text-muted-foreground">상세 {detailStatus}</span>}
           </div>
           <h1 className="mt-3 text-2xl font-semibold leading-tight text-foreground sm:text-3xl">

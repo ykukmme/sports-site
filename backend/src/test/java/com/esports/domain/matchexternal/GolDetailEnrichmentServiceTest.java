@@ -46,6 +46,9 @@ class GolDetailEnrichmentServiceTest {
     @Mock
     private GolGgTournamentIndexService tournamentIndexService;
 
+    @Mock
+    private GolGgIndexedMatchRepository indexedMatchRepository;
+
     private GolDetailEnrichmentService service;
 
     @BeforeEach
@@ -62,6 +65,7 @@ class GolDetailEnrichmentServiceTest {
                 new ObjectMapper(),
                 candidateMatcher,
                 tournamentIndexService,
+                indexedMatchRepository,
                 new GameSideTeamResolver(),
                 new GolDetailQualityValidationService()
         );
@@ -237,6 +241,15 @@ class GolDetailEnrichmentServiceTest {
                 List.of(),
                 List.of()
         ));
+        when(indexedMatchRepository.findByProviderGameIdIn(List.of("123"))).thenReturn(List.of(
+                new GolGgIndexedMatch(
+                        new GolGgTournamentSource("https://gol.gg/tournament/tournament-matchlist/LCK%20Cup%202026/", "LCK Cup 2026"),
+                        "123",
+                        "https://gol.gg/game/stats/123/page-summary/",
+                        "Dplus KIA vs T1 16.3 2026-01-01",
+                        "16.3"
+                )
+        ));
         when(detailRepository.saveAndFlush(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MatchExternalDetailSyncItemResponse response = service.syncOne(1L);
@@ -245,6 +258,7 @@ class GolDetailEnrichmentServiceTest {
         ArgumentCaptor<MatchExternalDetail> captor = ArgumentCaptor.forClass(MatchExternalDetail.class);
         verify(detailRepository, atLeastOnce()).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(ExternalDetailStatus.SYNCED);
+        assertThat(captor.getValue().getPatchVersion()).isEqualTo("16.3");
     }
 
     @Test

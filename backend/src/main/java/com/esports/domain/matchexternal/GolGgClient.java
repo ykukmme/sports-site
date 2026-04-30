@@ -48,6 +48,7 @@ public class GolGgClient {
             "href\\s*=\\s*(['\"])([^'\"#>]*?game/stats/(\\d+)/[^'\"#>]*)\\1",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern PATCH_VERSION_PATTERN = Pattern.compile("\\b(\\d{1,2}\\.\\d{1,2})\\b");
     private static final Pattern TOURNAMENT_LINK_PATTERN = Pattern.compile(
             "href\\s*=\\s*(['\"])([^'\"#>]*?/(?:esports/)?tournament/tournament-(?:matchlist|stats)/[^'\"#>]*)\\1",
             Pattern.CASE_INSENSITIVE
@@ -1204,11 +1205,20 @@ public class GolGgClient {
                 candidates.add(new GolGgRawCandidate(
                         gameId,
                         normalizeCandidateHref(href, gameId),
-                        appendContext(rowContext, pageContext)
+                        appendContext(rowContext, pageContext),
+                        extractPatchVersion(rowContext)
                 ));
             }
         }
         return candidates;
+    }
+
+    private String extractPatchVersion(String context) {
+        if (context == null || context.isBlank()) {
+            return null;
+        }
+        Matcher matcher = PATCH_VERSION_PATTERN.matcher(context);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     private String appendContext(String rowContext, String pageContext) {
@@ -1650,8 +1660,12 @@ public class GolGgClient {
     public record GolGgRawCandidate(
             String providerGameId,
             String sourceUrl,
-            String contextText
+            String contextText,
+            String patchVersion
     ) {
+        public GolGgRawCandidate(String providerGameId, String sourceUrl, String contextText) {
+            this(providerGameId, sourceUrl, contextText, null);
+        }
     }
 
     // 단일 게임 stats — page-game URL 1개에서 추출한 결과

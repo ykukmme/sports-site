@@ -119,6 +119,7 @@ export interface MatchExternalDetailPublicResponse {
   provider: string | null
   status: string | null
   sourceUrl: string | null
+  patchVersion: string | null
   lastSyncedAt: string | null
   games: MatchExternalDetailPublicGame[]
 }

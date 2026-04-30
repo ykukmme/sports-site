@@ -49,6 +49,7 @@ public class GolDetailEnrichmentService {
     private final ObjectMapper objectMapper;
     private final GolDetailCandidateMatcher candidateMatcher;
     private final GolGgTournamentIndexService tournamentIndexService;
+    private final GolGgIndexedMatchRepository indexedMatchRepository;
     private final GameSideTeamResolver sideTeamResolver;
     private final GolDetailQualityValidationService qualityValidationService;
 
@@ -59,6 +60,7 @@ public class GolDetailEnrichmentService {
                                       ObjectMapper objectMapper,
                                       GolDetailCandidateMatcher candidateMatcher,
                                       GolGgTournamentIndexService tournamentIndexService,
+                                      GolGgIndexedMatchRepository indexedMatchRepository,
                                       GameSideTeamResolver sideTeamResolver,
                                       GolDetailQualityValidationService qualityValidationService) {
         this.matchRepository = matchRepository;
@@ -68,6 +70,7 @@ public class GolDetailEnrichmentService {
         this.objectMapper = objectMapper;
         this.candidateMatcher = candidateMatcher;
         this.tournamentIndexService = tournamentIndexService;
+        this.indexedMatchRepository = indexedMatchRepository;
         this.sideTeamResolver = sideTeamResolver;
         this.qualityValidationService = qualityValidationService;
     }
@@ -365,6 +368,7 @@ public class GolDetailEnrichmentService {
             detail.setSummaryJson(mergeParsedSummaryWithCandidateSnapshot(detail.getSummaryJson(), parsed.summaryJson()));
             detail.setRawJson(parsed.rawJson());
             detail.setConfidence(parsed.confidence());
+            detail.setPatchVersion(resolvePatchVersion(parsed.providerGameIds()));
             detail.setLastSyncedAt(OffsetDateTime.now());
             detail.setParseVersion(golGgProperties.getParseVersion());
 
@@ -764,6 +768,17 @@ public class GolDetailEnrichmentService {
             // 부분 실패 — 다른 게임은 영향받지 않게 stats 비우고 메시지만 기록.
             item.setErrorMessage("fetchGameStats failed: " + safeMessage(e));
         }
+    }
+
+    private String resolvePatchVersion(List<String> providerGameIds) {
+        if (providerGameIds == null || providerGameIds.isEmpty()) {
+            return null;
+        }
+        return indexedMatchRepository.findByProviderGameIdIn(providerGameIds).stream()
+                .map(GolGgIndexedMatch::getPatchVersion)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst()
+                .orElse(null);
     }
 
     // 챔피언 표시명 리스트 → DDragon ID 정규화 후 JSON array.
