@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { DetailUnavailable } from '../components/match-detail/DetailUnavailable'
+import { DetailQualityCard } from '../components/match-detail/DetailQualityCard'
 import { GameDraftCard } from '../components/match-detail/GameDraftCard'
 import { GameObjectivesCard } from '../components/match-detail/GameObjectivesCard'
 import { GameTabBar } from '../components/match-detail/GameTabBar'
@@ -66,6 +67,8 @@ export function MatchDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <MatchDetailHeader match={match} detail={detail} onBack={() => navigate(-1)} />
+
+      <DetailQualityCard summary={match.detailSummary} detail={detail} />
 
       <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="text-sm font-medium text-foreground">경기 정보</div>
