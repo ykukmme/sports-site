@@ -20,11 +20,10 @@ interface ObjectiveMarker {
 }
 
 const CHART_WIDTH = 640
-const CHART_HEIGHT = 210
+const CHART_HEIGHT = 230
 const CHART_PADDING_X = 36
-const CHART_PADDING_TOP = 26
+const CHART_PADDING_TOP = 56
 const CHART_PADDING_BOTTOM = 34
-const MARKER_LABEL_Y = 18
 const MAX_MARKERS = 12
 
 function goldText(value: number) {
@@ -90,6 +89,10 @@ function closestPoint(points: ChartPoint[], timeSec: number) {
   )
 }
 
+function markerLabelY(index: number) {
+  return 14 + (index % 3) * 14
+}
+
 export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
   const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null)
   const points = toChartPoints(game)
@@ -122,7 +125,7 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-medium text-foreground">골드 타임라인</div>
-          <p className="mt-1 text-xs text-muted-foreground">GOL.GG 골드 격차 그래프 기준입니다.</p>
+          <p className="mt-1 text-xs text-muted-foreground">GOL.GG 골드 격차 그래프 기준입니다. 점을 누르면 수치가 표시됩니다.</p>
         </div>
         <div className="grid gap-1 text-xs text-muted-foreground sm:text-right">
           <span>
@@ -139,7 +142,7 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
           role="img"
           aria-label="골드 격차 타임라인"
-          className="h-[180px] min-w-[520px] rounded-md border border-border bg-background/40"
+          className="h-[230px] min-w-[640px] rounded-md border border-border bg-background/40"
         >
           <line
             x1={CHART_PADDING_X}
@@ -173,21 +176,15 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
                   strokeOpacity="0.45"
                   strokeWidth="1"
                 />
-                <circle cx={x} cy={yFor(point.goldDiff, maxAbsDiff)} r="3" fill={markerColor}>
-                  <title>
-                    {timeText(marker.timeSec)} · {marker.label} · {goldText(point.goldDiff)}
-                  </title>
-                </circle>
+                <circle cx={x} cy={yFor(point.goldDiff, maxAbsDiff)} r="3" fill={markerColor} />
+                <circle cx={x} cy={markerLabelY(index) - 4} r="7" fill={markerColor} fillOpacity="0.12" />
                 <text
                   x={x}
-                  y={MARKER_LABEL_Y}
+                  y={markerLabelY(index)}
                   textAnchor="middle"
-                  className="fill-muted-foreground text-[10px]"
+                  className="fill-muted-foreground text-[10px] font-semibold"
                 >
-                  {marker.label}
-                  <title>
-                    {timeText(marker.timeSec)} · {marker.label} · {goldText(point.goldDiff)}
-                  </title>
+                  {index + 1}
                 </text>
               </g>
             )
@@ -210,15 +207,12 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
               className="cursor-pointer"
               onMouseEnter={() => setHoveredPoint(point)}
               onMouseLeave={() => setHoveredPoint(null)}
+              onClick={() => setHoveredPoint(point)}
               onFocus={() => setHoveredPoint(point)}
               onBlur={() => setHoveredPoint(null)}
               tabIndex={0}
-            >
-              <title>
-                {timeText(point.timeSec)} · {point.goldDiff >= 0 ? blueTeamName : redTeamName}{' '}
-                {goldText(Math.abs(point.goldDiff))}
-              </title>
-            </circle>
+              aria-label={`${timeText(point.timeSec)} ${point.goldDiff >= 0 ? blueTeamName : redTeamName} ${goldText(Math.abs(point.goldDiff))}`}
+            />
           ))}
           {hoveredPoint != null && displayX != null && displayY != null && (
             <g pointerEvents="none">
@@ -265,7 +259,7 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {markers.map((marker, index) => (
             <span key={`${marker.timeSec}-${marker.label}-legend-${index}`} className="rounded border border-border px-2 py-1">
-              {timeText(marker.timeSec)} {marker.label}
+              {index + 1}. {timeText(marker.timeSec)} {marker.label}
             </span>
           ))}
         </div>
