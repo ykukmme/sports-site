@@ -37,6 +37,7 @@ import { useAdminTeamList } from '../../../hooks/useAdminTeams'
 import type {
   MatchExternalDetailCandidatesResponse,
   MatchExternalDetailBatchSyncResponse,
+  MatchExternalDetailSummaryResponse,
   MatchExternalDetailStatus,
   MatchExternalDetailValidationResponse,
   MatchResponse,
@@ -106,6 +107,40 @@ function formatShortDateTime(value: string | null | undefined) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function DetailQualityChips({ summary }: { summary: MatchExternalDetailSummaryResponse }) {
+  const expected = summary.expectedGameCount
+  const synced = summary.syncedGameCount ?? 0
+  const missing = expected == null ? null : Math.max(0, expected - synced)
+  const teamOk = summary.teamMatchConfidence == null ? null : summary.teamMatchConfidence >= 90
+  const dateOk = summary.dateMatchConfidence == null ? null : summary.dateMatchConfidence >= 90
+
+  return (
+    <div className="grid gap-1 text-xs">
+      {expected != null && (
+        <span className={missing && missing > 0 ? 'text-destructive' : 'text-muted-foreground'}>
+          세트 {synced}/{expected}
+          {missing && missing > 0 ? ` · ${missing}세트 누락` : ' · 누락 없음'}
+        </span>
+      )}
+      <div className="flex flex-wrap gap-1">
+        {summary.confidence != null && (
+          <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground">신뢰도 {summary.confidence}</span>
+        )}
+        {summary.teamMatchConfidence != null && (
+          <span className={`rounded border px-1.5 py-0.5 ${teamOk ? 'border-border text-muted-foreground' : 'border-destructive/40 text-destructive'}`}>
+            팀 {summary.teamMatchConfidence}%
+          </span>
+        )}
+        {summary.dateMatchConfidence != null && (
+          <span className={`rounded border px-1.5 py-0.5 ${dateOk ? 'border-border text-muted-foreground' : 'border-destructive/40 text-destructive'}`}>
+            날짜 {summary.dateMatchConfidence}%
+          </span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 type OperationNotice = {
@@ -994,10 +1029,6 @@ export function AdminMatchListPage() {
                 const boundByLabel = formatBoundBy(detailSummary?.boundBy)
                 const boundAtLabel = formatShortDateTime(detailSummary?.boundAt)
                 const validationLabel = formatDetailValidation(detailSummary?.validationStatus)
-                const missingGameCount =
-                  detailSummary?.expectedGameCount == null || detailSummary?.syncedGameCount == null
-                    ? null
-                    : Math.max(0, detailSummary.expectedGameCount - detailSummary.syncedGameCount)
                 const bindInputValue = getBindInputValue(match.id, effectiveSourceUrl)
                 const canBind = bindInputValue.trim().length > 0
                 const canSync = Boolean(effectiveSourceUrl)
@@ -1039,30 +1070,12 @@ export function AdminMatchListPage() {
                             <Badge variant={DETAIL_SYNC_STATUS_VARIANTS[detailStatus]}>
                               {DETAIL_SYNC_STATUS_LABELS[detailStatus]}
                             </Badge>
-                            {detailSummary?.confidence != null && (
-                              <span className="text-xs text-muted-foreground">신뢰도 {detailSummary.confidence}</span>
-                            )}
+                            <DetailQualityChips summary={detailSummary} />
                             {boundByLabel && (
                               <span className="text-xs text-muted-foreground">
                                 바인딩 {boundByLabel}
                                 {detailSummary?.boundScore != null ? ` (${detailSummary.boundScore}점)` : ''}
                                 {boundAtLabel ? ` · ${boundAtLabel}` : ''}
-                              </span>
-                            )}
-                            {detailSummary?.expectedGameCount != null && (
-                              <span className="text-xs text-muted-foreground">
-                                세트 {detailSummary.syncedGameCount ?? 0}/{detailSummary.expectedGameCount}
-                                {missingGameCount != null && missingGameCount > 0 ? ` · ${missingGameCount}세트 누락` : ''}
-                              </span>
-                            )}
-                            {detailSummary?.teamMatchConfidence != null && (
-                              <span className="text-xs text-muted-foreground">
-                                팀 검증 {detailSummary.teamMatchConfidence}%
-                              </span>
-                            )}
-                            {detailSummary?.dateMatchConfidence != null && (
-                              <span className="text-xs text-muted-foreground">
-                                날짜 검증 {detailSummary.dateMatchConfidence}%
                               </span>
                             )}
                             {validationLabel && (

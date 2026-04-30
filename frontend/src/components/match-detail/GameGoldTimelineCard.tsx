@@ -25,6 +25,7 @@ const CHART_PADDING_X = 36
 const CHART_PADDING_TOP = 56
 const CHART_PADDING_BOTTOM = 34
 const MAX_MARKERS = 12
+const Y_TICK_COUNT = 4
 
 function goldText(value: number) {
   const sign = value > 0 ? '+' : ''
@@ -93,6 +94,11 @@ function markerLabelY(index: number) {
   return 14 + (index % 3) * 14
 }
 
+function buildYAxisTicks(maxAbsDiff: number) {
+  const step = Math.ceil(maxAbsDiff / (Y_TICK_COUNT / 2) / 1000) * 1000
+  return Array.from({ length: Y_TICK_COUNT + 1 }, (_, index) => step * (Y_TICK_COUNT / 2 - index))
+}
+
 export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
   const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null)
   const points = toChartPoints(game)
@@ -107,6 +113,7 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
   const maxTimeSec = Math.max(...points.map((point) => point.timeSec))
   const maxAbsDiff = Math.max(1000, ...points.map((point) => Math.abs(point.goldDiff)))
   const zeroY = yFor(0, maxAbsDiff)
+  const yTicks = buildYAxisTicks(maxAbsDiff)
   const polylinePoints = points
     .map((point) => `${xFor(point.timeSec, maxTimeSec).toFixed(1)},${yFor(point.goldDiff, maxAbsDiff).toFixed(1)}`)
     .join(' ')
@@ -144,6 +151,46 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
           aria-label="골드 격차 타임라인"
           className="h-[230px] min-w-[640px] rounded-md border border-border bg-background/40"
         >
+          {yTicks.map((tick) => {
+            const y = yFor(tick, maxAbsDiff)
+            return (
+              <g key={tick}>
+                <line
+                  x1={CHART_PADDING_X}
+                  y1={y}
+                  x2={CHART_WIDTH - CHART_PADDING_X}
+                  y2={y}
+                  className="stroke-border"
+                  strokeWidth={tick === 0 ? '1.2' : '0.8'}
+                  strokeOpacity={tick === 0 ? '0.9' : '0.45'}
+                />
+                <text x={8} y={y + 4} className="fill-muted-foreground text-[10px]">
+                  {goldText(tick)}
+                </text>
+              </g>
+            )
+          })}
+          {[0, Math.floor(maxTimeSec / 2), maxTimeSec].map((tick) => (
+            <g key={`x-${tick}`}>
+              <line
+                x1={xFor(tick, maxTimeSec)}
+                y1={CHART_PADDING_TOP}
+                x2={xFor(tick, maxTimeSec)}
+                y2={CHART_HEIGHT - CHART_PADDING_BOTTOM}
+                className="stroke-border"
+                strokeWidth="0.8"
+                strokeOpacity="0.35"
+              />
+              <text
+                x={xFor(tick, maxTimeSec)}
+                y={CHART_HEIGHT - 10}
+                textAnchor={tick === 0 ? 'start' : tick === maxTimeSec ? 'end' : 'middle'}
+                className="fill-muted-foreground text-[10px]"
+              >
+                {timeText(tick)}
+              </text>
+            </g>
+          ))}
           <line
             x1={CHART_PADDING_X}
             y1={zeroY}
@@ -243,14 +290,6 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
           </text>
           <text x={CHART_WIDTH - CHART_PADDING_X - 36} y={zeroY - 6} className="fill-muted-foreground text-[11px]">
             0
-          </text>
-          <text
-            x={CHART_WIDTH - CHART_PADDING_X}
-            y={CHART_HEIGHT - 10}
-            textAnchor="end"
-            className="fill-muted-foreground text-[11px]"
-          >
-            {timeText(maxTimeSec)}
           </text>
         </svg>
       </div>

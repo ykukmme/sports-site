@@ -65,10 +65,10 @@ export function MatchDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-5">
       <MatchDetailHeader match={match} detail={detail} onBack={() => navigate(-1)} />
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+      <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
         <div className="text-sm font-medium text-foreground">경기 정보</div>
         <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
           <div>
@@ -82,27 +82,36 @@ export function MatchDetailPage() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
-        <div className="text-sm font-medium text-foreground">GOL.GG 상세 데이터</div>
+      <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div className="text-sm font-medium text-foreground">GOL.GG 상세 데이터</div>
+          {detail?.available && (
+            <div className="text-xs text-muted-foreground">
+              게임 {detail.games.length}개 · 마지막 동기화 {detail.lastSyncedAt ? formatDate(detail.lastSyncedAt) : '-'}
+            </div>
+          )}
+        </div>
         {detailQuery.isLoading ? (
           <p className="mt-2 text-sm text-muted-foreground">상세 데이터를 불러오는 중입니다.</p>
         ) : detailQuery.error ? (
           <DetailUnavailable detail={detail} errorMessage={detailQuery.error.message} />
         ) : detail?.available && games.length > 0 ? (
           <div className="mt-3 text-sm text-muted-foreground">
-            <p>
-              게임 {detail.games.length}개 · 마지막 동기화{' '}
-              {detail.lastSyncedAt ? formatDate(detail.lastSyncedAt) : '-'}
-            </p>
-            <div className="mt-4">
+            <div>
               <GameTabBar games={games} activeGameNo={activeGameNo} onChange={setActiveGameNo} />
             </div>
             {activeGame && (
               <div className="mt-4">
                 {activeGame.errorMessage && <PartialFailureNotice message={activeGame.errorMessage} />}
-                <div className="grid gap-4">
-                  <GameObjectivesCard game={activeGame} match={match} />
-                  <GameGoldTimelineCard game={activeGame} />
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+                  <div className="grid gap-3">
+                    <GameObjectivesCard game={activeGame} match={match} />
+                  </div>
+                  <div className="grid gap-3">
+                    <GameGoldTimelineCard game={activeGame} />
+                  </div>
+                </div>
+                <div className="mt-3">
                   <GameDraftCard game={activeGame} match={match} />
                 </div>
               </div>
