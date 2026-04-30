@@ -85,6 +85,17 @@ function formatBoundBy(value: string | null | undefined) {
   return null
 }
 
+function formatDetailValidation(value: string | null | undefined) {
+  const labels: Record<string, string> = {
+    OK: '정상',
+    DATE_WEAK: '날짜 약함',
+    TEAM_MISMATCH: '팀 불일치',
+    PARTIAL_GAMES: '세트 누락',
+    FAILED: '실패',
+  }
+  return value ? labels[value] ?? value : null
+}
+
 function formatShortDateTime(value: string | null | undefined) {
   if (!value) return null
   return new Date(value).toLocaleString('ko-KR', {
@@ -892,6 +903,11 @@ export function AdminMatchListPage() {
                 const effectiveSourceUrl = detailSummary?.sourceUrl ?? null
                 const boundByLabel = formatBoundBy(detailSummary?.boundBy)
                 const boundAtLabel = formatShortDateTime(detailSummary?.boundAt)
+                const validationLabel = formatDetailValidation(detailSummary?.validationStatus)
+                const missingGameCount =
+                  detailSummary?.expectedGameCount == null || detailSummary?.syncedGameCount == null
+                    ? null
+                    : Math.max(0, detailSummary.expectedGameCount - detailSummary.syncedGameCount)
                 const bindInputValue = getBindInputValue(match.id, effectiveSourceUrl)
                 const canBind = bindInputValue.trim().length > 0
                 const canSync = Boolean(effectiveSourceUrl)
@@ -946,6 +962,7 @@ export function AdminMatchListPage() {
                             {detailSummary?.expectedGameCount != null && (
                               <span className="text-xs text-muted-foreground">
                                 세트 {detailSummary.syncedGameCount ?? 0}/{detailSummary.expectedGameCount}
+                                {missingGameCount != null && missingGameCount > 0 ? ` · ${missingGameCount}세트 누락` : ''}
                               </span>
                             )}
                             {detailSummary?.teamMatchConfidence != null && (
@@ -953,10 +970,22 @@ export function AdminMatchListPage() {
                                 팀 검증 {detailSummary.teamMatchConfidence}%
                               </span>
                             )}
-                            {detailSummary?.validationStatus && detailSummary.validationStatus !== 'OK' && (
+                            {detailSummary?.dateMatchConfidence != null && (
                               <span className="text-xs text-muted-foreground">
-                                검증 {detailSummary.validationStatus}
+                                날짜 검증 {detailSummary.dateMatchConfidence}%
                               </span>
+                            )}
+                            {validationLabel && (
+                              <span
+                                className={`text-xs ${
+                                  detailSummary?.validationStatus === 'OK' ? 'text-muted-foreground' : 'text-destructive'
+                                }`}
+                              >
+                                검증 {validationLabel}
+                              </span>
+                            )}
+                            {detailSummary?.validationMessage && (
+                              <span className="text-xs text-destructive">{detailSummary.validationMessage}</span>
                             )}
                             {detailSummary?.errorMessage && (
                               <span className="text-xs text-destructive">{detailSummary.errorMessage}</span>
