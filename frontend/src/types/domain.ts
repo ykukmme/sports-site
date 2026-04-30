@@ -79,6 +79,13 @@ export interface MatchExternalDetailPublicDistributionEntry {
   perMinute: number | null
 }
 
+export interface MatchExternalDetailPublicGoldTimelinePoint {
+  timeSec: number | null
+  blueGold: number | null
+  redGold: number | null
+  goldDiff: number | null
+}
+
 export interface MatchExternalDetailPublicGame {
   gameNo: number | null
   durationSec: number | null
@@ -108,6 +115,7 @@ export interface MatchExternalDetailPublicGame {
   objectiveTimeline: MatchExternalDetailPublicObjectiveEvent[]
   bluePlates: number | null
   redPlates: number | null
+  goldTimeline: MatchExternalDetailPublicGoldTimelinePoint[]
   goldDistribution: MatchExternalDetailPublicDistributionEntry[]
   damageDistribution: MatchExternalDetailPublicDistributionEntry[]
   errorMessage: string | null

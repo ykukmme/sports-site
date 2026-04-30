@@ -88,6 +88,7 @@ public class MatchPublicDetailService {
                 objectiveTimelineFromJson(game.getObjectiveTimelineJson()),
                 integerOrNull(game.getGoldTimelineJson(), "bluePlates"),
                 integerOrNull(game.getGoldTimelineJson(), "redPlates"),
+                goldTimelineFromJson(game.getGoldTimelineJson()),
                 distributionFromJson(game.getGoldTimelineJson(), "goldDistribution"),
                 distributionFromJson(game.getGoldTimelineJson(), "damageDistribution"),
                 game.getErrorMessage()
@@ -168,6 +169,26 @@ public class MatchPublicDetailService {
                     textOrNull(item.get("side")),
                     textOrNull(item.get("type")),
                     textOrNull(item.get("label"))
+            ));
+        });
+        return List.copyOf(list);
+    }
+
+    private List<MatchExternalDetailPublicResponse.PublicGoldTimelinePoint> goldTimelineFromJson(JsonNode node) {
+        JsonNode array = node != null && node.isObject() ? node.get("goldTimeline") : null;
+        if (array == null || !array.isArray()) {
+            return List.of();
+        }
+        List<MatchExternalDetailPublicResponse.PublicGoldTimelinePoint> list = new ArrayList<>();
+        array.forEach(item -> {
+            if (item == null || !item.isObject()) {
+                return;
+            }
+            list.add(new MatchExternalDetailPublicResponse.PublicGoldTimelinePoint(
+                    integerOrNull(item.get("timeSec")),
+                    integerOrNull(item.get("blueGold")),
+                    integerOrNull(item.get("redGold")),
+                    integerOrNull(item.get("goldDiff"))
             ));
         });
         return List.copyOf(list);

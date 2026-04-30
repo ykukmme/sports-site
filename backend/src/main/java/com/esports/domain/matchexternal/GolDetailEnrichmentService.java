@@ -858,7 +858,24 @@ public class GolDetailEnrichmentService {
         root.put("redPlates", stats.redPlates());
         root.set("goldDistribution", distributionToJson(stats.goldDistribution()));
         root.set("damageDistribution", distributionToJson(stats.damageDistribution()));
+        root.set("goldTimeline", goldTimelineToJson(stats.goldTimeline()));
         return root;
+    }
+
+    private ArrayNode goldTimelineToJson(List<GolGgClient.GolGgGoldTimelinePoint> points) {
+        ArrayNode array = objectMapper.createArrayNode();
+        if (points == null) {
+            return array;
+        }
+        for (GolGgClient.GolGgGoldTimelinePoint point : points) {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("timeSec", point.timeSec());
+            node.put("blueGold", point.blueGold());
+            node.put("redGold", point.redGold());
+            node.put("goldDiff", point.goldDiff());
+            array.add(node);
+        }
+        return array;
     }
 
     private ArrayNode distributionToJson(List<GolGgClient.GolGgDistributionEntry> entries) {

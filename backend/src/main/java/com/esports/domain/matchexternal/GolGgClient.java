@@ -322,6 +322,7 @@ public class GolGgClient {
         PlateStats plateStats = extractPlateStats(doc);
         List<GolGgDistributionEntry> goldDistribution = extractDistribution(doc, "Gold distribution");
         List<GolGgDistributionEntry> damageDistribution = extractDistribution(doc, "Damage distribution");
+        List<GolGgGoldTimelinePoint> goldTimeline = extractGoldTimeline(doc);
 
         return new GolGgParsedGameStats(
                 providerGameId,
@@ -352,7 +353,8 @@ public class GolGgClient {
                 plateStats.bluePlates(),
                 plateStats.redPlates(),
                 goldDistribution,
-                damageDistribution
+                damageDistribution,
+                goldTimeline
         );
     }
 
@@ -408,6 +410,7 @@ public class GolGgClient {
                 List.of(),
                 null,
                 null,
+                List.of(),
                 List.of(),
                 List.of()
         );
@@ -629,6 +632,71 @@ public class GolGgClient {
             return a.side().compareTo(b.side());
         });
         return List.copyOf(events);
+    }
+
+    private List<GolGgGoldTimelinePoint> extractGoldTimeline(Document doc) {
+        if (doc == null) {
+            return List.of();
+        }
+        Matcher dataMatcher = Pattern.compile(
+                "var\\s+golddatas\\s*=\\s*\\{(?<body>.*?)\\};",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+        ).matcher(doc.html());
+        if (!dataMatcher.find()) {
+            return List.of();
+        }
+
+        String body = dataMatcher.group("body");
+        List<Integer> timeLabels = parseGoldTimelineLabels(body);
+        List<Integer> goldDiffs = parseGoldTimelineDiffs(body);
+        if (timeLabels.isEmpty() || goldDiffs.isEmpty()) {
+            return List.of();
+        }
+
+        int size = Math.min(timeLabels.size(), goldDiffs.size());
+        List<GolGgGoldTimelinePoint> points = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            points.add(new GolGgGoldTimelinePoint(timeLabels.get(i) * 60, null, null, goldDiffs.get(i)));
+        }
+        return List.copyOf(points);
+    }
+
+    private List<Integer> parseGoldTimelineLabels(String body) {
+        Matcher matcher = Pattern.compile("labels\\s*:\\s*\\[(?<labels>.*?)]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+                .matcher(body);
+        if (!matcher.find()) {
+            return List.of();
+        }
+        List<Integer> labels = new ArrayList<>();
+        Matcher valueMatcher = Pattern.compile("'?(-?\\d+)'?").matcher(matcher.group("labels"));
+        while (valueMatcher.find()) {
+            try {
+                labels.add(Integer.parseInt(valueMatcher.group(1)));
+            } catch (NumberFormatException ignored) {
+                // skip invalid chart labels
+            }
+        }
+        return List.copyOf(labels);
+    }
+
+    private List<Integer> parseGoldTimelineDiffs(String body) {
+        Matcher matcher = Pattern.compile(
+                "label\\s*:\\s*['\"]Gold['\"][\\s\\S]*?data\\s*:\\s*\\[(?<data>.*?)]",
+                Pattern.CASE_INSENSITIVE
+        ).matcher(body);
+        if (!matcher.find()) {
+            return List.of();
+        }
+        List<Integer> values = new ArrayList<>();
+        Matcher valueMatcher = Pattern.compile("-?\\d+").matcher(matcher.group("data"));
+        while (valueMatcher.find()) {
+            try {
+                values.add(Integer.parseInt(valueMatcher.group()));
+            } catch (NumberFormatException ignored) {
+                // skip invalid chart values
+            }
+        }
+        return List.copyOf(values);
     }
 
     private Integer parseTimelineActionTime(Element action) {
@@ -1700,7 +1768,8 @@ public class GolGgClient {
             Integer bluePlates,
             Integer redPlates,
             List<GolGgDistributionEntry> goldDistribution,
-            List<GolGgDistributionEntry> damageDistribution
+            List<GolGgDistributionEntry> damageDistribution,
+            List<GolGgGoldTimelinePoint> goldTimeline
     ) {
         public GolGgParsedGameStats(String providerGameId,
                                     String sourceUrl,
@@ -1756,6 +1825,7 @@ public class GolGgClient {
                     null,
                     null,
                     List.of(),
+                    List.of(),
                     List.of()
             );
         }
@@ -1766,6 +1836,14 @@ public class GolGgClient {
             String position,
             Double percent,
             Integer perMinute
+    ) {
+    }
+
+    public record GolGgGoldTimelinePoint(
+            Integer timeSec,
+            Integer blueGold,
+            Integer redGold,
+            Integer goldDiff
     ) {
     }
 

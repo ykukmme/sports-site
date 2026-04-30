@@ -43,6 +43,7 @@ public record MatchExternalDetailPublicResponse(
             List<PublicObjectiveEvent> objectiveTimeline,
             Integer bluePlates,
             Integer redPlates,
+            List<PublicGoldTimelinePoint> goldTimeline,
             List<PublicDistributionEntry> goldDistribution,
             List<PublicDistributionEntry> damageDistribution,
             String errorMessage
@@ -88,6 +89,14 @@ public record MatchExternalDetailPublicResponse(
             String position,
             Double percent,
             Integer perMinute
+    ) {
+    }
+
+    public record PublicGoldTimelinePoint(
+            Integer timeSec,
+            Integer blueGold,
+            Integer redGold,
+            Integer goldDiff
     ) {
     }
 

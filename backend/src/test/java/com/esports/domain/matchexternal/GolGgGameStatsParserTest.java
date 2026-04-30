@@ -119,6 +119,13 @@ class GolGgGameStatsParserTest {
                     assertThat(entry.percent()).isEqualTo(24.9);
                     assertThat(entry.perMinute()).isEqualTo(681);
                 });
+        assertThat(stats.goldTimeline()).hasSize(27);
+        assertThat(stats.goldTimeline().get(0).timeSec()).isEqualTo(0);
+        assertThat(stats.goldTimeline().get(0).goldDiff()).isEqualTo(0);
+        assertThat(stats.goldTimeline().get(5).timeSec()).isEqualTo(300);
+        assertThat(stats.goldTimeline().get(5).goldDiff()).isEqualTo(1765);
+        assertThat(stats.goldTimeline().get(26).timeSec()).isEqualTo(1500);
+        assertThat(stats.goldTimeline().get(26).goldDiff()).isEqualTo(16131);
     }
 
     @Test
@@ -176,6 +183,7 @@ class GolGgGameStatsParserTest {
         assertThat(stats.redPlates()).isNull();
         assertThat(stats.goldDistribution()).isEmpty();
         assertThat(stats.damageDistribution()).isEmpty();
+        assertThat(stats.goldTimeline()).isEmpty();
     }
 
     @Test
@@ -195,6 +203,7 @@ class GolGgGameStatsParserTest {
         assertThat(stats.redBans()).isEmpty();
         assertThat(stats.goldDistribution()).isEmpty();
         assertThat(stats.damageDistribution()).isEmpty();
+        assertThat(stats.goldTimeline()).isEmpty();
     }
 
     // ---- 헬퍼 ----

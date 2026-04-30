@@ -4,6 +4,7 @@ import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { DetailUnavailable } from '../components/match-detail/DetailUnavailable'
 import { GameDraftCard } from '../components/match-detail/GameDraftCard'
+import { GameGoldTimelineCard } from '../components/match-detail/GameGoldTimelineCard'
 import { GameObjectivesCard } from '../components/match-detail/GameObjectivesCard'
 import { GameTabBar } from '../components/match-detail/GameTabBar'
 import { MatchDetailHeader } from '../components/match-detail/MatchDetailHeader'
@@ -101,6 +102,7 @@ export function MatchDetailPage() {
                 {activeGame.errorMessage && <PartialFailureNotice message={activeGame.errorMessage} />}
                 <div className="grid gap-4">
                   <GameObjectivesCard game={activeGame} match={match} />
+                  <GameGoldTimelineCard game={activeGame} />
                   <GameDraftCard game={activeGame} match={match} />
                 </div>
               </div>
