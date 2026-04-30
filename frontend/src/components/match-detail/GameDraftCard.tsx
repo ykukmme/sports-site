@@ -35,8 +35,8 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
         <span className="flex min-w-0 items-center gap-2">
           <ChampionIcon championId={pick.championId} />
           <span className="min-w-0">
-            <span className="block truncate font-medium text-foreground">{champion}</span>
-            <span className="block truncate text-xs text-muted-foreground">{player}</span>
+            <span className="block truncate text-base font-semibold text-foreground">{player}</span>
+            <span className="block truncate text-xs text-muted-foreground">{champion}</span>
           </span>
         </span>
         {(summonerSpells.length > 0 || items.length > 0) && (
@@ -131,7 +131,7 @@ function TeamDraftColumn({
           <>
             <div className="hidden grid-cols-[64px_1fr_64px_48px] gap-2 px-3 text-[11px] text-muted-foreground sm:grid">
               <span>포지션</span>
-              <span>챔피언</span>
+              <span>선수 / 챔피언</span>
               <span className="text-right">KDA</span>
               <span className="text-right">CS</span>
             </div>
