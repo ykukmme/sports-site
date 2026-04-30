@@ -18,6 +18,8 @@ import {
   useAdminDeleteMatch,
   useAdminMatchList,
   useBindMatchExternalDetailSource,
+  useBulkDeleteGolGgTournamentSources,
+  useBulkSyncGolGgTournamentSources,
   useCreateGolGgTournamentSource,
   useDeleteGolGgTournamentSource,
   useFindMatchExternalDetailCandidates,
@@ -187,6 +189,10 @@ export function AdminMatchListPage() {
   const createGolGgSourceMutation = useCreateGolGgTournamentSource()
   const syncGolGgSourceMutation = useSyncGolGgTournamentSource()
   const deleteGolGgSourceMutation = useDeleteGolGgTournamentSource()
+  const bulkSyncGolGgSourceMutation = useBulkSyncGolGgTournamentSources()
+  const bulkDeleteGolGgSourceMutation = useBulkDeleteGolGgTournamentSources()
+  // 일괄 작업 대상 소스 ID. 페이지 이동/필터 변경에도 유지된다.
+  const [selectedGolGgSourceIds, setSelectedGolGgSourceIds] = useState<Set<number>>(new Set())
   const bindSourceMutation = useBindMatchExternalDetailSource()
   const validateSourceMutation = useValidateMatchExternalDetailSource()
   const findCandidatesMutation = useFindMatchExternalDetailCandidates()
@@ -427,6 +433,55 @@ export function AdminMatchListPage() {
       return
     }
     deleteGolGgSourceMutation.mutate(sourceId)
+  }
+
+  // 선택 일괄 동기화: 한 번에 최대 20건 (백엔드 @Size(max=20)).
+  function runBulkSyncSelectedSources() {
+    const ids = Array.from(selectedGolGgSourceIds)
+    if (ids.length === 0) return
+    if (ids.length > 20) {
+      setGolGgSourceMessage('한 번에 최대 20개까지만 동기화할 수 있습니다.')
+      return
+    }
+    bulkSyncGolGgSourceMutation.mutate(ids, {
+      onSuccess: (response) => {
+        setGolGgSourceMessage(
+          `일괄 재인덱싱 완료: 성공 ${response.successCount} / 실패 ${response.failedCount}` +
+            (response.missingIds.length > 0 ? ` / 미존재 ${response.missingIds.length}` : ''),
+        )
+        setSelectedGolGgSourceIds(new Set())
+      },
+    })
+  }
+
+  // 선택 일괄 삭제: 외래키 cascade로 indexed match도 함께 정리됨.
+  function runBulkDeleteSelectedSources() {
+    const ids = Array.from(selectedGolGgSourceIds)
+    if (ids.length === 0) return
+    if (!window.confirm(`선택된 ${ids.length}개 GOL.GG source를 삭제할까요?`)) {
+      return
+    }
+    bulkDeleteGolGgSourceMutation.mutate(ids, {
+      onSuccess: (response) => {
+        setGolGgSourceMessage(
+          `일괄 삭제 완료: ${response.deletedCount}건` +
+            (response.missingIds.length > 0 ? ` / 미존재 ${response.missingIds.length}` : ''),
+        )
+        setSelectedGolGgSourceIds(new Set())
+      },
+    })
+  }
+
+  function toggleGolGgSourceSelection(sourceId: number) {
+    setSelectedGolGgSourceIds((current) => {
+      const next = new Set(current)
+      if (next.has(sourceId)) {
+        next.delete(sourceId)
+      } else {
+        next.add(sourceId)
+      }
+      return next
+    })
   }
 
   const deleteErrorMessage =
@@ -731,12 +786,47 @@ export function AdminMatchListPage() {
             Register & index
           </Button>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground">선택 {selectedGolGgSourceIds.size}개</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={
+              selectedGolGgSourceIds.size === 0 ||
+              bulkSyncGolGgSourceMutation.isPending ||
+              syncGolGgSourceMutation.isPending
+            }
+            onClick={runBulkSyncSelectedSources}
+          >
+            선택 동기화
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={
+              selectedGolGgSourceIds.size === 0 ||
+              bulkDeleteGolGgSourceMutation.isPending ||
+              deleteGolGgSourceMutation.isPending
+            }
+            onClick={runBulkDeleteSelectedSources}
+          >
+            선택 삭제
+          </Button>
+        </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {pagedGolGgSources.map((source) => (
             <div
               key={source.id}
               className="flex items-center gap-2 rounded-md border border-border px-2 py-1"
             >
+              <input
+                type="checkbox"
+                aria-label="선택"
+                checked={selectedGolGgSourceIds.has(source.id)}
+                onChange={() => toggleGolGgSourceSelection(source.id)}
+              />
               <span className="text-left" title={source.errorMessage ?? source.sourceUrl}>
                 {source.label || source.sourceUrl} / {source.status} / {source.candidateCount}
               </span>

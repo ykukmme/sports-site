@@ -10,6 +10,8 @@ import type {
   MatchExternalDetailAutoBindItemResponse,
   MatchExternalDetailAutoBindBatchResponse,
   GolGgTournamentSourceResponse,
+  GolGgBulkSyncResponse,
+  GolGgBulkDeleteResponse,
   TeamResponse,
   PlayerResponse,
   MatchStatus,
@@ -364,6 +366,28 @@ export async function syncGolGgTournamentSource(sourceId: number): Promise<GolGg
 
 export async function deleteGolGgTournamentSource(sourceId: number): Promise<void> {
   await apiClient.delete(`/api/admin/golgg/sources/${sourceId}`)
+}
+
+// 일괄 동기화: 각 소스가 개별 트랜잭션으로 처리되므로 timeout을 충분히 둔다.
+export async function syncGolGgTournamentSourcesBulk(
+  ids: number[],
+): Promise<GolGgBulkSyncResponse> {
+  const res = await apiClient.post<ApiResponse<GolGgBulkSyncResponse>>(
+    '/api/admin/golgg/sources/sync-bulk',
+    { ids },
+    { timeout: 180_000 },
+  )
+  return res.data.data!
+}
+
+export async function deleteGolGgTournamentSourcesBulk(
+  ids: number[],
+): Promise<GolGgBulkDeleteResponse> {
+  const res = await apiClient.delete<ApiResponse<GolGgBulkDeleteResponse>>(
+    '/api/admin/golgg/sources/bulk',
+    { data: { ids } },
+  )
+  return res.data.data!
 }
 
 export async function importPandaScoreTeams(

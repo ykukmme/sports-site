@@ -197,6 +197,20 @@ export interface GolGgTournamentSourceResponse {
   errorMessage: string | null
 }
 
+// 일괄 동기화 응답: 각 소스의 처리 결과와 누락 ID를 함께 반환.
+export interface GolGgBulkSyncResponse {
+  successCount: number
+  failedCount: number
+  results: GolGgTournamentSourceResponse[]
+  missingIds: number[]
+}
+
+// 일괄 삭제 응답: 실제 삭제된 건수와 미존재 ID 목록.
+export interface GolGgBulkDeleteResponse {
+  deletedCount: number
+  missingIds: number[]
+}
+
 export interface MatchResponse {
   id: number
   game: GameResponse

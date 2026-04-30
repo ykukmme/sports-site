@@ -1,15 +1,21 @@
 package com.esports.domain.matchexternal;
 
 import com.esports.common.exception.BusinessException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,13 +25,17 @@ public class GolGgTournamentIndexService {
     private final GolGgTournamentSourceRepository sourceRepository;
     private final GolGgIndexedMatchRepository indexedMatchRepository;
     private final GolGgClient golGgClient;
+    // 같은 클래스 내부에서 @Transactional(REQUIRES_NEW)을 적용하려면 self-proxy가 필요하다.
+    private final GolGgTournamentIndexService self;
 
     public GolGgTournamentIndexService(GolGgTournamentSourceRepository sourceRepository,
                                        GolGgIndexedMatchRepository indexedMatchRepository,
-                                       GolGgClient golGgClient) {
+                                       GolGgClient golGgClient,
+                                       @Lazy @Autowired GolGgTournamentIndexService self) {
         this.sourceRepository = sourceRepository;
         this.indexedMatchRepository = indexedMatchRepository;
         this.golGgClient = golGgClient;
+        this.self = self;
     }
 
     public List<GolGgTournamentSourceResponse> listSources() {
@@ -55,6 +65,7 @@ public class GolGgTournamentIndexService {
                 });
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public GolGgTournamentSourceResponse syncSource(Long sourceId) {
         GolGgTournamentSource source = sourceRepository.findById(sourceId)
                 .orElseThrow(() -> new BusinessException(
@@ -87,6 +98,55 @@ public class GolGgTournamentIndexService {
                         HttpStatus.NOT_FOUND
                 ));
         sourceRepository.delete(source);
+    }
+
+    // 일괄 동기화: 각 source는 REQUIRES_NEW 트랜잭션으로 분리되어 한 건 실패가 다른 건에 영향을 주지 않는다.
+    // 외부 HTTP rate limit 보호를 위해 순차 처리.
+    public GolGgBulkSyncResponse bulkSyncSources(List<Long> ids) {
+        Set<Long> existingIds = sourceRepository.findAllById(ids).stream()
+                .map(GolGgTournamentSource::getId)
+                .collect(Collectors.toSet());
+        List<Long> missing = ids.stream()
+                .filter(id -> !existingIds.contains(id))
+                .distinct()
+                .toList();
+
+        List<GolGgTournamentSourceResponse> results = new ArrayList<>();
+        int success = 0;
+        int failed = 0;
+        Set<Long> processed = new HashSet<>();
+        for (Long id : ids) {
+            if (!existingIds.contains(id) || !processed.add(id)) {
+                continue;
+            }
+            try {
+                GolGgTournamentSourceResponse response = self.syncSource(id);
+                results.add(response);
+                if (GolGgTournamentSourceStatus.SYNCED.name().equals(response.status())) {
+                    success++;
+                } else {
+                    failed++;
+                }
+            } catch (RuntimeException e) {
+                // syncSource가 내부에서 외부 호출 예외는 잡지만, DB 무결성 등 미예상 예외 방어.
+                failed++;
+            }
+        }
+        return new GolGgBulkSyncResponse(success, failed, results, missing);
+    }
+
+    // 일괄 삭제: cascade로 indexed match도 함께 정리됨. 단일 트랜잭션으로 충분.
+    public GolGgBulkDeleteResponse bulkDeleteSources(List<Long> ids) {
+        List<GolGgTournamentSource> existing = sourceRepository.findAllById(ids);
+        Set<Long> existingIds = existing.stream()
+                .map(GolGgTournamentSource::getId)
+                .collect(Collectors.toSet());
+        List<Long> missing = ids.stream()
+                .filter(id -> !existingIds.contains(id))
+                .distinct()
+                .toList();
+        sourceRepository.deleteAll(existing);
+        return new GolGgBulkDeleteResponse(existing.size(), missing);
     }
 
     @Transactional(readOnly = true)

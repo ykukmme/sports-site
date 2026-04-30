@@ -20,6 +20,8 @@ import {
   autoBindMatchExternalDetailsBatch,
   unbindMatchExternalDetail,
   syncGolGgTournamentSource,
+  syncGolGgTournamentSourcesBulk,
+  deleteGolGgTournamentSourcesBulk,
   syncPandaScoreMatchResults,
   validateMatchExternalDetailSource,
   updateAdminMatch,
@@ -246,6 +248,29 @@ export function useDeleteGolGgTournamentSource() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (sourceId: number) => deleteGolGgTournamentSource(sourceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+// 선택된 소스 일괄 동기화. 외부 호출이 누적되므로 timeout이 길다.
+export function useBulkSyncGolGgTournamentSources() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: number[]) => syncGolGgTournamentSourcesBulk(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
+    },
+  })
+}
+
+// 선택된 소스 일괄 삭제. 매치 캐시까지 무효화 (단건 삭제 hook과 동일한 정책).
+export function useBulkDeleteGolGgTournamentSources() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: number[]) => deleteGolGgTournamentSourcesBulk(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
