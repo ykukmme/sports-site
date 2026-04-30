@@ -73,10 +73,20 @@ public class MatchQueryService {
                                 competitionType
                         ));
             } else {
+                // 일반 리그(LCK/LPL/LEC/LCS) 필터 — 해당 리그 팀의 경기 중 국제전(Worlds/MSI/First Stand)은 제외
                 spec = spec.and((root, query, cb) ->
-                        cb.or(
-                                cb.equal(cb.upper(root.get("teamA").get("league")), normalizedLeague),
-                                cb.equal(cb.upper(root.get("teamB").get("league")), normalizedLeague)
+                        cb.and(
+                                cb.or(
+                                        cb.equal(cb.upper(root.get("teamA").get("league")), normalizedLeague),
+                                        cb.equal(cb.upper(root.get("teamB").get("league")), normalizedLeague)
+                                ),
+                                cb.not(internationalCompetitionPredicate(
+                                        cb,
+                                        root.get("tournamentName"),
+                                        root.get("stage"),
+                                        cb.upper(cb.coalesce(root.get("internationalCompetitionCode"), "")),
+                                        null
+                                ))
                         ));
             }
         }
