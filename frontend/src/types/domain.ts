@@ -72,6 +72,13 @@ export interface MatchExternalDetailPublicObjectiveEvent {
   label: string | null
 }
 
+export interface MatchExternalDetailPublicDistributionEntry {
+  side: string | null
+  position: string | null
+  percent: number | null
+  perMinute: number | null
+}
+
 export interface MatchExternalDetailPublicGame {
   gameNo: number | null
   durationSec: number | null
@@ -99,6 +106,10 @@ export interface MatchExternalDetailPublicGame {
   bluePicks: MatchExternalDetailPublicPick[]
   redPicks: MatchExternalDetailPublicPick[]
   objectiveTimeline: MatchExternalDetailPublicObjectiveEvent[]
+  bluePlates: number | null
+  redPlates: number | null
+  goldDistribution: MatchExternalDetailPublicDistributionEntry[]
+  damageDistribution: MatchExternalDetailPublicDistributionEntry[]
   errorMessage: string | null
 }
 

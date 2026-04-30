@@ -155,6 +155,10 @@ class MatchPublicDetailControllerTest {
                         new MatchExternalDetailPublicResponse.PublicPick("Elise", "Namgung", "SUPPORT")
                 ),
                 List.of(new MatchExternalDetailPublicResponse.PublicObjectiveEvent(202, "BLUE", "FIRST_BLOOD", "First blood")),
+                3,
+                5,
+                List.of(new MatchExternalDetailPublicResponse.PublicDistributionEntry("BLUE", "TOP", 18.8, null)),
+                List.of(new MatchExternalDetailPublicResponse.PublicDistributionEntry("RED", "MID", 24.9, 681)),
                 null
         );
     }

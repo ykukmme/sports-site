@@ -101,6 +101,24 @@ class GolGgGameStatsParserTest {
         assertThat(stats.objectiveTimeline().get(0).type()).isEqualTo("FIRST_BLOOD");
         assertThat(stats.objectiveTimeline().get(1).type()).isEqualTo("DRAGON");
         assertThat(stats.objectiveTimeline().get(5).type()).isEqualTo("BARON");
+
+        assertThat(stats.bluePlates()).isEqualTo(33);
+        assertThat(stats.redPlates()).isEqualTo(4);
+        assertThat(stats.goldDistribution()).hasSize(10);
+        assertThat(stats.goldDistribution())
+                .anySatisfy(entry -> {
+                    assertThat(entry.side()).isEqualTo(ExternalDetailWinnerSide.BLUE);
+                    assertThat(entry.position()).isEqualTo("TOP");
+                    assertThat(entry.percent()).isEqualTo(18.8);
+                });
+        assertThat(stats.damageDistribution()).hasSize(10);
+        assertThat(stats.damageDistribution())
+                .anySatisfy(entry -> {
+                    assertThat(entry.side()).isEqualTo(ExternalDetailWinnerSide.RED);
+                    assertThat(entry.position()).isEqualTo("MID");
+                    assertThat(entry.percent()).isEqualTo(24.9);
+                    assertThat(entry.perMinute()).isEqualTo(681);
+                });
     }
 
     @Test
@@ -154,6 +172,10 @@ class GolGgGameStatsParserTest {
         assertThat(stats.bluePicks()).isEmpty();
         assertThat(stats.redPicks()).isEmpty();
         assertThat(stats.objectiveTimeline()).isEmpty();
+        assertThat(stats.bluePlates()).isNull();
+        assertThat(stats.redPlates()).isNull();
+        assertThat(stats.goldDistribution()).isEmpty();
+        assertThat(stats.damageDistribution()).isEmpty();
     }
 
     @Test
@@ -171,6 +193,8 @@ class GolGgGameStatsParserTest {
         assertThat(stats.redPicks()).isEmpty();
         assertThat(stats.blueBans()).isEmpty();
         assertThat(stats.redBans()).isEmpty();
+        assertThat(stats.goldDistribution()).isEmpty();
+        assertThat(stats.damageDistribution()).isEmpty();
     }
 
     // ---- 헬퍼 ----

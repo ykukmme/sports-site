@@ -40,6 +40,10 @@ public record MatchExternalDetailPublicResponse(
             List<PublicPick> bluePicks,
             List<PublicPick> redPicks,
             List<PublicObjectiveEvent> objectiveTimeline,
+            Integer bluePlates,
+            Integer redPlates,
+            List<PublicDistributionEntry> goldDistribution,
+            List<PublicDistributionEntry> damageDistribution,
             String errorMessage
     ) {
     }
@@ -75,6 +79,14 @@ public record MatchExternalDetailPublicResponse(
             String side,
             String type,
             String label
+    ) {
+    }
+
+    public record PublicDistributionEntry(
+            String side,
+            String position,
+            Double percent,
+            Integer perMinute
     ) {
     }
 

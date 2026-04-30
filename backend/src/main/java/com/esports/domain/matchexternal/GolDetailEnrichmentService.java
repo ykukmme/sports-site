@@ -758,6 +758,7 @@ public class GolDetailEnrichmentService {
             item.setBluePicksJson(picksToJson(stats.bluePicks()));
             item.setRedPicksJson(picksToJson(stats.redPicks()));
             item.setObjectiveTimelineJson(objectiveTimelineToJson(stats.objectiveTimeline()));
+            item.setGoldTimelineJson(advancedStatsToJson(stats));
             item.setErrorMessage(null);
         } catch (IllegalArgumentException | RestClientException e) {
             // 부분 실패 — 다른 게임은 영향받지 않게 stats 비우고 메시지만 기록.
@@ -831,6 +832,31 @@ public class GolDetailEnrichmentService {
             node.put("side", event.side() != null ? event.side().name() : null);
             node.put("type", event.type());
             node.put("label", event.label());
+            array.add(node);
+        }
+        return array;
+    }
+
+    private ObjectNode advancedStatsToJson(GolGgClient.GolGgParsedGameStats stats) {
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("bluePlates", stats.bluePlates());
+        root.put("redPlates", stats.redPlates());
+        root.set("goldDistribution", distributionToJson(stats.goldDistribution()));
+        root.set("damageDistribution", distributionToJson(stats.damageDistribution()));
+        return root;
+    }
+
+    private ArrayNode distributionToJson(List<GolGgClient.GolGgDistributionEntry> entries) {
+        ArrayNode array = objectMapper.createArrayNode();
+        if (entries == null) {
+            return array;
+        }
+        for (GolGgClient.GolGgDistributionEntry entry : entries) {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("side", entry.side() != null ? entry.side().name() : null);
+            node.put("position", entry.position());
+            node.put("percent", entry.percent());
+            node.put("perMinute", entry.perMinute());
             array.add(node);
         }
         return array;

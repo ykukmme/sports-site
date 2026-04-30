@@ -318,6 +318,9 @@ public class GolGgClient {
         List<GolGgPickEntry> bluePicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "blue-line-header"));
         List<GolGgPickEntry> redPicks = extractPicksFromPlayerTable(findPlayerTable(playerTables, "red-line-header"));
         List<GolGgObjectiveEvent> objectiveTimeline = extractObjectiveTimeline(doc);
+        PlateStats plateStats = extractPlateStats(doc);
+        List<GolGgDistributionEntry> goldDistribution = extractDistribution(doc, "Gold distribution");
+        List<GolGgDistributionEntry> damageDistribution = extractDistribution(doc, "Damage distribution");
 
         return new GolGgParsedGameStats(
                 providerGameId,
@@ -344,7 +347,11 @@ public class GolGgClient {
                 red.bans,
                 bluePicks,
                 redPicks,
-                objectiveTimeline
+                objectiveTimeline,
+                plateStats.bluePlates(),
+                plateStats.redPlates(),
+                goldDistribution,
+                damageDistribution
         );
     }
 
@@ -396,6 +403,10 @@ public class GolGgClient {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
+                List.of(),
+                null,
+                null,
                 List.of(),
                 List.of()
         );
@@ -651,6 +662,108 @@ public class GolGgClient {
         return "UNKNOWN";
     }
 
+    private PlateStats extractPlateStats(Document doc) {
+        Element table = findStatsTable(doc, "Plates");
+        if (table == null) {
+            return new PlateStats(null, null);
+        }
+        Elements rows = table.select("div.row");
+        for (Element row : rows) {
+            Elements cols = row.select("> div");
+            if (cols.size() < 3) {
+                continue;
+            }
+            String label = cleanText(cols.get(0).text());
+            if ("Plates".equalsIgnoreCase(label)) {
+                return new PlateStats(parseLeadingInteger(cols.get(1).text()), parseLeadingInteger(cols.get(2).text()));
+            }
+        }
+        return new PlateStats(null, null);
+    }
+
+    private List<GolGgDistributionEntry> extractDistribution(Document doc, String title) {
+        Element table = findStatsTable(doc, title);
+        if (table == null) {
+            return List.of();
+        }
+        Element smallTable = table.selectFirst("table.small_table");
+        if (smallTable == null) {
+            return List.of();
+        }
+        List<GolGgDistributionEntry> entries = new ArrayList<>();
+        Elements rows = smallTable.select("tr");
+        for (int i = 1; i < rows.size(); i++) {
+            Elements cells = rows.get(i).select("> td");
+            if (cells.size() < 3) {
+                continue;
+            }
+            String position = normalizeDistributionPosition(cells.get(0).text());
+            if (position == null) {
+                continue;
+            }
+            addDistributionEntry(entries, ExternalDetailWinnerSide.BLUE, position, cells.get(1));
+            addDistributionEntry(entries, ExternalDetailWinnerSide.RED, position, cells.get(2));
+        }
+        return List.copyOf(entries);
+    }
+
+    private Element findStatsTable(Document doc, String title) {
+        for (Element table : doc.select("table.table_list")) {
+            Element th = table.selectFirst("th");
+            if (th != null && title.equalsIgnoreCase(th.text().trim())) {
+                return table;
+            }
+        }
+        return null;
+    }
+
+    private void addDistributionEntry(List<GolGgDistributionEntry> entries,
+                                      ExternalDetailWinnerSide side,
+                                      String position,
+                                      Element cell) {
+        Double percent = parsePercent(cell.text());
+        Integer perMinute = parseTooltipInteger(cell);
+        if (percent == null && perMinute == null) {
+            return;
+        }
+        entries.add(new GolGgDistributionEntry(side, position, percent, perMinute));
+    }
+
+    private String normalizeDistributionPosition(String text) {
+        String value = cleanText(text);
+        if (value == null) {
+            return null;
+        }
+        return switch (value.toUpperCase(Locale.ROOT)) {
+            case "TOP" -> "TOP";
+            case "JGL", "JUNGLE" -> "JUNGLE";
+            case "MID" -> "MID";
+            case "ADC", "BOT" -> "ADC";
+            case "SUP", "SUPPORT" -> "SUPPORT";
+            default -> null;
+        };
+    }
+
+    private Double parsePercent(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        Matcher matcher = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*%").matcher(text);
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Integer parseTooltipInteger(Element cell) {
+        Element tooltip = cell.selectFirst("[title]");
+        return tooltip != null ? parseLeadingInteger(tooltip.attr("title")) : null;
+    }
+
     private String cleanText(String text) {
         if (text == null) {
             return null;
@@ -837,6 +950,12 @@ public class GolGgClient {
             boolean firstTower,
             List<String> dragonTypes,
             List<String> bans
+    ) {
+    }
+
+    private record PlateStats(
+            Integer bluePlates,
+            Integer redPlates
     ) {
     }
 
@@ -1563,7 +1682,76 @@ public class GolGgClient {
             List<String> redBans,
             List<GolGgPickEntry> bluePicks,
             List<GolGgPickEntry> redPicks,
-            List<GolGgObjectiveEvent> objectiveTimeline
+            List<GolGgObjectiveEvent> objectiveTimeline,
+            Integer bluePlates,
+            Integer redPlates,
+            List<GolGgDistributionEntry> goldDistribution,
+            List<GolGgDistributionEntry> damageDistribution
+    ) {
+        public GolGgParsedGameStats(String providerGameId,
+                                    String sourceUrl,
+                                    Integer durationSec,
+                                    ExternalDetailWinnerSide winnerSide,
+                                    String blueTeamName,
+                                    String redTeamName,
+                                    Integer blueKills,
+                                    Integer redKills,
+                                    Integer blueDragons,
+                                    Integer redDragons,
+                                    Integer blueBarons,
+                                    Integer redBarons,
+                                    Integer blueTowers,
+                                    Integer redTowers,
+                                    Integer blueTeamGold,
+                                    Integer redTeamGold,
+                                    ExternalDetailWinnerSide firstBloodSide,
+                                    ExternalDetailWinnerSide firstTowerSide,
+                                    List<String> blueDragonTypes,
+                                    List<String> redDragonTypes,
+                                    List<String> blueBans,
+                                    List<String> redBans,
+                                    List<GolGgPickEntry> bluePicks,
+                                    List<GolGgPickEntry> redPicks,
+                                    List<GolGgObjectiveEvent> objectiveTimeline) {
+            this(
+                    providerGameId,
+                    sourceUrl,
+                    durationSec,
+                    winnerSide,
+                    blueTeamName,
+                    redTeamName,
+                    blueKills,
+                    redKills,
+                    blueDragons,
+                    redDragons,
+                    blueBarons,
+                    redBarons,
+                    blueTowers,
+                    redTowers,
+                    blueTeamGold,
+                    redTeamGold,
+                    firstBloodSide,
+                    firstTowerSide,
+                    blueDragonTypes,
+                    redDragonTypes,
+                    blueBans,
+                    redBans,
+                    bluePicks,
+                    redPicks,
+                    objectiveTimeline,
+                    null,
+                    null,
+                    List.of(),
+                    List.of()
+            );
+        }
+    }
+
+    public record GolGgDistributionEntry(
+            ExternalDetailWinnerSide side,
+            String position,
+            Double percent,
+            Integer perMinute
     ) {
     }
 

@@ -85,6 +85,10 @@ public class MatchPublicDetailService {
                 picksFromJson(game.getBluePicksJson()),
                 picksFromJson(game.getRedPicksJson()),
                 objectiveTimelineFromJson(game.getObjectiveTimelineJson()),
+                integerOrNull(game.getGoldTimelineJson(), "bluePlates"),
+                integerOrNull(game.getGoldTimelineJson(), "redPlates"),
+                distributionFromJson(game.getGoldTimelineJson(), "goldDistribution"),
+                distributionFromJson(game.getGoldTimelineJson(), "damageDistribution"),
                 game.getErrorMessage()
         );
     }
@@ -168,11 +172,43 @@ public class MatchPublicDetailService {
         return List.copyOf(list);
     }
 
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionFromJson(JsonNode node,
+                                                                                                 String fieldName) {
+        JsonNode array = node != null && node.isObject() ? node.get(fieldName) : null;
+        if (array == null || !array.isArray()) {
+            return List.of();
+        }
+        List<MatchExternalDetailPublicResponse.PublicDistributionEntry> list = new ArrayList<>();
+        array.forEach(item -> {
+            if (item == null || !item.isObject()) {
+                return;
+            }
+            list.add(new MatchExternalDetailPublicResponse.PublicDistributionEntry(
+                    textOrNull(item.get("side")),
+                    textOrNull(item.get("position")),
+                    doubleOrNull(item.get("percent")),
+                    integerOrNull(item.get("perMinute"))
+            ));
+        });
+        return List.copyOf(list);
+    }
+
+    private Integer integerOrNull(JsonNode node, String fieldName) {
+        return node != null && node.isObject() ? integerOrNull(node.get(fieldName)) : null;
+    }
+
     private Integer integerOrNull(JsonNode node) {
         if (node == null || node.isNull() || !node.canConvertToInt()) {
             return null;
         }
         return node.asInt();
+    }
+
+    private Double doubleOrNull(JsonNode node) {
+        if (node == null || node.isNull() || !node.isNumber()) {
+            return null;
+        }
+        return node.asDouble();
     }
 
     private String textOrNull(JsonNode node) {

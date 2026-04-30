@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom'
-import type { MatchExternalDetailPublicGame, MatchResponse } from '../../types/domain'
+import type {
+  MatchExternalDetailPublicDistributionEntry,
+  MatchExternalDetailPublicGame,
+  MatchResponse,
+} from '../../types/domain'
 
 interface GameObjectivesCardProps {
   game: MatchExternalDetailPublicGame
@@ -61,6 +65,17 @@ function objectiveLabel(type: string | null, label: string | null) {
     BARON: '바론',
   }
   return type != null ? labels[type] ?? label ?? type : label ?? '-'
+}
+
+function positionLabel(value: string | null) {
+  const labels: Record<string, string> = {
+    TOP: 'TOP',
+    JUNGLE: 'JGL',
+    MID: 'MID',
+    ADC: 'ADC',
+    SUPPORT: 'SUP',
+  }
+  return value != null ? labels[value] ?? value : '-'
 }
 
 function SideLegendName({ teamId, teamName }: { teamId: number | null; teamName: string }) {
@@ -129,10 +144,69 @@ function DragonTypeList({ values, align }: { values: string[]; align: 'left' | '
   )
 }
 
+function DistributionChart({
+  title,
+  entries,
+  showPerMinute = false,
+}: {
+  title: string
+  entries: MatchExternalDetailPublicDistributionEntry[]
+  showPerMinute?: boolean
+}) {
+  const positions = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
+  const hasEntries = entries.some((entry) => entry.percent != null || entry.perMinute != null)
+
+  if (!hasEntries) {
+    return null
+  }
+
+  const entryFor = (side: string, position: string) =>
+    entries.find((entry) => entry.side === side && entry.position === position)
+
+  return (
+    <div className="rounded border border-border p-3">
+      <div className="mb-3 text-xs font-medium text-muted-foreground">{title}</div>
+      <div className="space-y-3">
+        {positions.map((position) => {
+          const blue = entryFor('BLUE', position)
+          const red = entryFor('RED', position)
+          const bluePercent = Math.max(0, Math.min(100, blue?.percent ?? 0))
+          const redPercent = Math.max(0, Math.min(100, red?.percent ?? 0))
+          return (
+            <div key={position} className="grid grid-cols-[46px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2">
+              <div className="text-xs font-medium text-muted-foreground">{positionLabel(position)}</div>
+              <div>
+                <div className="h-2 overflow-hidden rounded bg-muted">
+                  <div className="h-full rounded bg-blue-500" style={{ width: `${bluePercent}%` }} />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {blue?.percent != null ? `${blue.percent.toFixed(1)}%` : '-'}
+                  {showPerMinute && blue?.perMinute != null ? ` · ${blue.perMinute}/분` : ''}
+                </div>
+              </div>
+              <div>
+                <div className="h-2 overflow-hidden rounded bg-muted">
+                  <div className="h-full rounded bg-red-500" style={{ width: `${redPercent}%` }} />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {red?.percent != null ? `${red.percent.toFixed(1)}%` : '-'}
+                  {showPerMinute && red?.perMinute != null ? ` · ${red.perMinute}/분` : ''}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardProps) {
   const blueTeamName = game.blueTeamName ?? '-'
   const redTeamName = game.redTeamName ?? '-'
   const objectiveTimeline = game.objectiveTimeline ?? []
+  const goldDistribution = game.goldDistribution ?? []
+  const damageDistribution = game.damageDistribution ?? []
   const blueMajorObjectives = sumNullable(game.blueDragons, game.blueBarons)
   const redMajorObjectives = sumNullable(game.redDragons, game.redBarons)
   const winnerLabel =
@@ -183,6 +257,7 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         <ObjectiveRow label="포탑" blue={game.blueTowers} red={game.redTowers} />
         <ObjectiveRow label="드래곤" blue={game.blueDragons} red={game.redDragons} />
         <ObjectiveRow label="바론" blue={game.blueBarons} red={game.redBarons} />
+        <ObjectiveRow label="방패" blue={game.bluePlates} red={game.redPlates} />
         <ObjectiveRow label="골드" blue={game.blueTeamGold} red={game.redTeamGold} formatter={goldText} />
       </div>
 
@@ -202,6 +277,13 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         <div className="text-center font-medium text-muted-foreground">드래곤 종류</div>
         <DragonTypeList values={game.redDragonTypes} align="left" />
       </div>
+
+      {(goldDistribution.length > 0 || damageDistribution.length > 0) && (
+        <div className="mt-4 grid gap-3 border-t border-border pt-4 lg:grid-cols-2">
+          <DistributionChart title="골드 분배" entries={goldDistribution} />
+          <DistributionChart title="피해량 분배" entries={damageDistribution} showPerMinute />
+        </div>
+      )}
 
       {objectiveTimeline.length > 0 && (
         <div className="mt-4 border-t border-border pt-4">
