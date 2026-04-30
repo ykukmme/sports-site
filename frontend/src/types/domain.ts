@@ -149,6 +149,30 @@ export interface MatchExternalDetailBatchSyncResponse {
   items: MatchExternalDetailSyncItemResponse[]
 }
 
+export type MatchExternalDetailAutoBindStatus =
+  | 'BOUND'
+  | 'AMBIGUOUS'
+  | 'NO_CANDIDATE'
+  | 'ALREADY_BOUND'
+  | 'FAILED'
+
+export interface MatchExternalDetailAutoBindItemResponse {
+  matchId: number
+  status: MatchExternalDetailAutoBindStatus
+  message: string
+  sourceUrl: string | null
+  score: number | null
+  detailSummary: MatchExternalDetailSummaryResponse | null
+}
+
+export interface MatchExternalDetailAutoBindBatchResponse {
+  requestedCount: number
+  boundCount: number
+  skippedCount: number
+  failedCount: number
+  items: MatchExternalDetailAutoBindItemResponse[]
+}
+
 export interface GolGgTournamentSourceResponse {
   id: number
   sourceUrl: string

@@ -27,6 +27,7 @@ import {
   useSyncGolGgTournamentSource,
   useSyncMatchExternalDetail,
   useSyncMatchExternalDetailsBatch,
+  useAutoBindMatchExternalDetailsBatch,
   useUnbindMatchExternalDetail,
   useValidateMatchExternalDetailSource,
 } from '../../../hooks/useAdminMatches'
@@ -162,6 +163,7 @@ export function AdminMatchListPage() {
   const resolveSourceMutation = useResolveMatchExternalDetailSource()
   const detailSyncMutation = useSyncMatchExternalDetail()
   const detailSyncBatchMutation = useSyncMatchExternalDetailsBatch()
+  const autoBindBatchMutation = useAutoBindMatchExternalDetailsBatch()
   const unbindDetailMutation = useUnbindMatchExternalDetail()
 
   const teams = useMemo(() => {
@@ -344,6 +346,19 @@ export function AdminMatchListPage() {
     })
   }
 
+  // 자동 후보 바인딩 — 임계값(score>=85, gap>=15) 통과 항목만 자동 resolve, 나머지는 skip
+  function runBatchAutoBind() {
+    if (selectedMatchIds.length === 0) return
+    autoBindBatchMutation.mutate(selectedMatchIds, {
+      onSuccess: (result) => {
+        setDetailSyncMessage(
+          `자동 바인딩 완료: 성공 ${result.boundCount}건 / 보류 ${result.skippedCount}건 / 실패 ${result.failedCount}건`,
+        )
+        setSelectedMatchIds([])
+      },
+    })
+  }
+
   function runSyncGolGgSource(sourceId: number, label: string) {
     syncGolGgSourceMutation.mutate(sourceId, {
       onSuccess: (source) => {
@@ -388,6 +403,10 @@ export function AdminMatchListPage() {
       : detailSyncBatchMutation.error instanceof ApiError
         ? detailSyncBatchMutation.error.message
         : detailSyncMutation.error?.message ?? detailSyncBatchMutation.error?.message
+  const autoBindErrorMessage =
+    autoBindBatchMutation.error instanceof ApiError
+      ? autoBindBatchMutation.error.message
+      : autoBindBatchMutation.error?.message
   const bindSourceErrorMessage =
     bindSourceMutation.error instanceof ApiError
       ? bindSourceMutation.error.message
@@ -424,6 +443,14 @@ export function AdminMatchListPage() {
             detailSyncMutation.reset()
             detailSyncBatchMutation.reset()
           },
+        }
+      : null,
+    autoBindErrorMessage
+      ? {
+          key: 'auto-bind-error',
+          message: autoBindErrorMessage,
+          variant: 'error',
+          onClose: () => autoBindBatchMutation.reset(),
         }
       : null,
     bindSourceErrorMessage
@@ -510,6 +537,16 @@ export function AdminMatchListPage() {
             }
           >
             {resultSyncMutation.isPending ? '결과 동기화 중...' : 'PandaScore 결과 동기화'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={selectedMatchIds.length === 0 || autoBindBatchMutation.isPending}
+            onClick={runBatchAutoBind}
+          >
+            {autoBindBatchMutation.isPending
+              ? '자동 바인딩 중...'
+              : `자동 바인딩 (${selectedMatchIds.length})`}
           </Button>
           <Button
             size="sm"

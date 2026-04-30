@@ -7,6 +7,8 @@ import type {
   MatchExternalDetailSummaryResponse,
   MatchExternalDetailSyncItemResponse,
   MatchExternalDetailValidationResponse,
+  MatchExternalDetailAutoBindItemResponse,
+  MatchExternalDetailAutoBindBatchResponse,
   GolGgTournamentSourceResponse,
   TeamResponse,
   PlayerResponse,
@@ -303,6 +305,30 @@ export async function syncMatchExternalDetailsBatch(
 ): Promise<MatchExternalDetailBatchSyncResponse> {
   const res = await apiClient.post<ApiResponse<MatchExternalDetailBatchSyncResponse>>(
     '/api/admin/matches/details/sync',
+    { matchIds },
+    {
+      timeout: 120_000,
+    },
+  )
+  return res.data.data!
+}
+
+// 자동 후보 바인딩 (단건) — score/gap 임계값 통과 시 자동 resolve
+export async function autoBindMatchExternalDetail(
+  matchId: number,
+): Promise<MatchExternalDetailAutoBindItemResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailAutoBindItemResponse>>(
+    `/api/admin/matches/${matchId}/details/auto-bind`,
+  )
+  return res.data.data!
+}
+
+// 자동 후보 바인딩 (배치)
+export async function autoBindMatchExternalDetailsBatch(
+  matchIds: number[],
+): Promise<MatchExternalDetailAutoBindBatchResponse> {
+  const res = await apiClient.post<ApiResponse<MatchExternalDetailAutoBindBatchResponse>>(
+    '/api/admin/matches/details/auto-bind',
     { matchIds },
     {
       timeout: 120_000,

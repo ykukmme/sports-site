@@ -2,6 +2,8 @@ package com.esports.domain.match;
 
 import com.esports.common.ApiResponse;
 import com.esports.domain.matchexternal.GolDetailEnrichmentService;
+import com.esports.domain.matchexternal.MatchExternalDetailAutoBindBatchResponse;
+import com.esports.domain.matchexternal.MatchExternalDetailAutoBindItemResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailBatchSyncRequest;
 import com.esports.domain.matchexternal.MatchExternalDetailBatchSyncResponse;
 import com.esports.domain.matchexternal.MatchExternalDetailBindRequest;
@@ -86,6 +88,21 @@ public class AdminMatchController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unbindMatchDetail(@PathVariable Long id) {
         golDetailEnrichmentService.unbindDetail(id);
+    }
+
+    // POST /api/admin/matches/{id}/details/auto-bind — 자동 후보 매칭으로 단건 바인딩
+    @PostMapping("/{id}/details/auto-bind")
+    public ApiResponse<MatchExternalDetailAutoBindItemResponse> autoBindMatchDetail(@PathVariable Long id) {
+        return ApiResponse.ok(golDetailEnrichmentService.autoBindOne(id));
+    }
+
+    // POST /api/admin/matches/details/auto-bind — 배치 자동 후보 매칭
+    @PostMapping("/details/auto-bind")
+    public ApiResponse<MatchExternalDetailAutoBindBatchResponse> autoBindMatchDetails(
+            @RequestBody(required = false) MatchExternalDetailBatchSyncRequest request) {
+        return ApiResponse.ok(golDetailEnrichmentService.autoBindBatch(
+                request != null ? request.matchIds() : null
+        ));
     }
 
     @PostMapping("/details/sync")

@@ -16,6 +16,8 @@ import {
   resolveMatchExternalDetailSource,
   syncMatchExternalDetail,
   syncMatchExternalDetailsBatch,
+  autoBindMatchExternalDetail,
+  autoBindMatchExternalDetailsBatch,
   unbindMatchExternalDetail,
   syncGolGgTournamentSource,
   syncPandaScoreMatchResults,
@@ -185,6 +187,26 @@ export function useSyncMatchExternalDetailsBatch() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (matchIds: number[]) => syncMatchExternalDetailsBatch(matchIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function useAutoBindMatchExternalDetail() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (matchId: number) => autoBindMatchExternalDetail(matchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function useAutoBindMatchExternalDetailsBatch() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (matchIds: number[]) => autoBindMatchExternalDetailsBatch(matchIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
     },

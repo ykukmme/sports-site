@@ -72,6 +72,94 @@ public class GolDetailEnrichmentService {
         this.qualityValidationService = qualityValidationService;
     }
 
+    // 자동 후보 바인딩: findCandidates로 점수화된 후보 중 임계값 통과한 autoSelected를 자동 resolve
+    // 이미 sourceUrl 있으면 ALREADY_BOUND로 skip (덮어쓰기 방지)
+    public MatchExternalDetailAutoBindItemResponse autoBindOne(Long matchId) {
+        Match match = loadMatch(matchId);
+        Optional<MatchExternalDetail> existingOpt = detailRepository.findByMatchId(matchId);
+        if (existingOpt.isPresent()
+                && existingOpt.get().getSourceUrl() != null
+                && !existingOpt.get().getSourceUrl().isBlank()) {
+            MatchExternalDetail existing = existingOpt.get();
+            return new MatchExternalDetailAutoBindItemResponse(
+                    matchId,
+                    "ALREADY_BOUND",
+                    "이미 sourceUrl이 바인딩되어 있습니다. 먼저 언바인딩 후 재시도하세요.",
+                    existing.getSourceUrl(),
+                    null,
+                    MatchExternalDetailSummaryResponse.from(existing)
+            );
+        }
+
+        MatchExternalDetail detail = existingOpt.orElseGet(() -> new MatchExternalDetail(match));
+
+        try {
+            CandidateSelection selection = refreshCandidates(match, detail, null);
+            MatchExternalDetail saved = detailRepository.save(detail);
+
+            GolDetailCandidateMatcher.ScoredCandidate autoSelected = selection.autoSelected();
+            if (autoSelected == null || autoSelected.sourceUrl() == null || autoSelected.sourceUrl().isBlank()) {
+                int rankedSize = selection.candidates() != null ? selection.candidates().size() : 0;
+                if (rankedSize == 0) {
+                    return new MatchExternalDetailAutoBindItemResponse(
+                            matchId,
+                            "NO_CANDIDATE",
+                            "후보가 발견되지 않았습니다.",
+                            null,
+                            null,
+                            MatchExternalDetailSummaryResponse.from(saved)
+                    );
+                }
+                GolDetailCandidateMatcher.ScoredCandidate top = selection.candidates().get(0);
+                return new MatchExternalDetailAutoBindItemResponse(
+                        matchId,
+                        "AMBIGUOUS",
+                        "후보는 있지만 자동 바인딩 임계값(score>=85, gap>=15)을 충족하지 못했습니다. 수동 확인 필요.",
+                        top.sourceUrl(),
+                        top.score(),
+                        MatchExternalDetailSummaryResponse.from(saved)
+                );
+            }
+
+            MatchExternalDetailSummaryResponse summary = saveResolvedSource(detail, autoSelected.sourceUrl());
+            return new MatchExternalDetailAutoBindItemResponse(
+                    matchId,
+                    "BOUND",
+                    "자동 바인딩 완료 (score " + autoSelected.score() + ")",
+                    autoSelected.sourceUrl(),
+                    autoSelected.score(),
+                    summary
+            );
+        } catch (IllegalArgumentException | RestClientException e) {
+            return new MatchExternalDetailAutoBindItemResponse(
+                    matchId,
+                    "FAILED",
+                    e.getMessage(),
+                    null,
+                    null,
+                    MatchExternalDetailSummaryResponse.from(detail)
+            );
+        }
+    }
+
+    public MatchExternalDetailAutoBindBatchResponse autoBindBatch(List<Long> matchIds) {
+        List<Long> ids = matchIds == null ? List.of() : matchIds;
+        List<MatchExternalDetailAutoBindItemResponse> items = new ArrayList<>();
+        int bound = 0;
+        int skipped = 0;
+        int failed = 0;
+        for (Long matchId : ids) {
+            MatchExternalDetailAutoBindItemResponse item = autoBindOne(matchId);
+            items.add(item);
+            switch (item.status()) {
+                case "BOUND" -> bound++;
+                case "FAILED" -> failed++;
+                default -> skipped++;
+            }
+        }
+        return new MatchExternalDetailAutoBindBatchResponse(ids.size(), bound, skipped, failed, items);
+    }
+
     // detail 언바인딩: detail row 삭제 (match_external_detail_game은 ON DELETE CASCADE로 자동 정리)
     // 미존재 시 idempotent — no-op
     public void unbindDetail(Long matchId) {

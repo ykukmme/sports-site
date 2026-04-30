@@ -590,6 +590,184 @@ class GolDetailEnrichmentServiceTest {
         assertThat(game2.getErrorMessage()).contains("HTTP 503").contains("fetchGameStats failed");
     }
 
+    // ---- T-2.x: autoBindOne / autoBindBatch ----
+
+    @Test
+    void autoBindOneReturnsAlreadyBoundWhenSourceUrlExists() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+        detail.setSourceUrl("https://gol.gg/game/stats/123/page-summary/");
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        assertThat(response.status()).isEqualTo("ALREADY_BOUND");
+        assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-summary/");
+        verify(detailRepository, never()).save(any(MatchExternalDetail.class));
+        verify(golGgClient, never()).fetchRawCandidatesForMatch(any());
+    }
+
+    @Test
+    void autoBindOneBindsTopCandidateWhenAutoSelected() {
+        Match match = mock(Match.class);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate("123", "https://gol.gg/game/stats/123/page-summary/", "ctx top"),
+                new GolGgClient.GolGgRawCandidate("999", "https://gol.gg/game/stats/999/page-summary/", "ctx low")
+        ));
+        when(candidateMatcher.rankCandidates(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "123",
+                        "https://gol.gg/game/stats/123/page-summary/",
+                        95,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                ),
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "999",
+                        "https://gol.gg/game/stats/999/page-summary/",
+                        50,
+                        List.of("TEAM_A")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        assertThat(response.status()).isEqualTo("BOUND");
+        assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-summary/");
+        assertThat(response.score()).isEqualTo(95);
+        assertThat(response.detailSummary()).isNotNull();
+    }
+
+    @Test
+    void autoBindOneReturnsAmbiguousWhenScoreBelowThreshold() {
+        Match match = mock(Match.class);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate("123", "https://gol.gg/game/stats/123/page-summary/", "ctx")
+        ));
+        when(candidateMatcher.rankCandidates(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "123",
+                        "https://gol.gg/game/stats/123/page-summary/",
+                        70,
+                        List.of("TEAM_A", "TEAM_B")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        assertThat(response.status()).isEqualTo("AMBIGUOUS");
+        assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-summary/");
+        assertThat(response.score()).isEqualTo(70);
+    }
+
+    @Test
+    void autoBindOneReturnsAmbiguousWhenGapTooSmall() {
+        Match match = mock(Match.class);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate("123", "https://gol.gg/game/stats/123/page-summary/", "ctx1"),
+                new GolGgClient.GolGgRawCandidate("456", "https://gol.gg/game/stats/456/page-summary/", "ctx2")
+        ));
+        when(candidateMatcher.rankCandidates(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "123",
+                        "https://gol.gg/game/stats/123/page-summary/",
+                        90,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                ),
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "456",
+                        "https://gol.gg/game/stats/456/page-summary/",
+                        85,
+                        List.of("TEAM_A", "TEAM_B")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        // gap=5, AUTO_SELECT_GAP_THRESHOLD=15 → 자동 선택 안 됨
+        assertThat(response.status()).isEqualTo("AMBIGUOUS");
+    }
+
+    @Test
+    void autoBindOneReturnsNoCandidateWhenEmpty() {
+        Match match = mock(Match.class);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of());
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        assertThat(response.status()).isEqualTo("NO_CANDIDATE");
+        assertThat(response.sourceUrl()).isNull();
+    }
+
+    @Test
+    void autoBindOneReturnsFailedOnExternalException() {
+        Match match = mock(Match.class);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(golGgClient.fetchRawCandidatesForMatch(match))
+                .thenThrow(new IllegalArgumentException("upstream failed"));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        assertThat(response.status()).isEqualTo("FAILED");
+        assertThat(response.message()).contains("upstream failed");
+    }
+
+    @Test
+    void autoBindBatchAggregatesPerItemResults() {
+        Match match1 = mock(Match.class);
+        Match match2 = mock(Match.class);
+        Match match3 = mock(Match.class);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match1));
+        when(matchRepository.findById(2L)).thenReturn(Optional.of(match2));
+        when(matchRepository.findById(3L)).thenReturn(Optional.of(match3));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(detailRepository.findByMatchId(2L)).thenReturn(Optional.empty());
+        when(detailRepository.findByMatchId(3L)).thenReturn(Optional.empty());
+        when(golGgClient.fetchRawCandidatesForMatch(match1)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate("1", "https://gol.gg/game/stats/1/page-summary/", "x")
+        ));
+        when(golGgClient.fetchRawCandidatesForMatch(match2)).thenReturn(List.of());
+        when(golGgClient.fetchRawCandidatesForMatch(match3))
+                .thenThrow(new IllegalArgumentException("boom"));
+        when(candidateMatcher.rankCandidates(eq(match1), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "1",
+                        "https://gol.gg/game/stats/1/page-summary/",
+                        95,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailAutoBindBatchResponse response = service.autoBindBatch(List.of(1L, 2L, 3L));
+
+        assertThat(response.requestedCount()).isEqualTo(3);
+        assertThat(response.boundCount()).isEqualTo(1);
+        assertThat(response.skippedCount()).isEqualTo(1); // NO_CANDIDATE
+        assertThat(response.failedCount()).isEqualTo(1);
+        assertThat(response.items()).hasSize(3);
+    }
+
     // ---- 픽스처 헬퍼 ----
 
     private GolGgClient.GolGgParsedGameStats buildGame73115Stats() {
