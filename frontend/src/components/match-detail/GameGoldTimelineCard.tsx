@@ -1,4 +1,7 @@
-import type { MatchExternalDetailPublicGame } from '../../types/domain'
+import type {
+  MatchExternalDetailPublicGame,
+  MatchExternalDetailPublicObjectiveEvent,
+} from '../../types/domain'
 
 interface GameGoldTimelineCardProps {
   game: MatchExternalDetailPublicGame
@@ -9,10 +12,19 @@ interface ChartPoint {
   goldDiff: number
 }
 
+interface ObjectiveMarker {
+  timeSec: number
+  label: string
+  side: string | null
+}
+
 const CHART_WIDTH = 640
-const CHART_HEIGHT = 180
+const CHART_HEIGHT = 210
 const CHART_PADDING_X = 36
-const CHART_PADDING_Y = 22
+const CHART_PADDING_TOP = 26
+const CHART_PADDING_BOTTOM = 34
+const MARKER_LABEL_Y = 18
+const MAX_MARKERS = 12
 
 function goldText(value: number) {
   const sign = value > 0 ? '+' : ''
@@ -25,6 +37,17 @@ function timeText(seconds: number) {
   return `${minutes}:${String(rest).padStart(2, '0')}`
 }
 
+function objectiveLabel(event: MatchExternalDetailPublicObjectiveEvent) {
+  const labels: Record<string, string> = {
+    FIRST_BLOOD: '첫 킬',
+    FIRST_TOWER: '첫 포탑',
+    DRAGON: '드래곤',
+    HERALD: '전령',
+    BARON: '바론',
+  }
+  return event.type != null ? labels[event.type] ?? event.label ?? event.type : event.label ?? '오브젝트'
+}
+
 function toChartPoints(game: MatchExternalDetailPublicGame): ChartPoint[] {
   return (game.goldTimeline ?? [])
     .filter((point) => point.timeSec != null && point.goldDiff != null)
@@ -34,15 +57,36 @@ function toChartPoints(game: MatchExternalDetailPublicGame): ChartPoint[] {
     }))
 }
 
+function toObjectiveMarkers(game: MatchExternalDetailPublicGame): ObjectiveMarker[] {
+  return (game.objectiveTimeline ?? [])
+    .filter((event) => event.timeSec != null)
+    .slice(0, MAX_MARKERS)
+    .map((event) => ({
+      timeSec: event.timeSec ?? 0,
+      label: objectiveLabel(event),
+      side: event.side,
+    }))
+}
+
 function xFor(timeSec: number, maxTimeSec: number) {
   const drawableWidth = CHART_WIDTH - CHART_PADDING_X * 2
   return CHART_PADDING_X + (timeSec / Math.max(maxTimeSec, 1)) * drawableWidth
 }
 
 function yFor(goldDiff: number, maxAbsDiff: number) {
-  const drawableHeight = CHART_HEIGHT - CHART_PADDING_Y * 2
+  const drawableHeight = CHART_HEIGHT - CHART_PADDING_TOP - CHART_PADDING_BOTTOM
   const ratio = (goldDiff + maxAbsDiff) / Math.max(maxAbsDiff * 2, 1)
-  return CHART_HEIGHT - CHART_PADDING_Y - ratio * drawableHeight
+  return CHART_HEIGHT - CHART_PADDING_BOTTOM - ratio * drawableHeight
+}
+
+function maxLeadPoint(points: ChartPoint[]) {
+  return points.reduce((best, point) => (Math.abs(point.goldDiff) > Math.abs(best.goldDiff) ? point : best), points[0])
+}
+
+function closestPoint(points: ChartPoint[], timeSec: number) {
+  return points.reduce((best, point) =>
+    Math.abs(point.timeSec - timeSec) < Math.abs(best.timeSec - timeSec) ? point : best
+  )
 }
 
 export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
@@ -54,6 +98,7 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
 
   const blueTeamName = game.blueTeamName ?? '블루'
   const redTeamName = game.redTeamName ?? '레드'
+  const markers = toObjectiveMarkers(game)
   const maxTimeSec = Math.max(...points.map((point) => point.timeSec))
   const maxAbsDiff = Math.max(1000, ...points.map((point) => Math.abs(point.goldDiff)))
   const zeroY = yFor(0, maxAbsDiff)
@@ -61,7 +106,9 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
     .map((point) => `${xFor(point.timeSec, maxTimeSec).toFixed(1)},${yFor(point.goldDiff, maxAbsDiff).toFixed(1)}`)
     .join(' ')
   const finalPoint = points[points.length - 1]
+  const peakPoint = maxLeadPoint(points)
   const leader = finalPoint.goldDiff >= 0 ? blueTeamName : redTeamName
+  const peakLeader = peakPoint.goldDiff >= 0 ? blueTeamName : redTeamName
 
   return (
     <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
@@ -70,8 +117,13 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
           <div className="text-sm font-medium text-foreground">골드 타임라인</div>
           <p className="mt-1 text-xs text-muted-foreground">GOL.GG 골드 격차 그래프 기준입니다.</p>
         </div>
-        <div className="text-xs text-muted-foreground">
-          최종 {leader} {goldText(Math.abs(finalPoint.goldDiff))} · {timeText(finalPoint.timeSec)}
+        <div className="grid gap-1 text-xs text-muted-foreground sm:text-right">
+          <span>
+            최종 {leader} {goldText(Math.abs(finalPoint.goldDiff))} · {timeText(finalPoint.timeSec)}
+          </span>
+          <span>
+            최대 {peakLeader} {goldText(Math.abs(peakPoint.goldDiff))} · {timeText(peakPoint.timeSec)}
+          </span>
         </div>
       </div>
 
@@ -92,12 +144,47 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
           />
           <line
             x1={CHART_PADDING_X}
-            y1={CHART_PADDING_Y}
+            y1={CHART_PADDING_TOP}
             x2={CHART_PADDING_X}
-            y2={CHART_HEIGHT - CHART_PADDING_Y}
+            y2={CHART_HEIGHT - CHART_PADDING_BOTTOM}
             className="stroke-border"
             strokeWidth="1"
           />
+          {markers.map((marker, index) => {
+            const x = xFor(marker.timeSec, maxTimeSec)
+            const point = closestPoint(points, marker.timeSec)
+            const markerColor = marker.side === 'BLUE' ? '#3b82f6' : marker.side === 'RED' ? '#ef4444' : '#71717a'
+            return (
+              <g key={`${marker.timeSec}-${marker.label}-${index}`}>
+                <line
+                  x1={x}
+                  y1={CHART_PADDING_TOP}
+                  x2={x}
+                  y2={CHART_HEIGHT - CHART_PADDING_BOTTOM}
+                  stroke={markerColor}
+                  strokeDasharray="3 4"
+                  strokeOpacity="0.45"
+                  strokeWidth="1"
+                />
+                <circle cx={x} cy={yFor(point.goldDiff, maxAbsDiff)} r="3" fill={markerColor}>
+                  <title>
+                    {timeText(marker.timeSec)} · {marker.label} · {goldText(point.goldDiff)}
+                  </title>
+                </circle>
+                <text
+                  x={x}
+                  y={MARKER_LABEL_Y}
+                  textAnchor="middle"
+                  className="fill-muted-foreground text-[10px]"
+                >
+                  {marker.label}
+                  <title>
+                    {timeText(marker.timeSec)} · {marker.label} · {goldText(point.goldDiff)}
+                  </title>
+                </text>
+              </g>
+            )
+          })}
           <polyline
             points={polylinePoints}
             fill="none"
@@ -113,19 +200,42 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
               cy={yFor(point.goldDiff, maxAbsDiff)}
               r={index === points.length - 1 ? 4 : 2}
               fill={point.goldDiff >= 0 ? '#3b82f6' : '#ef4444'}
-            />
+            >
+              <title>
+                {timeText(point.timeSec)} · {point.goldDiff >= 0 ? blueTeamName : redTeamName}{' '}
+                {goldText(Math.abs(point.goldDiff))}
+              </title>
+            </circle>
           ))}
-          <text x={CHART_PADDING_X} y={CHART_PADDING_Y - 6} className="fill-muted-foreground text-[11px]">
+          <text x={CHART_PADDING_X} y={CHART_PADDING_TOP + 8} className="fill-muted-foreground text-[11px]">
             {blueTeamName}
           </text>
-          <text x={CHART_PADDING_X} y={CHART_HEIGHT - 8} className="fill-muted-foreground text-[11px]">
+          <text x={CHART_PADDING_X} y={CHART_HEIGHT - 10} className="fill-muted-foreground text-[11px]">
             {redTeamName}
           </text>
           <text x={CHART_WIDTH - CHART_PADDING_X - 36} y={zeroY - 6} className="fill-muted-foreground text-[11px]">
             0
           </text>
+          <text
+            x={CHART_WIDTH - CHART_PADDING_X}
+            y={CHART_HEIGHT - 10}
+            textAnchor="end"
+            className="fill-muted-foreground text-[11px]"
+          >
+            {timeText(maxTimeSec)}
+          </text>
         </svg>
       </div>
+
+      {markers.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {markers.map((marker, index) => (
+            <span key={`${marker.timeSec}-${marker.label}-legend-${index}`} className="rounded border border-border px-2 py-1">
+              {timeText(marker.timeSec)} {marker.label}
+            </span>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
