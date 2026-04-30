@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type {
   MatchExternalDetailPublicGame,
   MatchExternalDetailPublicObjectiveEvent,
@@ -90,6 +91,7 @@ function closestPoint(points: ChartPoint[], timeSec: number) {
 }
 
 export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
+  const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null)
   const points = toChartPoints(game)
 
   if (points.length < 2) {
@@ -109,6 +111,12 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
   const peakPoint = maxLeadPoint(points)
   const leader = finalPoint.goldDiff >= 0 ? blueTeamName : redTeamName
   const peakLeader = peakPoint.goldDiff >= 0 ? blueTeamName : redTeamName
+  const displayPoint = hoveredPoint ?? finalPoint
+  const displayLeader = displayPoint.goldDiff >= 0 ? blueTeamName : redTeamName
+  const displayX = xFor(displayPoint.timeSec, maxTimeSec)
+  const displayY = yFor(displayPoint.goldDiff, maxAbsDiff)
+  const tooltipX = Math.max(8, Math.min(CHART_WIDTH - 148, displayX - 70))
+  const tooltipY = Math.max(30, displayY - 48)
 
   return (
     <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
@@ -198,8 +206,14 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
               key={`${point.timeSec}-${index}`}
               cx={xFor(point.timeSec, maxTimeSec)}
               cy={yFor(point.goldDiff, maxAbsDiff)}
-              r={index === points.length - 1 ? 4 : 2}
+              r={hoveredPoint?.timeSec === point.timeSec ? 6 : index === points.length - 1 ? 4 : 3}
               fill={point.goldDiff >= 0 ? '#3b82f6' : '#ef4444'}
+              className="cursor-pointer"
+              onMouseEnter={() => setHoveredPoint(point)}
+              onMouseLeave={() => setHoveredPoint(null)}
+              onFocus={() => setHoveredPoint(point)}
+              onBlur={() => setHoveredPoint(null)}
+              tabIndex={0}
             >
               <title>
                 {timeText(point.timeSec)} · {point.goldDiff >= 0 ? blueTeamName : redTeamName}{' '}
@@ -207,6 +221,25 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
               </title>
             </circle>
           ))}
+          <g pointerEvents="none">
+            <line
+              x1={displayX}
+              y1={CHART_PADDING_TOP}
+              x2={displayX}
+              y2={CHART_HEIGHT - CHART_PADDING_BOTTOM}
+              stroke="#18181b"
+              strokeOpacity="0.35"
+              strokeDasharray="4 4"
+            />
+            <circle cx={displayX} cy={displayY} r="6" fill="#18181b" fillOpacity="0.85" />
+            <rect x={tooltipX} y={tooltipY} width="140" height="38" rx="6" fill="#18181b" fillOpacity="0.92" />
+            <text x={tooltipX + 10} y={tooltipY + 15} className="fill-white text-[11px]">
+              {timeText(displayPoint.timeSec)}
+            </text>
+            <text x={tooltipX + 10} y={tooltipY + 30} className="fill-white text-[11px]">
+              {displayLeader} {goldText(Math.abs(displayPoint.goldDiff))}
+            </text>
+          </g>
           <text x={CHART_PADDING_X} y={CHART_PADDING_TOP + 8} className="fill-muted-foreground text-[11px]">
             {blueTeamName}
           </text>
