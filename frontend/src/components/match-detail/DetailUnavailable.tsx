@@ -7,8 +7,9 @@ interface DetailUnavailableProps {
 
 const statusLabels: Record<string, string> = {
   PENDING: '상세 동기화가 대기 중입니다.',
-  FAILED: '상세 동기화에 실패했습니다. 관리자에서 다시 동기화해주세요.',
+  FAILED: '상세 동기화에 실패했습니다. 관리자 화면에서 다시 동기화해주세요.',
   NEEDS_REVIEW: '관리자 확인이 필요합니다.',
+  PARTIAL_SYNC: '일부 세트만 동기화되었습니다.',
   SYNCED: '동기화된 상세 데이터가 없습니다.',
 }
 

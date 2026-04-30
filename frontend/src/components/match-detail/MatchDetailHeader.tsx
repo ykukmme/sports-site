@@ -29,6 +29,7 @@ function getScoreText(match: MatchResponse) {
 export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderProps) {
   const scoreText = getScoreText(match)
   const sourceUrl = detail?.sourceUrl ?? match.detailSummary?.sourceUrl ?? null
+  const detailStatus = detail?.status ?? match.detailSummary?.status ?? null
 
   return (
     <header className="flex flex-col gap-5 border-b border-border pb-6">
@@ -39,6 +40,7 @@ export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderPr
               {statusLabels[match.status] ?? match.status}
             </Badge>
             <span className="text-sm text-muted-foreground">Match #{match.id}</span>
+            {detailStatus && <span className="text-sm text-muted-foreground">상세 {detailStatus}</span>}
           </div>
           <h1 className="mt-3 text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
             {match.teamA.name} vs {match.teamB.name}
@@ -70,6 +72,7 @@ export function MatchDetailHeader({ match, detail, onBack }: MatchDetailHeaderPr
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>상세 데이터: {detail?.available ? `게임 ${detail.games.length}개` : '없음'}</span>
+        {detail?.lastSyncedAt && <span>마지막 동기화: {formatDate(detail.lastSyncedAt)}</span>}
         {sourceUrl && (
           <a
             href={sourceUrl}

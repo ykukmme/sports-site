@@ -16,11 +16,17 @@ export function GameTabBar({ games, activeGameNo, onChange }: GameTabBarProps) {
     <div
       className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0"
       role="tablist"
-      aria-label="게임 선택"
+      aria-label="세트 선택"
     >
       {games.map((game, index) => {
         const gameNo = game.gameNo ?? index + 1
         const isActive = gameNo === activeGameNo
+        const winnerName =
+          game.winnerSide === 'BLUE'
+            ? game.blueTeamName
+            : game.winnerSide === 'RED'
+              ? game.redTeamName
+              : null
 
         return (
           <Button
@@ -30,8 +36,9 @@ export function GameTabBar({ games, activeGameNo, onChange }: GameTabBarProps) {
             size="sm"
             role="tab"
             aria-selected={isActive}
-            className="min-w-20"
+            className="min-w-24"
             onClick={() => onChange(gameNo)}
+            title={winnerName ? `승리: ${winnerName}` : undefined}
           >
             Game {gameNo}
           </Button>

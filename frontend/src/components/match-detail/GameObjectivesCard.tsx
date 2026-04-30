@@ -17,6 +17,13 @@ function goldText(value: number | null) {
   return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value)
 }
 
+function sumNullable(...values: Array<number | null>) {
+  if (values.every((value) => value == null)) {
+    return null
+  }
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0)
+}
+
 function formatDuration(seconds: number | null) {
   if (seconds == null) {
     return '-'
@@ -48,7 +55,7 @@ function dragonLabel(value: string) {
 function objectiveLabel(type: string | null, label: string | null) {
   const labels: Record<string, string> = {
     FIRST_BLOOD: '첫 킬',
-    FIRST_TOWER: '첫 타워',
+    FIRST_TOWER: '첫 포탑',
     DRAGON: label != null ? dragonLabel(label.replace(/\s+(Drake|Dragon)$/i, '').toUpperCase()) : '드래곤',
     HERALD: '전령',
     BARON: '바론',
@@ -65,6 +72,24 @@ function SideLegendName({ teamId, teamName }: { teamId: number | null; teamName:
     <Link to={`/teams/${teamId}`} className="underline-offset-4 hover:underline">
       {teamName}
     </Link>
+  )
+}
+
+function SummaryTile({
+  label,
+  value,
+  helper,
+}: {
+  label: string
+  value: string
+  helper?: string
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-background/40 px-3 py-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-base font-semibold text-foreground">{value}</div>
+      {helper && <div className="mt-1 text-xs text-muted-foreground">{helper}</div>}
+    </div>
   )
 }
 
@@ -108,6 +133,8 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
   const blueTeamName = game.blueTeamName ?? '-'
   const redTeamName = game.redTeamName ?? '-'
   const objectiveTimeline = game.objectiveTimeline ?? []
+  const blueMajorObjectives = sumNullable(game.blueDragons, game.blueBarons)
+  const redMajorObjectives = sumNullable(game.redDragons, game.redBarons)
   const winnerLabel =
     game.winnerSide === 'BLUE'
       ? blueTeamName
@@ -121,10 +148,10 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         <div>
           <div className="text-sm font-medium text-foreground">게임 요약</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            승리: {winnerLabel} · 시간: {formatDuration(game.durationSec)}
+            GOL.GG 기준 진영 데이터입니다. 매치 팀 A/B 순서와 다를 수 있습니다.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
             <SideLegendName teamId={game.blueTeamId} teamName={blueTeamName} />
@@ -136,9 +163,20 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
         </div>
       </div>
 
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <SummaryTile label="승리 팀" value={winnerLabel} helper={game.winnerSide === 'BLUE' ? '블루 진영' : game.winnerSide === 'RED' ? '레드 진영' : undefined} />
+        <SummaryTile label="경기 시간" value={formatDuration(game.durationSec)} />
+        <SummaryTile label="킬 스코어" value={`${valueText(game.blueKills)} : ${valueText(game.redKills)}`} helper="블루 : 레드" />
+        <SummaryTile
+          label="오브젝트"
+          value={`${valueText(blueMajorObjectives)} : ${valueText(redMajorObjectives)}`}
+          helper="드래곤+바론"
+        />
+      </div>
+
       <div className="mt-4">
         <ObjectiveRow label="킬" blue={game.blueKills} red={game.redKills} />
-        <ObjectiveRow label="타워" blue={game.blueTowers} red={game.redTowers} />
+        <ObjectiveRow label="포탑" blue={game.blueTowers} red={game.redTowers} />
         <ObjectiveRow label="드래곤" blue={game.blueDragons} red={game.redDragons} />
         <ObjectiveRow label="바론" blue={game.blueBarons} red={game.redBarons} />
         <ObjectiveRow label="골드" blue={game.blueTeamGold} red={game.redTeamGold} formatter={goldText} />
@@ -150,7 +188,7 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
           <span className="ml-2">{formatSide(game.firstBloodSide, blueTeamName, redTeamName)}</span>
         </div>
         <div className="rounded border border-border px-3 py-2">
-          <span className="font-medium text-foreground">첫 타워</span>
+          <span className="font-medium text-foreground">첫 포탑</span>
           <span className="ml-2">{formatSide(game.firstTowerSide, blueTeamName, redTeamName)}</span>
         </div>
       </div>

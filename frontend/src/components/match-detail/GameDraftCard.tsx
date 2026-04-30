@@ -8,10 +8,18 @@ interface GameDraftCardProps {
   match: MatchResponse
 }
 
+const POSITION_LABELS: Record<string, string> = {
+  TOP: 'TOP',
+  JUNGLE: 'JUNGLE',
+  MID: 'MID',
+  ADC: 'ADC',
+  SUPPORT: 'SUPPORT',
+}
+
 function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
   const champion = pick.championId ?? '-'
   const player = pick.playerName ?? '-'
-  const position = pick.position ?? '-'
+  const position = pick.position ? POSITION_LABELS[pick.position] ?? pick.position : '-'
   const summonerSpells = pick.summonerSpells ?? []
   const items = pick.items ?? []
   const kda =
@@ -122,7 +130,7 @@ function TeamDraftColumn({
               <span className="text-right">CS</span>
             </div>
             {picks.map((pick, index) => (
-              <PickRow key={`${pick.championId ?? 'pick'}-${index}`} pick={pick} />
+              <PickRow key={`${pick.championId ?? 'pick'}-${pick.playerName ?? index}-${index}`} pick={pick} />
             ))}
           </>
         )}
@@ -143,7 +151,7 @@ export function GameDraftCard({ game, match: _match }: GameDraftCardProps) {
   return (
     <section className="grid gap-4 lg:grid-cols-2">
       <TeamDraftColumn
-        label="Blue"
+        label="블루 진영"
         teamName={blueTeamName}
         teamId={game.blueTeamId}
         picks={game.bluePicks}
@@ -151,7 +159,7 @@ export function GameDraftCard({ game, match: _match }: GameDraftCardProps) {
         sideClassName="bg-blue-500"
       />
       <TeamDraftColumn
-        label="Red"
+        label="레드 진영"
         teamName={redTeamName}
         teamId={game.redTeamId}
         picks={game.redPicks}
