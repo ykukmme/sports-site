@@ -14,7 +14,10 @@ public record MatchExternalDetailSummaryResponse(
         Integer teamMatchConfidence,
         Integer dateMatchConfidence,
         OffsetDateTime lastSyncedAt,
-        String errorMessage
+        String errorMessage,
+        String boundBy,
+        OffsetDateTime boundAt,
+        Integer boundScore
 ) {
     public MatchExternalDetailSummaryResponse(String provider,
                                               String status,
@@ -34,7 +37,10 @@ public record MatchExternalDetailSummaryResponse(
                 null,
                 null,
                 lastSyncedAt,
-                errorMessage
+                errorMessage,
+                null,
+                null,
+                null
         );
     }
 
@@ -54,7 +60,10 @@ public record MatchExternalDetailSummaryResponse(
                 detail.getTeamMatchConfidence(),
                 detail.getDateMatchConfidence(),
                 detail.getLastSyncedAt(),
-                detail.getErrorMessage()
+                detail.getErrorMessage(),
+                detail.getBoundBy() != null ? detail.getBoundBy().name() : null,
+                detail.getBoundAt(),
+                detail.getBoundScore()
         );
     }
 }

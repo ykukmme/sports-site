@@ -84,6 +84,17 @@ public class MatchExternalDetail {
     @Column(name = "last_synced_at")
     private OffsetDateTime lastSyncedAt;
 
+    // 자동/수동 바인딩 audit (V18) — legacy row는 NULL
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bound_by", length = 16)
+    private BindOrigin boundBy;
+
+    @Column(name = "bound_at")
+    private OffsetDateTime boundAt;
+
+    @Column(name = "bound_score")
+    private Integer boundScore;
+
     @Column(name = "error_message")
     private String errorMessage;
 
@@ -209,6 +220,18 @@ public class MatchExternalDetail {
         return lastSyncedAt;
     }
 
+    public BindOrigin getBoundBy() {
+        return boundBy;
+    }
+
+    public OffsetDateTime getBoundAt() {
+        return boundAt;
+    }
+
+    public Integer getBoundScore() {
+        return boundScore;
+    }
+
     public String getErrorMessage() {
         return errorMessage;
     }
@@ -285,6 +308,18 @@ public class MatchExternalDetail {
 
     public void setLastSyncedAt(OffsetDateTime lastSyncedAt) {
         this.lastSyncedAt = lastSyncedAt;
+    }
+
+    public void setBoundBy(BindOrigin boundBy) {
+        this.boundBy = boundBy;
+    }
+
+    public void setBoundAt(OffsetDateTime boundAt) {
+        this.boundAt = boundAt;
+    }
+
+    public void setBoundScore(Integer boundScore) {
+        this.boundScore = boundScore;
     }
 
     public void setErrorMessage(String errorMessage) {

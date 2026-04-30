@@ -68,6 +68,42 @@ class GolDetailEnrichmentServiceTest {
     }
 
     @Test
+    void bindSourceUrlStampsManualAudit() {
+        Match match = mock(Match.class);
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.empty());
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(golGgClient.fetchDetail(eq("https://gol.gg/game/stats/123/page-game/"), any())).thenReturn(
+                new GolGgClient.GolGgParsedDetail(
+                        "https://gol.gg/game/stats/123/page-game/",
+                        List.of("123"),
+                        new ObjectMapper().createObjectNode().put("title", "dummy"),
+                        new ObjectMapper().createObjectNode(),
+                        List.of(),
+                        90,
+                        false
+                )
+        );
+        when(candidateMatcher.rankCandidatesRelaxed(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "123",
+                        "https://gol.gg/game/stats/123/page-game/",
+                        90,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                )
+        ));
+
+        ArgumentCaptor<MatchExternalDetail> captor = ArgumentCaptor.forClass(MatchExternalDetail.class);
+        service.bindSourceUrl(1L, "https://gol.gg/game/stats/123/page-game/");
+
+        verify(detailRepository).save(captor.capture());
+        MatchExternalDetail saved = captor.getValue();
+        assertThat(saved.getBoundBy()).isEqualTo(BindOrigin.MANUAL);
+        assertThat(saved.getBoundScore()).isNull();
+        assertThat(saved.getBoundAt()).isNotNull();
+    }
+
+    @Test
     void bindSourceUrlSetsPendingStatus() {
         Match match = mock(Match.class);
         when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
@@ -607,6 +643,34 @@ class GolDetailEnrichmentServiceTest {
         assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-summary/");
         verify(detailRepository, never()).save(any(MatchExternalDetail.class));
         verify(golGgClient, never()).fetchRawCandidatesForMatch(any());
+    }
+
+    @Test
+    void autoBindOneStampsAuditFieldsOnBound() {
+        Match match = mock(Match.class);
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
+        when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(golGgClient.fetchRawCandidatesForMatch(match)).thenReturn(List.of(
+                new GolGgClient.GolGgRawCandidate("123", "https://gol.gg/game/stats/123/page-summary/", "ctx top")
+        ));
+        when(candidateMatcher.rankCandidates(eq(match), any(), anyInt())).thenReturn(List.of(
+                new GolDetailCandidateMatcher.ScoredCandidate(
+                        "123",
+                        "https://gol.gg/game/stats/123/page-summary/",
+                        95,
+                        List.of("TEAM_A", "TEAM_B", "DATE")
+                )
+        ));
+        when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MatchExternalDetailAutoBindItemResponse response = service.autoBindOne(1L);
+
+        assertThat(response.status()).isEqualTo("BOUND");
+        assertThat(detail.getBoundBy()).isEqualTo(BindOrigin.AUTO);
+        assertThat(detail.getBoundScore()).isEqualTo(95);
+        assertThat(detail.getBoundAt()).isNotNull();
     }
 
     @Test

@@ -121,7 +121,12 @@ public class GolDetailEnrichmentService {
                 );
             }
 
-            MatchExternalDetailSummaryResponse summary = saveResolvedSource(detail, autoSelected.sourceUrl());
+            MatchExternalDetailSummaryResponse summary = saveResolvedSource(
+                    detail,
+                    autoSelected.sourceUrl(),
+                    BindOrigin.AUTO,
+                    autoSelected.score()
+            );
             return new MatchExternalDetailAutoBindItemResponse(
                     matchId,
                     "BOUND",
@@ -176,7 +181,7 @@ public class GolDetailEnrichmentService {
         Match match = loadMatch(matchId);
         MatchExternalDetail detail = detailRepository.findByMatchId(matchId)
                 .orElseGet(() -> new MatchExternalDetail(match));
-        return saveResolvedSource(detail, sourceUrl);
+        return saveResolvedSource(detail, sourceUrl, BindOrigin.MANUAL, null);
     }
 
     public MatchExternalDetailValidationResponse validateSourceUrl(Long matchId, String sourceUrl) {
@@ -249,11 +254,14 @@ public class GolDetailEnrichmentService {
         if (!isKnownCandidateSource(detail.getSummaryJson(), sourceUrl)) {
             assertSourceUrlValid(matchId, sourceUrl);
         }
-        return saveResolvedSource(detail, sourceUrl);
+        return saveResolvedSource(detail, sourceUrl, BindOrigin.MANUAL, null);
     }
 
-    private MatchExternalDetailSummaryResponse saveResolvedSource(MatchExternalDetail detail, String sourceUrl) {
-        applyResolvedSource(detail, sourceUrl);
+    private MatchExternalDetailSummaryResponse saveResolvedSource(MatchExternalDetail detail,
+                                                                   String sourceUrl,
+                                                                   BindOrigin origin,
+                                                                   Integer score) {
+        applyResolvedSource(detail, sourceUrl, origin, score);
         detail.setSummaryJson(markResolvedSource(detail.getSummaryJson(), detail.getSourceUrl()));
         MatchExternalDetail saved = detailRepository.save(detail);
         return MatchExternalDetailSummaryResponse.from(saved);
@@ -339,7 +347,7 @@ public class GolDetailEnrichmentService {
                     MatchExternalDetail saved = detailRepository.save(detail);
                     return reviewItem(matchId, saved, "sourceUrl is required before sync");
                 }
-                applyResolvedSource(detail, autoSelected.sourceUrl());
+                applyResolvedSource(detail, autoSelected.sourceUrl(), BindOrigin.AUTO, autoSelected.score());
             } catch (IllegalArgumentException | RestClientException e) {
                 markFailed(detail, e.getMessage());
                 return failedItem(matchId, detail, e.getMessage());
@@ -618,7 +626,10 @@ public class GolDetailEnrichmentService {
         );
     }
 
-    private void applyResolvedSource(MatchExternalDetail detail, String sourceUrl) {
+    private void applyResolvedSource(MatchExternalDetail detail,
+                                     String sourceUrl,
+                                     BindOrigin origin,
+                                     Integer score) {
         String trimmed = sourceUrl == null ? "" : sourceUrl.trim();
         if (trimmed.isBlank()) {
             throw new IllegalArgumentException("sourceUrl is required");
@@ -629,6 +640,10 @@ public class GolDetailEnrichmentService {
         detail.setProviderGameIds(toJsonArray(extractGameIdsFromSourceUrl(trimmed)));
         detail.setParseVersion(golGgProperties.getParseVersion());
         detail.setErrorMessage(null);
+        // 자동/수동 바인딩 audit
+        detail.setBoundBy(origin);
+        detail.setBoundAt(OffsetDateTime.now());
+        detail.setBoundScore(score);
     }
 
     private JsonNode mergeCandidateSnapshot(JsonNode currentSummary,
