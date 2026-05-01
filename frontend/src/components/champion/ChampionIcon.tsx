@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useDdragonNames } from '../../hooks/useDdragonNames'
 
 interface ChampionIconProps {
   championId: string | null
@@ -14,7 +15,10 @@ const sizeClasses = {
 
 export function ChampionIcon({ championId, size = 'md' }: ChampionIconProps) {
   const [failed, setFailed] = useState(false)
+  const { champions } = useDdragonNames()
   const label = championId || '-'
+  // 사전에 한국어명이 있으면 사용, 없으면 영문 ID 폴백 (Rule #4)
+  const displayName = championId ? (champions.get(championId) ?? championId) : label
 
   useEffect(() => {
     setFailed(false)
@@ -24,7 +28,7 @@ export function ChampionIcon({ championId, size = 'md' }: ChampionIconProps) {
     return (
       <span
         className={`inline-flex shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground ${sizeClasses[size]}`}
-        title={label}
+        title={displayName}
       >
         {label.slice(0, 2)}
       </span>
@@ -34,8 +38,8 @@ export function ChampionIcon({ championId, size = 'md' }: ChampionIconProps) {
   return (
     <img
       src={`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${encodeURIComponent(championId)}.png`}
-      alt={championId}
-      title={championId}
+      alt={displayName}
+      title={displayName}
       className={`shrink-0 rounded-md border border-border object-cover ${sizeClasses[size]}`}
       loading="lazy"
       onError={() => setFailed(true)}

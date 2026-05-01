@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useDdragonNames } from '../../hooks/useDdragonNames'
 
 interface DdragonAssetIconProps {
   id: string | null
@@ -15,7 +16,11 @@ const sizeClasses = {
 
 export function DdragonAssetIcon({ id, type, size = 'xs' }: DdragonAssetIconProps) {
   const [failed, setFailed] = useState(false)
+  const { items, spells } = useDdragonNames()
   const label = id || '-'
+  // type 별로 사전 조회 → 없으면 영문/숫자 ID 폴백 (Rule #4)
+  const dictionary = type === 'item' ? items : spells
+  const displayName = id ? (dictionary.get(id) ?? id) : label
 
   useEffect(() => {
     setFailed(false)
@@ -25,7 +30,7 @@ export function DdragonAssetIcon({ id, type, size = 'xs' }: DdragonAssetIconProp
     return (
       <span
         className={`inline-flex shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground ${sizeClasses[size]}`}
-        title={label}
+        title={displayName}
       >
         {label.slice(0, 2)}
       </span>
@@ -35,8 +40,8 @@ export function DdragonAssetIcon({ id, type, size = 'xs' }: DdragonAssetIconProp
   return (
     <img
       src={`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/${type}/${encodeURIComponent(id)}.png`}
-      alt={id}
-      title={id}
+      alt={displayName}
+      title={displayName}
       className={`shrink-0 rounded border border-border object-cover ${sizeClasses[size]}`}
       loading="lazy"
       onError={() => setFailed(true)}
