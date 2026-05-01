@@ -206,7 +206,16 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
   const blueTeamName = game.blueTeamName ?? '-'
   const redTeamName = game.redTeamName ?? '-'
   const objectiveTimeline = game.objectiveTimeline ?? []
-  const goldDistribution = game.goldDistribution ?? []
+  // GOL.GG는 골드 분배 셀에 분당 값 tooltip을 제공하지 않음 → 팀 총 골드와 경기 시간으로 GPM 계산 보강
+  // GPM = (팀 골드 × 라인 비율%) / 경기 분
+  const durationMin = game.durationSec != null && game.durationSec > 0 ? game.durationSec / 60 : null
+  const goldDistribution = (game.goldDistribution ?? []).map((entry) => {
+    if (entry.perMinute != null || entry.percent == null || durationMin == null) return entry
+    const teamGold = entry.side === 'BLUE' ? game.blueTeamGold : entry.side === 'RED' ? game.redTeamGold : null
+    if (teamGold == null) return entry
+    const computed = Math.round((teamGold * entry.percent) / 100 / durationMin)
+    return { ...entry, perMinute: computed }
+  })
   const damageDistribution = game.damageDistribution ?? []
   const blueMajorObjectives = sumNullable(game.blueDragons, game.blueBarons)
   const redMajorObjectives = sumNullable(game.redDragons, game.redBarons)
