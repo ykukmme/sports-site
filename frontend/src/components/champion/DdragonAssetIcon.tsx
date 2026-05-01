@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDdragonNames } from '../../hooks/useDdragonNames'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 interface DdragonAssetIconProps {
   id: string | null
@@ -26,25 +27,28 @@ export function DdragonAssetIcon({ id, type, size = 'xs' }: DdragonAssetIconProp
     setFailed(false)
   }, [id, type])
 
-  if (!id || failed) {
-    return (
+  // 트리거 본문: 이미지 실패/없음이면 약식 라벨, 정상이면 ddragon 이미지
+  const trigger =
+    !id || failed ? (
       <span
         className={`inline-flex shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground ${sizeClasses[size]}`}
-        title={displayName}
       >
         {label.slice(0, 2)}
       </span>
+    ) : (
+      <img
+        src={`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/${type}/${encodeURIComponent(id)}.png`}
+        alt={displayName}
+        className={`shrink-0 rounded border border-border object-cover ${sizeClasses[size]}`}
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
     )
-  }
 
   return (
-    <img
-      src={`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/${type}/${encodeURIComponent(id)}.png`}
-      alt={displayName}
-      title={displayName}
-      className={`shrink-0 rounded border border-border object-cover ${sizeClasses[size]}`}
-      loading="lazy"
-      onError={() => setFailed(true)}
-    />
+    <Tooltip>
+      <TooltipTrigger render={trigger} />
+      <TooltipContent>{displayName}</TooltipContent>
+    </Tooltip>
   )
 }

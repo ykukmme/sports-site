@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { MatchExternalDetailPublicGame, MatchExternalDetailPublicPick, MatchResponse } from '../../types/domain'
 import { ChampionIcon } from '../champion/ChampionIcon'
 import { DdragonAssetIcon } from '../champion/DdragonAssetIcon'
+import { useDdragonNames } from '../../hooks/useDdragonNames'
 
 interface GameDraftCardProps {
   game: MatchExternalDetailPublicGame
@@ -17,7 +18,9 @@ const POSITION_LABELS: Record<string, string> = {
 }
 
 function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
-  const champion = pick.championId ?? '-'
+  const { champions } = useDdragonNames()
+  // 챔피언명 한국어 폴백 (사전 결측 시 영문 ID, Rule #4)
+  const champion = pick.championId ? (champions.get(pick.championId) ?? pick.championId) : '-'
   const player = pick.playerName ?? '-'
   const position = pick.position ? POSITION_LABELS[pick.position] ?? pick.position : '-'
   const summonerSpells = pick.summonerSpells ?? []
@@ -63,21 +66,27 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
 }
 
 function BanList({ bans }: { bans: string[] }) {
+  const { champions } = useDdragonNames()
+
   if (bans.length === 0) {
     return <span className="text-xs text-muted-foreground">-</span>
   }
 
   return (
     <div className="flex flex-wrap gap-2">
-      {bans.map((ban, index) => (
-        <span
-          key={`${ban}-${index}`}
-          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
-        >
-          <ChampionIcon championId={ban} size="sm" />
-          {ban}
-        </span>
-      ))}
+      {bans.map((ban, index) => {
+        // 밴 챔피언명 한국어 폴백 (Rule #4)
+        const banLabel = champions.get(ban) ?? ban
+        return (
+          <span
+            key={`${ban}-${index}`}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+          >
+            <ChampionIcon championId={ban} size="sm" />
+            {banLabel}
+          </span>
+        )
+      })}
     </div>
   )
 }
