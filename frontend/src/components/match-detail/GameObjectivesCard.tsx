@@ -147,11 +147,12 @@ function DragonTypeList({ values, align }: { values: string[]; align: 'left' | '
 function DistributionChart({
   title,
   entries,
-  showPerMinute = false,
+  unit,
 }: {
   title: string
   entries: MatchExternalDetailPublicDistributionEntry[]
-  showPerMinute?: boolean
+  // 분당 값 단위 라벨 (예: "GPM", "DPM"). 없으면 분당 값 비표시
+  unit?: string
 }) {
   const positions = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
   const hasEntries = entries.some((entry) => entry.percent != null || entry.perMinute != null)
@@ -181,7 +182,7 @@ function DistributionChart({
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   {blue?.percent != null ? `${blue.percent.toFixed(1)}%` : '-'}
-                  {showPerMinute && blue?.perMinute != null ? ` · ${blue.perMinute}/분` : ''}
+                  {unit && blue?.perMinute != null ? ` · ${blue.perMinute} ${unit}` : ''}
                 </div>
               </div>
               <div>
@@ -190,7 +191,7 @@ function DistributionChart({
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   {red?.percent != null ? `${red.percent.toFixed(1)}%` : '-'}
-                  {showPerMinute && red?.perMinute != null ? ` · ${red.perMinute}/분` : ''}
+                  {unit && red?.perMinute != null ? ` · ${red.perMinute} ${unit}` : ''}
                 </div>
               </div>
             </div>
@@ -280,8 +281,8 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
 
       {(goldDistribution.length > 0 || damageDistribution.length > 0) && (
         <div className="mt-4 grid gap-3 border-t border-border pt-4 lg:grid-cols-2">
-          <DistributionChart title="골드 분배" entries={goldDistribution} />
-          <DistributionChart title="피해량 분배" entries={damageDistribution} showPerMinute />
+          <DistributionChart title="골드 분배" entries={goldDistribution} unit="GPM" />
+          <DistributionChart title="피해량 분배" entries={damageDistribution} unit="DPM" />
         </div>
       )}
 
