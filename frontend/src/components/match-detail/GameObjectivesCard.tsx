@@ -144,13 +144,25 @@ function DragonTypeList({ values, align }: { values: string[]; align: 'left' | '
   )
 }
 
+// 큰 숫자를 22.9K, 1.5M 형태로 압축 표기
+function formatCompactNumber(value: number | null | undefined): string | null {
+  if (value == null || !Number.isFinite(value)) return null
+  const abs = Math.abs(value)
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}K`
+  return String(Math.round(value))
+}
+
+// DistributionChart 항목 — 백엔드 타입 + 절대값 파생 필드
+type ChartEntry = MatchExternalDetailPublicDistributionEntry & { totalValue?: number | null }
+
 function DistributionChart({
   title,
   entries,
   unit,
 }: {
   title: string
-  entries: MatchExternalDetailPublicDistributionEntry[]
+  entries: ChartEntry[]
   // 분당 값 단위 라벨 (예: "GPM", "DPM"). 없으면 분당 값 비표시
   unit?: string
 }) {
@@ -163,6 +175,17 @@ function DistributionChart({
 
   const entryFor = (side: string, position: string) =>
     entries.find((entry) => entry.side === side && entry.position === position)
+
+  // 라벨 한 줄 합성: "19.6% · 11.8K · 336 GPM"
+  const formatLabel = (entry: ChartEntry | undefined): string => {
+    if (!entry) return '-'
+    const parts: string[] = []
+    if (entry.percent != null) parts.push(`${entry.percent.toFixed(1)}%`)
+    const compact = formatCompactNumber(entry.totalValue ?? null)
+    if (compact != null) parts.push(compact)
+    if (unit && entry.perMinute != null) parts.push(`${entry.perMinute} ${unit}`)
+    return parts.length === 0 ? '-' : parts.join(' · ')
+  }
 
   return (
     <div className="rounded border border-border p-3">
@@ -180,19 +203,13 @@ function DistributionChart({
                 <div className="h-2 overflow-hidden rounded bg-muted">
                   <div className="h-full rounded bg-blue-500" style={{ width: `${bluePercent}%` }} />
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {blue?.percent != null ? `${blue.percent.toFixed(1)}%` : '-'}
-                  {unit && blue?.perMinute != null ? ` · ${blue.perMinute} ${unit}` : ''}
-                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{formatLabel(blue)}</div>
               </div>
               <div>
                 <div className="h-2 overflow-hidden rounded bg-muted">
                   <div className="h-full rounded bg-red-500" style={{ width: `${redPercent}%` }} />
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {red?.percent != null ? `${red.percent.toFixed(1)}%` : '-'}
-                  {unit && red?.perMinute != null ? ` · ${red.perMinute} ${unit}` : ''}
-                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{formatLabel(red)}</div>
               </div>
             </div>
           )
@@ -207,16 +224,26 @@ export function GameObjectivesCard({ game, match: _match }: GameObjectivesCardPr
   const redTeamName = game.redTeamName ?? '-'
   const objectiveTimeline = game.objectiveTimeline ?? []
   // GOL.GG는 골드 분배 셀에 분당 값 tooltip을 제공하지 않음 → 팀 총 골드와 경기 시간으로 GPM 계산 보강
-  // GPM = (팀 골드 × 라인 비율%) / 경기 분
+  // 동시에 라인별 절대 골드 = 팀 골드 × 라인 비율 / 100 (차트 라벨에 K/M 압축 표시)
   const durationMin = game.durationSec != null && game.durationSec > 0 ? game.durationSec / 60 : null
-  const goldDistribution = (game.goldDistribution ?? []).map((entry) => {
-    if (entry.perMinute != null || entry.percent == null || durationMin == null) return entry
+  const goldDistribution: ChartEntry[] = (game.goldDistribution ?? []).map((entry) => {
     const teamGold = entry.side === 'BLUE' ? game.blueTeamGold : entry.side === 'RED' ? game.redTeamGold : null
-    if (teamGold == null) return entry
-    const computed = Math.round((teamGold * entry.percent) / 100 / durationMin)
-    return { ...entry, perMinute: computed }
+    const totalValue =
+      entry.percent != null && teamGold != null ? Math.round((teamGold * entry.percent) / 100) : null
+    const perMinute =
+      entry.perMinute != null
+        ? entry.perMinute
+        : totalValue != null && durationMin != null
+          ? Math.round(totalValue / durationMin)
+          : null
+    return { ...entry, perMinute, totalValue }
   })
-  const damageDistribution = game.damageDistribution ?? []
+  // 데미지: backend의 분당 데미지(DPM)와 경기 시간으로 라인 총 데미지 계산
+  const damageDistribution: ChartEntry[] = (game.damageDistribution ?? []).map((entry) => {
+    const totalValue =
+      entry.perMinute != null && durationMin != null ? Math.round(entry.perMinute * durationMin) : null
+    return { ...entry, totalValue }
+  })
   const blueMajorObjectives = sumNullable(game.blueDragons, game.blueBarons)
   const redMajorObjectives = sumNullable(game.redDragons, game.redBarons)
   const winnerLabel =
