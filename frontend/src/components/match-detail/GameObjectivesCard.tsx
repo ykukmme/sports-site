@@ -190,26 +190,36 @@ function DistributionChart({
   return (
     <div className="rounded border border-border p-3">
       <div className="mb-3 text-xs font-medium text-muted-foreground">{title}</div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {positions.map((position) => {
           const blue = entryFor('BLUE', position)
           const red = entryFor('RED', position)
           const bluePercent = Math.max(0, Math.min(100, blue?.percent ?? 0))
           const redPercent = Math.max(0, Math.min(100, red?.percent ?? 0))
           return (
-            <div key={position} className="grid grid-cols-[46px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2">
-              <div className="text-xs font-medium text-muted-foreground">{positionLabel(position)}</div>
-              <div>
-                <div className="h-2 overflow-hidden rounded bg-muted">
-                  <div className="h-full rounded bg-blue-500" style={{ width: `${bluePercent}%` }} />
+            <div key={position} className="space-y-1">
+              {/* 다이버징 막대: 블루는 가운데에서 좌측으로, 레드는 가운데에서 우측으로 자라남 */}
+              <div className="grid grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)] items-center gap-1.5">
+                <div className="relative h-2.5 overflow-hidden rounded bg-muted">
+                  <div
+                    className="absolute right-0 top-0 h-full rounded-l bg-blue-500"
+                    style={{ width: `${bluePercent}%` }}
+                  />
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">{formatLabel(blue)}</div>
+                <div className="text-center text-[11px] font-semibold text-muted-foreground">
+                  {positionLabel(position)}
+                </div>
+                <div className="relative h-2.5 overflow-hidden rounded bg-muted">
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-r bg-red-500"
+                    style={{ width: `${redPercent}%` }}
+                  />
+                </div>
               </div>
-              <div>
-                <div className="h-2 overflow-hidden rounded bg-muted">
-                  <div className="h-full rounded bg-red-500" style={{ width: `${redPercent}%` }} />
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">{formatLabel(red)}</div>
+              <div className="grid grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)] gap-1.5 text-[11px] text-muted-foreground">
+                <div className="text-right">{formatLabel(blue)}</div>
+                <div />
+                <div className="text-left">{formatLabel(red)}</div>
               </div>
             </div>
           )
