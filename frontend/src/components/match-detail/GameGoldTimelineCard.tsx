@@ -19,11 +19,11 @@ interface ObjectiveMarker {
   side: string | null
 }
 
-const CHART_WIDTH = 640
-const CHART_HEIGHT = 230
-const CHART_PADDING_X = 36
+const CHART_WIDTH = 820
+const CHART_HEIGHT = 260
+const CHART_PADDING_X = 44
 const CHART_PADDING_TOP = 56
-const CHART_PADDING_BOTTOM = 34
+const CHART_PADDING_BOTTOM = 44
 const MAX_MARKERS = 12
 const Y_TICK_COUNT = 4
 
@@ -133,6 +133,17 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
         <div>
           <div className="text-sm font-medium text-foreground">골드 타임라인</div>
           <p className="mt-1 text-xs text-muted-foreground">GOL.GG 골드 격차 그래프 기준입니다. 점을 누르면 수치가 표시됩니다.</p>
+          {/* 진영 구분 chip — 차트 내부 라벨이 x축 시간과 겹치지 않도록 헤더로 분리 */}
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              {blueTeamName}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              {redTeamName}
+            </span>
+          </div>
         </div>
         <div className="grid gap-1 text-xs text-muted-foreground sm:text-right">
           <span>
@@ -149,7 +160,7 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
           role="img"
           aria-label="골드 격차 타임라인"
-          className="h-[230px] min-w-[640px] rounded-md border border-border bg-background/40"
+          className="h-[260px] min-w-[820px] rounded-md border border-border bg-background/40"
         >
           {yTicks.map((tick) => {
             const y = yFor(tick, maxAbsDiff)
@@ -282,12 +293,6 @@ export function GameGoldTimelineCard({ game }: GameGoldTimelineCardProps) {
               </text>
             </g>
           )}
-          <text x={CHART_PADDING_X} y={CHART_PADDING_TOP + 8} className="fill-muted-foreground text-[11px]">
-            {blueTeamName}
-          </text>
-          <text x={CHART_PADDING_X} y={CHART_HEIGHT - 10} className="fill-muted-foreground text-[11px]">
-            {redTeamName}
-          </text>
           <text x={CHART_WIDTH - CHART_PADDING_X - 36} y={zeroY - 6} className="fill-muted-foreground text-[11px]">
             0
           </text>

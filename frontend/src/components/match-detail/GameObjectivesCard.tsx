@@ -190,7 +190,7 @@ function DistributionChart({
   return (
     <div className="rounded border border-border p-3">
       <div className="mb-3 text-xs font-medium text-muted-foreground">{title}</div>
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {positions.map((position) => {
           const blue = entryFor('BLUE', position)
           const red = entryFor('RED', position)

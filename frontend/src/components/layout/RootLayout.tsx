@@ -7,7 +7,7 @@ export function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
-      <main className="container mx-auto px-4 py-12 flex-1">
+      <main className="mx-auto w-full max-w-[1600px] px-4 py-12 flex-1">
         <Outlet />
       </main>
       <Footer />
