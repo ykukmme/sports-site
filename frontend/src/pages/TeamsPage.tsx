@@ -7,6 +7,7 @@ import { EmptyState } from '../components/common/EmptyState'
 export function TeamsPage() {
   const { data: teams, isLoading, error } = useTeams()
 
+  
   return (
     <div>
       <h1 className="mb-6 text-4xl font-semibold leading-tight">팀</h1>
