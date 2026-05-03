@@ -19,6 +19,7 @@ import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminMatchListPage } from './pages/admin/matches/AdminMatchListPage'
 import { AdminMatchFormPage } from './pages/admin/matches/AdminMatchFormPage'
 import { AdminMatchResultPage } from './pages/admin/matches/AdminMatchResultPage'
+import { AdminMatchOverridePage } from './pages/admin/matches/AdminMatchOverridePage'
 import { AdminTeamListPage } from './pages/admin/teams/AdminTeamListPage'
 import { AdminTeamFormPage } from './pages/admin/teams/AdminTeamFormPage'
 import { AdminPlayerListPage } from './pages/admin/players/AdminPlayerListPage'
@@ -67,6 +68,7 @@ function App() {
               <Route path="/admin/matches/new" element={<AdminMatchFormPage />} />
               <Route path="/admin/matches/:id/edit" element={<AdminMatchFormPage />} />
               <Route path="/admin/matches/:id/result" element={<AdminMatchResultPage />} />
+              <Route path="/admin/matches/:id/override" element={<AdminMatchOverridePage />} />
               <Route path="/admin/teams" element={<AdminTeamListPage />} />
               <Route path="/admin/teams/new" element={<AdminTeamFormPage />} />
               <Route path="/admin/teams/:id/edit" element={<AdminTeamFormPage />} />

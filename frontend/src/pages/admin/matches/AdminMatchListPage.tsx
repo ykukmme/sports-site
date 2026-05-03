@@ -1250,6 +1250,15 @@ export function AdminMatchListPage() {
                             결과
                           </Button>
                         )}
+                        {match.detailSummary?.sourceUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/matches/${match.id}/override`)}
+                          >
+                            보정
+                          </Button>
+                        )}
                         <Button
                           variant="destructive"
                           size="sm"

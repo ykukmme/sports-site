@@ -121,6 +121,42 @@ export interface MatchExternalDetailPublicGame {
   errorMessage: string | null
 }
 
+// 게임 보정(override) 관련 타입 — Admin 보정 폼/API 용
+export interface GameOverrideIntegerField {
+  base: number | null
+  override: number | null
+  effective: number | null
+}
+
+export interface GameOverrideView {
+  gameNo: number | null
+  durationSec: GameOverrideIntegerField
+  blueTeamGold: GameOverrideIntegerField
+  redTeamGold: GameOverrideIntegerField
+  goldDistributionOverridden: boolean
+  damageDistributionOverridden: boolean
+  note: string | null
+  updatedBy: string | null
+  updatedAt: string | null
+}
+
+export interface GameOverrideDistributionEntry {
+  side: 'BLUE' | 'RED'
+  position: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
+  percent: number
+  perMinute: number
+}
+
+// null 필드 = 변경하지 않음. 분배 빈 배열 = override 제거.
+export interface GameOverridePayload {
+  durationSec?: number | null
+  blueTeamGold?: number | null
+  redTeamGold?: number | null
+  goldDistribution?: GameOverrideDistributionEntry[] | null
+  damageDistribution?: GameOverrideDistributionEntry[] | null
+  note?: string | null
+}
+
 export interface MatchExternalDetailPublicResponse {
   available: boolean
   reason: string | null

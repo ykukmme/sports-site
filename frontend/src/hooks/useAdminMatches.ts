@@ -2,8 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchStatus } from '../types/domain'
 import type { MatchCreateFormValues, MatchResultFormValues, MatchUpdateFormValues } from '../types/adminForms'
 import { MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
+import type { GameOverridePayload } from '../types/domain'
 import {
   bindMatchExternalDetailSource,
+  clearGameOverride,
+  getGameOverride,
+  updateGameOverride,
   createGolGgTournamentSource,
   createAdminMatch,
   createMatchResult,
@@ -251,6 +255,53 @@ export function useDeleteGolGgTournamentSource() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'golgg', 'sources'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+// 게임 보정(override) 조회 — base + override 동시
+export function useGameOverride(matchId: number, gameNo: number) {
+  return useQuery({
+    queryKey: ['admin', 'matches', matchId, 'games', gameNo, 'override'],
+    queryFn: () => getGameOverride(matchId, gameNo),
+    enabled: matchId > 0 && gameNo > 0,
+    staleTime: 10_000,
+  })
+}
+
+// 게임 보정 적용. 성공 시 override + 공개 detail 캐시 무효화.
+export function useUpdateGameOverride() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      matchId,
+      gameNo,
+      payload,
+    }: {
+      matchId: number
+      gameNo: number
+      payload: GameOverridePayload
+    }) => updateGameOverride(matchId, gameNo, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'matches', variables.matchId, 'games', variables.gameNo, 'override'],
+      })
+      queryClient.invalidateQueries({ queryKey: ['matches', variables.matchId, 'detail'] })
+    },
+  })
+}
+
+// 게임 보정 전체 초기화.
+export function useClearGameOverride() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ matchId, gameNo }: { matchId: number; gameNo: number }) =>
+      clearGameOverride(matchId, gameNo),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'matches', variables.matchId, 'games', variables.gameNo, 'override'],
+      })
+      queryClient.invalidateQueries({ queryKey: ['matches', variables.matchId, 'detail'] })
     },
   })
 }

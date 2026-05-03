@@ -21,6 +21,8 @@ import type {
   PandaScoreMatchResultSyncResponse,
   PandaScoreMatchPreviewType,
   PandaScoreTeamImportResponse,
+  GameOverrideView,
+  GameOverridePayload,
 } from '../types/domain'
 import type {
   MatchCreateFormValues,
@@ -388,6 +390,35 @@ export async function deleteGolGgTournamentSourcesBulk(
     { data: { ids } },
   )
   return res.data.data!
+}
+
+// 게임 보정(override) — base + override 조회
+export async function getGameOverride(
+  matchId: number,
+  gameNo: number,
+): Promise<GameOverrideView> {
+  const res = await apiClient.get<ApiResponse<GameOverrideView>>(
+    `/api/admin/matches/${matchId}/games/${gameNo}/override`,
+  )
+  return res.data.data!
+}
+
+// 게임 보정 적용 — null 필드는 변경 없음, 빈 분배 배열은 clear
+export async function updateGameOverride(
+  matchId: number,
+  gameNo: number,
+  payload: GameOverridePayload,
+): Promise<GameOverrideView> {
+  const res = await apiClient.put<ApiResponse<GameOverrideView>>(
+    `/api/admin/matches/${matchId}/games/${gameNo}/override`,
+    payload,
+  )
+  return res.data.data!
+}
+
+// 게임 보정 전체 초기화
+export async function clearGameOverride(matchId: number, gameNo: number): Promise<void> {
+  await apiClient.delete(`/api/admin/matches/${matchId}/games/${gameNo}/override`)
 }
 
 export async function importPandaScoreTeams(
