@@ -6,8 +6,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 // 공개 매치 상세 조회.
 // 컨트롤러는 매치 존재 여부를 별도로 확인(404)하고, detail 변환만 이 서비스에 위임한다.
@@ -17,9 +20,12 @@ import java.util.Optional;
 public class MatchPublicDetailService {
 
     private final MatchExternalDetailRepository detailRepository;
+    private final GameOverrideRepository gameOverrideRepository;
 
-    public MatchPublicDetailService(MatchExternalDetailRepository detailRepository) {
+    public MatchPublicDetailService(MatchExternalDetailRepository detailRepository,
+                                    GameOverrideRepository gameOverrideRepository) {
         this.detailRepository = detailRepository;
+        this.gameOverrideRepository = gameOverrideRepository;
     }
 
     public Optional<MatchExternalDetailPublicResponse> findByMatchId(Long matchId) {
@@ -37,13 +43,23 @@ public class MatchPublicDetailService {
             );
         }
 
+        // 매치 단위로 override 한 번에 batch fetch (N+1 방지)
+        List<Long> gameIds = detail.getGames().stream()
+                .map(MatchExternalDetailGame::getId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        Map<Long, GameOverride> overrideByGameId = gameIds.isEmpty()
+                ? new HashMap<>()
+                : gameOverrideRepository.findByGameIdIn(gameIds).stream()
+                        .collect(Collectors.toMap(o -> o.getGame().getId(), o -> o, (a, b) -> a));
+
         // game_no 오름차순 — JPA @OrderBy 없으므로 명시적 정렬
         List<MatchExternalDetailPublicResponse.PublicGame> games = detail.getGames().stream()
                 .sorted(Comparator.comparing(
                         MatchExternalDetailGame::getGameNo,
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
-                .map(this::toPublicGame)
+                .map(g -> toPublicGame(g, overrideByGameId.get(g.getId())))
                 .toList();
 
         return new MatchExternalDetailPublicResponse(
@@ -58,10 +74,17 @@ public class MatchPublicDetailService {
         );
     }
 
-    private MatchExternalDetailPublicResponse.PublicGame toPublicGame(MatchExternalDetailGame game) {
+    // override 가 null 이면 base 값 그대로 사용. 필드별 coalesce 머지.
+    private MatchExternalDetailPublicResponse.PublicGame toPublicGame(MatchExternalDetailGame game, GameOverride override) {
+        Integer durationSec = mergeInteger(game.getDurationSec(), override != null ? override.getDurationSec() : null);
+        Integer blueTeamGold = mergeInteger(game.getBlueTeamGold(), override != null ? override.getBlueTeamGold() : null);
+        Integer redTeamGold = mergeInteger(game.getRedTeamGold(), override != null ? override.getRedTeamGold() : null);
+        JsonNode goldDistOverride = override != null ? override.getGoldDistributionJson() : null;
+        JsonNode dmgDistOverride = override != null ? override.getDamageDistributionJson() : null;
+
         return new MatchExternalDetailPublicResponse.PublicGame(
                 game.getGameNo(),
-                game.getDurationSec(),
+                durationSec,
                 game.getWinnerSide() != null ? game.getWinnerSide().name() : null,
                 game.getBlueTeamName(),
                 game.getRedTeamName(),
@@ -75,8 +98,8 @@ public class MatchPublicDetailService {
                 game.getRedBarons(),
                 game.getBlueTowers(),
                 game.getRedTowers(),
-                game.getBlueTeamGold(),
-                game.getRedTeamGold(),
+                blueTeamGold,
+                redTeamGold,
                 game.getFirstBloodSide() != null ? game.getFirstBloodSide().name() : null,
                 game.getFirstTowerSide() != null ? game.getFirstTowerSide().name() : null,
                 stringsFromJson(game.getBlueDragonTypesJson()),
@@ -89,10 +112,39 @@ public class MatchPublicDetailService {
                 integerOrNull(game.getGoldTimelineJson(), "bluePlates"),
                 integerOrNull(game.getGoldTimelineJson(), "redPlates"),
                 goldTimelineFromJson(game.getGoldTimelineJson()),
-                distributionFromJson(game.getGoldTimelineJson(), "goldDistribution"),
-                distributionFromJson(game.getGoldTimelineJson(), "damageDistribution"),
+                distributionWithOverride(game.getGoldTimelineJson(), "goldDistribution", goldDistOverride),
+                distributionWithOverride(game.getGoldTimelineJson(), "damageDistribution", dmgDistOverride),
                 game.getErrorMessage()
         );
+    }
+
+    private Integer mergeInteger(Integer base, Integer override) {
+        return override != null ? override : base;
+    }
+
+    // override 배열이 있으면 그것을, 없으면 base 의 fieldName 키 아래 배열을 사용.
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithOverride(
+            JsonNode baseGoldTimeline, String fieldName, JsonNode overrideArray) {
+        if (overrideArray != null && overrideArray.isArray()) {
+            return distributionFromArray(overrideArray);
+        }
+        return distributionFromJson(baseGoldTimeline, fieldName);
+    }
+
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionFromArray(JsonNode array) {
+        List<MatchExternalDetailPublicResponse.PublicDistributionEntry> list = new ArrayList<>();
+        array.forEach(item -> {
+            if (item == null || !item.isObject()) {
+                return;
+            }
+            list.add(new MatchExternalDetailPublicResponse.PublicDistributionEntry(
+                    textOrNull(item.get("side")),
+                    textOrNull(item.get("position")),
+                    doubleOrNull(item.get("percent")),
+                    integerOrNull(item.get("perMinute"))
+            ));
+        });
+        return List.copyOf(list);
     }
 
     // JSON 배열 → 챔피언 ID 문자열 리스트. 배열이 아니거나 null이면 빈 리스트.
