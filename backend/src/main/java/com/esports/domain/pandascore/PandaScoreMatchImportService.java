@@ -225,7 +225,12 @@ public class PandaScoreMatchImportService {
                 ));
     }
 
+    // PandaScore 매핑 정정: tournament_name 에는 리그명(예: LCK, Worlds), stage 에는 단계(예: Spring Season, Playoffs).
+    // 이전에는 두 필드 의미가 뒤바뀌어 있었음.
     private String safeTournamentName(PandaScoreMatchPreviewResponse preview) {
+        if (preview.leagueName() != null && !preview.leagueName().isBlank()) {
+            return preview.leagueName().trim();
+        }
         if (preview.tournamentName() != null && !preview.tournamentName().isBlank()) {
             return preview.tournamentName().trim();
         }
@@ -233,8 +238,8 @@ public class PandaScoreMatchImportService {
     }
 
     private String safeStage(PandaScoreMatchPreviewResponse preview) {
-        if (preview.leagueName() != null && !preview.leagueName().isBlank()) {
-            return preview.leagueName().trim();
+        if (preview.tournamentName() != null && !preview.tournamentName().isBlank()) {
+            return preview.tournamentName().trim();
         }
         return null;
     }

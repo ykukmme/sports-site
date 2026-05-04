@@ -163,7 +163,9 @@ class PandaScoreMatchImportServiceTest {
         ArgumentCaptor<Match> captor = ArgumentCaptor.forClass(Match.class);
         verify(matchRepository).save(captor.capture());
         assertThat(captor.getValue().getInternationalCompetitionCode()).isEqualTo("INTERNATIONAL_FIRST_STAND");
-        assertThat(captor.getValue().getStage()).isEqualTo("FIRST STAND");
+        // 매핑 정정: tournament_name = leagueName(리그/대회명), stage = tournamentName(단계).
+        assertThat(captor.getValue().getTournamentName()).isEqualTo("FIRST STAND");
+        assertThat(captor.getValue().getStage()).isEqualTo("LCK Spring");
     }
 
     private PandaScoreMatchPreviewResponse preview(String externalId,
