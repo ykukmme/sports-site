@@ -64,7 +64,7 @@ public class PandaScoreMatchResultSyncService {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BusinessException(
                     "PANDASCORE_NOT_CONFIGURED",
-                    "PandaScore API ?ㅺ? ?ㅼ젙?섏뼱 ?덉? ?딆뒿?덈떎.",
+                    "PandaScore API 키가 설정되어 있지 않습니다.",
                     HttpStatus.BAD_REQUEST
             );
         }
@@ -75,7 +75,7 @@ public class PandaScoreMatchResultSyncService {
         } catch (RestClientException e) {
             throw new BusinessException(
                     "PANDASCORE_RESULT_FETCH_FAILED",
-                    "PandaScore API?먯꽌 ?꾨즺 寃쎄린 寃곌낵瑜?媛?몄삤吏 紐삵뻽?듬땲??",
+                    "PandaScore API에서 완료 경기 결과를 가져오지 못했습니다.",
                     HttpStatus.BAD_GATEWAY
             );
         }
@@ -106,7 +106,7 @@ public class PandaScoreMatchResultSyncService {
                         null,
                         PandaScoreImportResultStatus.SKIPPED,
                         null,
-                        "PandaScore 寃쎄린 ID媛 ?놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎."
+                        "PandaScore 경기 ID가 없어 결과를 동기화할 수 없습니다."
                 ));
                 continue;
             }
@@ -127,7 +127,7 @@ public class PandaScoreMatchResultSyncService {
                         externalId,
                         PandaScoreImportResultStatus.SKIPPED,
                         null,
-                        "癒쇱? 寃쎄린 ??μ쓣 ?댁빞 寃곌낵瑜??곌껐?????덉뒿?덈떎."
+                        "먼저 경기 등록을 해야 결과를 연결할 수 있습니다."
                 ));
                 continue;
             }
@@ -160,7 +160,7 @@ public class PandaScoreMatchResultSyncService {
                         externalId,
                         PandaScoreImportResultStatus.SKIPPED,
                         match.getId(),
-                        "? ?먯닔 ?먮뒗 ?뱀옄 ?뺣낫瑜??꾩옱 寃쎄린? ?곌껐?????놁뒿?덈떎."
+                        "팀 점수 또는 승자 정보를 현재 경기와 연결할 수 없습니다."
                 ));
                 continue;
             }
@@ -178,7 +178,7 @@ public class PandaScoreMatchResultSyncService {
                     externalId,
                     PandaScoreImportResultStatus.CREATED,
                     match.getId(),
-                    "?꾨즺 寃쎄린 寃곌낵瑜???ν뻽?듬땲??"
+                    "완료 경기 결과를 저장했습니다."
             ));
         }
 
@@ -272,17 +272,17 @@ public class PandaScoreMatchResultSyncService {
         if (match.status() == null
                 || (!"finished".equalsIgnoreCase(match.status())
                 && !"completed".equalsIgnoreCase(match.status()))) {
-            return "?꾨즺 寃쎄린 ?곹깭媛 ?꾨땲?댁꽌 寃곌낵 ?숆린?붾? 嫄대꼫?곷땲??";
+            return "완료 경기 상태가 아니어서 결과 동기화를 건너뜁니다.";
         }
         if (match.results() == null || match.results().size() < 2) {
-            return "? ?먯닔 ?뺣낫媛 ?놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎.";
+            return "팀 점수 정보가 없어 결과를 동기화할 수 없습니다.";
         }
         if (match.winnerId() == null) {
-            return "?뱀옄 ?뺣낫媛 ?놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎.";
+            return "승자 정보가 없어 결과를 동기화할 수 없습니다.";
         }
         OffsetDateTime playedAt = parseDateTime(firstNonBlank(match.endAt(), match.beginAt(), match.scheduledAt()));
         if (playedAt == null) {
-            return "寃쎄린 醫낅즺 ?쒓컙???놁뼱 寃곌낵瑜??숆린?뷀븷 ???놁뒿?덈떎.";
+            return "경기 종료 시간이 없어 결과를 동기화할 수 없습니다.";
         }
         return null;
     }
