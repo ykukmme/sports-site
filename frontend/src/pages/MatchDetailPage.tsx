@@ -103,15 +103,15 @@ export function MatchDetailPage() {
             {activeGame && (
               <div className="mt-4">
                 {activeGame.errorMessage && <PartialFailureNotice message={activeGame.errorMessage} />}
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-                  <div className="grid gap-3">
+                <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+                  <div className="grid min-w-0 grid-cols-1 gap-3">
                     <GameObjectivesCard game={activeGame} match={match} />
                   </div>
-                  <div className="grid gap-3">
+                  <div className="grid min-w-0 grid-cols-1 gap-3">
                     <GameGoldTimelineCard game={activeGame} />
                   </div>
                 </div>
-                <div className="mt-3">
+                <div className="mt-3 min-w-0">
                   <GameDraftCard game={activeGame} match={match} />
                 </div>
               </div>
