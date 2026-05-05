@@ -666,7 +666,7 @@ public class GolGgClient {
                 continue;
             }
             String label = cleanText(cells.get(0).text());
-            if (!Set.of("GD@15", "CSD@15", "XPD@15").contains(label)) {
+            if (label == null || !Set.of("GD@15", "CSD@15", "XPD@15").contains(label)) {
                 continue;
             }
             List<Integer> values = new ArrayList<>();
