@@ -267,6 +267,13 @@ public class GolGgClient {
         return properties.getBaseUrl() + "/game/stats/" + providerGameId.trim() + "/page-game/";
     }
 
+    public String buildGameFullStatsUrl(String providerGameId) {
+        if (providerGameId == null || providerGameId.isBlank()) {
+            throw new IllegalArgumentException("providerGameId is required");
+        }
+        return properties.getBaseUrl() + "/game/stats/" + providerGameId.trim() + "/page-fullstats/";
+    }
+
     // 단일 게임의 stats(드래프트, 킬, 오브젝트 등)를 page-game URL에서 가져온다.
     // 실제 HTML selector 파싱은 T-1.2에서 fixture 확보 후 parseGameStatsHtml에 채워 넣는다.
     public GolGgParsedGameStats fetchGameStats(String providerGameId) {
@@ -276,7 +283,9 @@ public class GolGgClient {
         String trimmedId = providerGameId.trim();
         String url = buildGameDetailUrl(trimmedId);
         String html = fetchHtml(url);
-        return parseGameStatsHtml(trimmedId, url, html);
+        GolGgParsedGameStats stats = parseGameStatsHtml(trimmedId, url, html);
+        String fullStatsHtml = tryFetchHtml(buildGameFullStatsUrl(trimmedId));
+        return fullStatsHtml == null ? stats : enrichLaningStats(stats, fullStatsHtml);
     }
 
     // page-game HTML에서 게임 stats를 추출한다 (Jsoup 기반).
@@ -599,6 +608,117 @@ public class GolGgClient {
             ));
         }
         return List.copyOf(picks);
+    }
+
+    private GolGgParsedGameStats enrichLaningStats(GolGgParsedGameStats stats, String html) {
+        Map<String, LaningAt15Stats> values = extractLaningAt15Stats(html);
+        if (values.isEmpty()) {
+            return stats;
+        }
+        return new GolGgParsedGameStats(
+                stats.providerGameId(),
+                stats.sourceUrl(),
+                stats.durationSec(),
+                stats.winnerSide(),
+                stats.blueTeamName(),
+                stats.redTeamName(),
+                stats.blueKills(),
+                stats.redKills(),
+                stats.blueDragons(),
+                stats.redDragons(),
+                stats.blueBarons(),
+                stats.redBarons(),
+                stats.blueTowers(),
+                stats.redTowers(),
+                stats.blueTeamGold(),
+                stats.redTeamGold(),
+                stats.firstBloodSide(),
+                stats.firstTowerSide(),
+                stats.blueDragonTypes(),
+                stats.redDragonTypes(),
+                stats.blueBans(),
+                stats.redBans(),
+                applyLaningStats(stats.bluePicks(), ExternalDetailWinnerSide.BLUE, values),
+                applyLaningStats(stats.redPicks(), ExternalDetailWinnerSide.RED, values),
+                stats.objectiveTimeline(),
+                stats.bluePlates(),
+                stats.redPlates(),
+                stats.goldDistribution(),
+                stats.damageDistribution(),
+                stats.goldTimeline()
+        );
+    }
+
+    private Map<String, LaningAt15Stats> extractLaningAt15Stats(String html) {
+        if (html == null || html.isBlank()) {
+            return Map.of();
+        }
+        Document doc;
+        try {
+            doc = Jsoup.parse(html);
+        } catch (RuntimeException ex) {
+            return Map.of();
+        }
+        Map<String, List<Integer>> rows = new LinkedHashMap<>();
+        for (Element row : doc.select("tr")) {
+            Elements cells = row.select("> th, > td");
+            if (cells.size() < 11) {
+                continue;
+            }
+            String label = cleanText(cells.get(0).text());
+            if (!Set.of("GD@15", "CSD@15", "XPD@15").contains(label)) {
+                continue;
+            }
+            List<Integer> values = new ArrayList<>();
+            for (int i = 1; i < cells.size() && values.size() < ROLE_ORDER.size() * 2; i++) {
+                values.add(parseSignedInteger(cells.get(i).text()));
+            }
+            if (values.size() == ROLE_ORDER.size() * 2) {
+                rows.put(label, values);
+            }
+        }
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, LaningAt15Stats> result = new LinkedHashMap<>();
+        for (int i = 0; i < ROLE_ORDER.size(); i++) {
+            String position = ROLE_ORDER.get(i);
+            result.put(laningStatsKey(ExternalDetailWinnerSide.BLUE, position), new LaningAt15Stats(
+                    valueAt(rows.get("GD@15"), i),
+                    valueAt(rows.get("XPD@15"), i),
+                    valueAt(rows.get("CSD@15"), i)
+            ));
+            int redIndex = i + ROLE_ORDER.size();
+            result.put(laningStatsKey(ExternalDetailWinnerSide.RED, position), new LaningAt15Stats(
+                    valueAt(rows.get("GD@15"), redIndex),
+                    valueAt(rows.get("XPD@15"), redIndex),
+                    valueAt(rows.get("CSD@15"), redIndex)
+            ));
+        }
+        return result;
+    }
+
+    private List<GolGgPickEntry> applyLaningStats(List<GolGgPickEntry> picks,
+                                                  ExternalDetailWinnerSide side,
+                                                  Map<String, LaningAt15Stats> statsByKey) {
+        if (picks == null || picks.isEmpty()) {
+            return List.of();
+        }
+        List<GolGgPickEntry> result = new ArrayList<>(picks.size());
+        for (GolGgPickEntry pick : picks) {
+            LaningAt15Stats stats = statsByKey.get(laningStatsKey(side, pick.position()));
+            result.add(stats == null ? pick : pick.withLaningAt15(stats));
+        }
+        return List.copyOf(result);
+    }
+
+    private String laningStatsKey(ExternalDetailWinnerSide side, String position) {
+        return (side == null ? "" : side.name()) + ":" + (position == null ? "" : position.toUpperCase(Locale.ROOT));
+    }
+
+    private Integer valueAt(List<Integer> values, int index) {
+        return values != null && index >= 0 && index < values.size() ? values.get(index) : null;
     }
 
     private List<GolGgObjectiveEvent> extractObjectiveTimeline(Document doc) {
@@ -1005,7 +1125,23 @@ public class GolGgClient {
         return null;
     }
 
+    private Integer parseSignedInteger(String text) {
+        if (text == null) {
+            return null;
+        }
+        Matcher m = SIGNED_INTEGER_PATTERN.matcher(text.replace('\u2212', '-'));
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     private static final Pattern LEADING_INTEGER_PATTERN = Pattern.compile("(\\d+)");
+    private static final Pattern SIGNED_INTEGER_PATTERN = Pattern.compile("(-?\\d+)");
 
     // 단일 사이드의 임시 보관용 — record로 둘 만큼 외부 노출 가치 없음.
     private record SideStats(
@@ -1858,10 +1994,13 @@ public class GolGgClient {
             Integer assists,
             Integer cs,
             List<String> summonerSpells,
-            List<String> items
+            List<String> items,
+            Integer gd15,
+            Integer xpd15,
+            Integer csd15
     ) {
         public GolGgPickEntry(String championId, String playerName, String position) {
-            this(championId, playerName, position, null, null, null, null, List.of(), List.of());
+            this(championId, playerName, position, null, null, null, null, List.of(), List.of(), null, null, null);
         }
 
         public GolGgPickEntry(String championId,
@@ -1871,8 +2010,44 @@ public class GolGgClient {
                               Integer deaths,
                               Integer assists,
                               Integer cs) {
-            this(championId, playerName, position, kills, deaths, assists, cs, List.of(), List.of());
+            this(championId, playerName, position, kills, deaths, assists, cs, List.of(), List.of(), null, null, null);
         }
+
+        public GolGgPickEntry(String championId,
+                              String playerName,
+                              String position,
+                              Integer kills,
+                              Integer deaths,
+                              Integer assists,
+                              Integer cs,
+                              List<String> summonerSpells,
+                              List<String> items) {
+            this(championId, playerName, position, kills, deaths, assists, cs, summonerSpells, items, null, null, null);
+        }
+
+        GolGgPickEntry withLaningAt15(LaningAt15Stats stats) {
+            return new GolGgPickEntry(
+                    championId,
+                    playerName,
+                    position,
+                    kills,
+                    deaths,
+                    assists,
+                    cs,
+                    summonerSpells,
+                    items,
+                    stats.gd15(),
+                    stats.xpd15(),
+                    stats.csd15()
+            );
+        }
+    }
+
+    private record LaningAt15Stats(
+            Integer gd15,
+            Integer xpd15,
+            Integer csd15
+    ) {
     }
 
     private record PlayerLineStats(

@@ -816,6 +816,9 @@ public class GolDetailEnrichmentService {
             node.put("deaths", pick.deaths());
             node.put("assists", pick.assists());
             node.put("cs", pick.cs());
+            node.put("gd15", pick.gd15());
+            node.put("xpd15", pick.xpd15());
+            node.put("csd15", pick.csd15());
             node.set("summonerSpells", stringListToJson(pick.summonerSpells()));
             node.set("items", stringListToJson(pick.items()));
             array.add(node);

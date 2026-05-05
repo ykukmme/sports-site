@@ -61,6 +61,9 @@ export interface MatchExternalDetailPublicPick {
   deaths: number | null
   assists: number | null
   cs: number | null
+  gd15: number | null
+  xpd15: number | null
+  csd15: number | null
   summonerSpells: string[]
   items: string[]
 }

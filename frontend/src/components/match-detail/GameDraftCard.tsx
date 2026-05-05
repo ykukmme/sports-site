@@ -30,6 +30,7 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
       ? '-'
       : `${pick.kills}/${pick.deaths}/${pick.assists}`
   const cs = pick.cs == null ? '-' : String(pick.cs)
+  const hasLaningAt15 = pick.gd15 != null || pick.xpd15 != null || pick.csd15 != null
 
   return (
     <div className="grid grid-cols-[52px_1fr] items-start gap-2 rounded-md border border-border bg-background/40 px-3 py-3 text-sm sm:grid-cols-[64px_1fr_64px_48px] sm:items-center sm:py-2">
@@ -50,6 +51,19 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
             {items.map((item, index) => (
               <DdragonAssetIcon key={`item-${item}-${index}`} id={item} type="item" />
             ))}
+          </div>
+        )}
+        {hasLaningAt15 && (
+          <div className="mt-2 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+            {pick.gd15 != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">GD15 {pick.gd15 > 0 ? '+' : ''}{pick.gd15}</span>
+            )}
+            {pick.xpd15 != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">XPD15 {pick.xpd15 > 0 ? '+' : ''}{pick.xpd15}</span>
+            )}
+            {pick.csd15 != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">CSD15 {pick.csd15 > 0 ? '+' : ''}{pick.csd15}</span>
+            )}
           </div>
         )}
       </div>

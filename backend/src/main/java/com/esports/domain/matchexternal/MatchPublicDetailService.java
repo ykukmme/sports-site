@@ -249,6 +249,9 @@ public class MatchPublicDetailService {
                     integerOrNull(item.get("deaths")),
                     integerOrNull(item.get("assists")),
                     integerOrNull(item.get("cs")),
+                    integerOrNull(item.get("gd15")),
+                    integerOrNull(item.get("xpd15")),
+                    integerOrNull(item.get("csd15")),
                     stringListFromJson(item.get("summonerSpells")),
                     stringListFromJson(item.get("items"))
             ));
