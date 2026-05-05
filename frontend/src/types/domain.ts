@@ -64,6 +64,15 @@ export interface MatchExternalDetailPublicPick {
   gd15: number | null
   xpd15: number | null
   csd15: number | null
+  visionScore: number | null
+  wardsPlaced: number | null
+  wardsDestroyed: number | null
+  controlWardsPurchased: number | null
+  detectorWardsPlaced: number | null
+  vspm: number | null
+  wpm: number | null
+  vwpm: number | null
+  wcpm: number | null
   summonerSpells: string[]
   items: string[]
 }

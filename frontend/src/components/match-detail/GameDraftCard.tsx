@@ -31,6 +31,13 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
       : `${pick.kills}/${pick.deaths}/${pick.assists}`
   const cs = pick.cs == null ? '-' : String(pick.cs)
   const hasLaningAt15 = pick.gd15 != null || pick.xpd15 != null || pick.csd15 != null
+  const hasVisionStats =
+    pick.visionScore != null ||
+    pick.wardsPlaced != null ||
+    pick.wardsDestroyed != null ||
+    pick.controlWardsPurchased != null ||
+    pick.vspm != null ||
+    pick.wcpm != null
 
   return (
     <div className="grid grid-cols-[52px_1fr] items-start gap-2 rounded-md border border-border bg-background/40 px-3 py-3 text-sm sm:grid-cols-[64px_1fr_64px_48px] sm:items-center sm:py-2">
@@ -63,6 +70,30 @@ function PickRow({ pick }: { pick: MatchExternalDetailPublicPick }) {
             )}
             {pick.csd15 != null && (
               <span className="rounded-md border border-border px-1.5 py-0.5">CSD15 {pick.csd15 > 0 ? '+' : ''}{pick.csd15}</span>
+            )}
+          </div>
+        )}
+        {hasVisionStats && (
+          <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+            {pick.visionScore != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">VS {pick.visionScore}</span>
+            )}
+            {(pick.wardsPlaced != null || pick.wardsDestroyed != null) && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">
+                Ward {pick.wardsPlaced ?? '-'} / {pick.wardsDestroyed ?? '-'}
+              </span>
+            )}
+            {pick.controlWardsPurchased != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">CW {pick.controlWardsPurchased}</span>
+            )}
+            {pick.detectorWardsPlaced != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">Detector {pick.detectorWardsPlaced}</span>
+            )}
+            {pick.vspm != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">VSPM {pick.vspm}</span>
+            )}
+            {pick.wcpm != null && (
+              <span className="rounded-md border border-border px-1.5 py-0.5">WCPM {pick.wcpm}</span>
             )}
           </div>
         )}

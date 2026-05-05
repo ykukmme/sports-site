@@ -819,6 +819,15 @@ public class GolDetailEnrichmentService {
             node.put("gd15", pick.gd15());
             node.put("xpd15", pick.xpd15());
             node.put("csd15", pick.csd15());
+            node.put("visionScore", pick.visionScore());
+            node.put("wardsPlaced", pick.wardsPlaced());
+            node.put("wardsDestroyed", pick.wardsDestroyed());
+            node.put("controlWardsPurchased", pick.controlWardsPurchased());
+            node.put("detectorWardsPlaced", pick.detectorWardsPlaced());
+            node.put("vspm", pick.vspm());
+            node.put("wpm", pick.wpm());
+            node.put("vwpm", pick.vwpm());
+            node.put("wcpm", pick.wcpm());
             node.set("summonerSpells", stringListToJson(pick.summonerSpells()));
             node.set("items", stringListToJson(pick.items()));
             array.add(node);

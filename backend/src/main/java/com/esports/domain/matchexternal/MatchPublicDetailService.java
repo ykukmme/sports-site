@@ -252,6 +252,15 @@ public class MatchPublicDetailService {
                     integerOrNull(item.get("gd15")),
                     integerOrNull(item.get("xpd15")),
                     integerOrNull(item.get("csd15")),
+                    integerOrNull(item.get("visionScore")),
+                    integerOrNull(item.get("wardsPlaced")),
+                    integerOrNull(item.get("wardsDestroyed")),
+                    integerOrNull(item.get("controlWardsPurchased")),
+                    integerOrNull(item.get("detectorWardsPlaced")),
+                    doubleOrNull(item.get("vspm")),
+                    doubleOrNull(item.get("wpm")),
+                    doubleOrNull(item.get("vwpm")),
+                    doubleOrNull(item.get("wcpm")),
                     stringListFromJson(item.get("summonerSpells")),
                     stringListFromJson(item.get("items"))
             ));

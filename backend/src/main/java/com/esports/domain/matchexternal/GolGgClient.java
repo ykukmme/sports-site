@@ -659,19 +659,32 @@ public class GolGgClient {
         } catch (RuntimeException ex) {
             return Map.of();
         }
-        Map<String, List<Integer>> rows = new LinkedHashMap<>();
+        Map<String, List<String>> rows = new LinkedHashMap<>();
         for (Element row : doc.select("tr")) {
             Elements cells = row.select("> th, > td");
             if (cells.size() < 11) {
                 continue;
             }
             String label = cleanText(cells.get(0).text());
-            if (label == null || !Set.of("GD@15", "CSD@15", "XPD@15").contains(label)) {
+            if (label == null || !Set.of(
+                    "GD@15",
+                    "CSD@15",
+                    "XPD@15",
+                    "Vision Score",
+                    "Wards placed",
+                    "Wards destroyed",
+                    "Control Wards Purchased",
+                    "Detector Wards Placed",
+                    "VSPM",
+                    "WPM",
+                    "VWPM",
+                    "WCPM"
+            ).contains(label)) {
                 continue;
             }
-            List<Integer> values = new ArrayList<>();
+            List<String> values = new ArrayList<>();
             for (int i = 1; i < cells.size() && values.size() < ROLE_ORDER.size() * 2; i++) {
-                values.add(parseSignedInteger(cells.get(i).text()));
+                values.add(cleanText(cells.get(i).text()));
             }
             if (values.size() == ROLE_ORDER.size() * 2) {
                 rows.put(label, values);
@@ -685,15 +698,33 @@ public class GolGgClient {
         for (int i = 0; i < ROLE_ORDER.size(); i++) {
             String position = ROLE_ORDER.get(i);
             result.put(laningStatsKey(ExternalDetailWinnerSide.BLUE, position), new LaningAt15Stats(
-                    valueAt(rows.get("GD@15"), i),
-                    valueAt(rows.get("XPD@15"), i),
-                    valueAt(rows.get("CSD@15"), i)
+                    intValueAt(rows.get("GD@15"), i),
+                    intValueAt(rows.get("XPD@15"), i),
+                    intValueAt(rows.get("CSD@15"), i),
+                    intValueAt(rows.get("Vision Score"), i),
+                    intValueAt(rows.get("Wards placed"), i),
+                    intValueAt(rows.get("Wards destroyed"), i),
+                    intValueAt(rows.get("Control Wards Purchased"), i),
+                    intValueAt(rows.get("Detector Wards Placed"), i),
+                    doubleValueAt(rows.get("VSPM"), i),
+                    doubleValueAt(rows.get("WPM"), i),
+                    doubleValueAt(rows.get("VWPM"), i),
+                    doubleValueAt(rows.get("WCPM"), i)
             ));
             int redIndex = i + ROLE_ORDER.size();
             result.put(laningStatsKey(ExternalDetailWinnerSide.RED, position), new LaningAt15Stats(
-                    valueAt(rows.get("GD@15"), redIndex),
-                    valueAt(rows.get("XPD@15"), redIndex),
-                    valueAt(rows.get("CSD@15"), redIndex)
+                    intValueAt(rows.get("GD@15"), redIndex),
+                    intValueAt(rows.get("XPD@15"), redIndex),
+                    intValueAt(rows.get("CSD@15"), redIndex),
+                    intValueAt(rows.get("Vision Score"), redIndex),
+                    intValueAt(rows.get("Wards placed"), redIndex),
+                    intValueAt(rows.get("Wards destroyed"), redIndex),
+                    intValueAt(rows.get("Control Wards Purchased"), redIndex),
+                    intValueAt(rows.get("Detector Wards Placed"), redIndex),
+                    doubleValueAt(rows.get("VSPM"), redIndex),
+                    doubleValueAt(rows.get("WPM"), redIndex),
+                    doubleValueAt(rows.get("VWPM"), redIndex),
+                    doubleValueAt(rows.get("WCPM"), redIndex)
             ));
         }
         return result;
@@ -717,8 +748,12 @@ public class GolGgClient {
         return (side == null ? "" : side.name()) + ":" + (position == null ? "" : position.toUpperCase(Locale.ROOT));
     }
 
-    private Integer valueAt(List<Integer> values, int index) {
-        return values != null && index >= 0 && index < values.size() ? values.get(index) : null;
+    private Integer intValueAt(List<String> values, int index) {
+        return values != null && index >= 0 && index < values.size() ? parseSignedInteger(values.get(index)) : null;
+    }
+
+    private Double doubleValueAt(List<String> values, int index) {
+        return values != null && index >= 0 && index < values.size() ? parseDecimal(values.get(index)) : null;
     }
 
     private List<GolGgObjectiveEvent> extractObjectiveTimeline(Document doc) {
@@ -1140,8 +1175,24 @@ public class GolGgClient {
         return null;
     }
 
+    private Double parseDecimal(String text) {
+        if (text == null) {
+            return null;
+        }
+        Matcher m = DECIMAL_PATTERN.matcher(text.replace('\u2212', '-'));
+        if (m.find()) {
+            try {
+                return Double.parseDouble(m.group(1));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     private static final Pattern LEADING_INTEGER_PATTERN = Pattern.compile("(\\d+)");
     private static final Pattern SIGNED_INTEGER_PATTERN = Pattern.compile("(-?\\d+)");
+    private static final Pattern DECIMAL_PATTERN = Pattern.compile("(-?\\d+(?:\\.\\d+)?)");
 
     // 단일 사이드의 임시 보관용 — record로 둘 만큼 외부 노출 가치 없음.
     private record SideStats(
@@ -1997,10 +2048,20 @@ public class GolGgClient {
             List<String> items,
             Integer gd15,
             Integer xpd15,
-            Integer csd15
+            Integer csd15,
+            Integer visionScore,
+            Integer wardsPlaced,
+            Integer wardsDestroyed,
+            Integer controlWardsPurchased,
+            Integer detectorWardsPlaced,
+            Double vspm,
+            Double wpm,
+            Double vwpm,
+            Double wcpm
     ) {
         public GolGgPickEntry(String championId, String playerName, String position) {
-            this(championId, playerName, position, null, null, null, null, List.of(), List.of(), null, null, null);
+            this(championId, playerName, position, null, null, null, null, List.of(), List.of(), null, null, null,
+                    null, null, null, null, null, null, null, null, null);
         }
 
         public GolGgPickEntry(String championId,
@@ -2010,7 +2071,8 @@ public class GolGgClient {
                               Integer deaths,
                               Integer assists,
                               Integer cs) {
-            this(championId, playerName, position, kills, deaths, assists, cs, List.of(), List.of(), null, null, null);
+            this(championId, playerName, position, kills, deaths, assists, cs, List.of(), List.of(), null, null, null,
+                    null, null, null, null, null, null, null, null, null);
         }
 
         public GolGgPickEntry(String championId,
@@ -2022,7 +2084,8 @@ public class GolGgClient {
                               Integer cs,
                               List<String> summonerSpells,
                               List<String> items) {
-            this(championId, playerName, position, kills, deaths, assists, cs, summonerSpells, items, null, null, null);
+            this(championId, playerName, position, kills, deaths, assists, cs, summonerSpells, items, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
         }
 
         GolGgPickEntry withLaningAt15(LaningAt15Stats stats) {
@@ -2038,7 +2101,16 @@ public class GolGgClient {
                     items,
                     stats.gd15(),
                     stats.xpd15(),
-                    stats.csd15()
+                    stats.csd15(),
+                    stats.visionScore(),
+                    stats.wardsPlaced(),
+                    stats.wardsDestroyed(),
+                    stats.controlWardsPurchased(),
+                    stats.detectorWardsPlaced(),
+                    stats.vspm(),
+                    stats.wpm(),
+                    stats.vwpm(),
+                    stats.wcpm()
             );
         }
     }
@@ -2046,7 +2118,16 @@ public class GolGgClient {
     private record LaningAt15Stats(
             Integer gd15,
             Integer xpd15,
-            Integer csd15
+            Integer csd15,
+            Integer visionScore,
+            Integer wardsPlaced,
+            Integer wardsDestroyed,
+            Integer controlWardsPurchased,
+            Integer detectorWardsPlaced,
+            Double vspm,
+            Double wpm,
+            Double vwpm,
+            Double wcpm
     ) {
     }
 
