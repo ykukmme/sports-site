@@ -1,11 +1,7 @@
 package com.esports.domain.matchexternal;
 
 import com.esports.common.exception.BusinessException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,10 +13,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-// 게임 보정 적용/조회/삭제 서비스. 검증 + 필드 단위 머지 + audit 로그.
 @Service
 public class GameOverrideService {
 
@@ -32,25 +31,22 @@ public class GameOverrideService {
     private final MatchExternalDetailGameRepository gameRepository;
     private final GameOverrideRepository overrideRepository;
     private final GameOverrideAuditRepository auditRepository;
-    private final ObjectMapper objectMapper;
+    private final DistributionOverrideRowRepository distributionRowRepository;
 
     public GameOverrideService(
             MatchExternalDetailGameRepository gameRepository,
             GameOverrideRepository overrideRepository,
             GameOverrideAuditRepository auditRepository,
-            ObjectMapper objectMapper) {
+            DistributionOverrideRowRepository distributionRowRepository) {
         this.gameRepository = gameRepository;
         this.overrideRepository = overrideRepository;
         this.auditRepository = auditRepository;
-        this.objectMapper = objectMapper;
+        this.distributionRowRepository = distributionRowRepository;
     }
 
-    // 보정 적용. 검증 통과 후 override upsert + 변경 필드별 audit row append.
     @Transactional
     public GameOverrideResponse apply(Long matchId, Integer gameNo, GameOverrideRequest request, String updatedBy) {
-        if (updatedBy == null || updatedBy.isBlank()) {
-            throw new BusinessException("INVALID_OVERRIDE","updatedBy 가 비어 있습니다.");
-        }
+        validateUpdatedBy(updatedBy);
         MatchExternalDetailGame game = loadGame(matchId, gameNo);
         validateRequest(request);
 
@@ -71,21 +67,19 @@ public class GameOverrideService {
         applyIntegerField(override.getRedTeamGold(), request.getRedTeamGold(), "red_team_gold",
                 override::setRedTeamGold, audits, game.getId(), note, updatedBy);
 
-        applyDistributionField(override.getGoldDistributionJson(), request.getGoldDistribution(), "gold_distribution_json",
-                override::setGoldDistributionJson, audits, game.getId(), note, updatedBy);
-        applyDistributionField(override.getDamageDistributionJson(), request.getDamageDistribution(), "damage_distribution_json",
-                override::setDamageDistributionJson, audits, game.getId(), note, updatedBy);
-
         override.setNote(note);
         override.setUpdatedBy(updatedBy);
         overrideRepository.save(override);
+
+        applyDistributionRows(game, DistributionOverrideKind.GOLD, request.getGoldDistribution(), audits, note, updatedBy);
+        applyDistributionRows(game, DistributionOverrideKind.DAMAGE, request.getDamageDistribution(), audits, note, updatedBy);
+
         if (!audits.isEmpty()) {
             auditRepository.saveAll(audits);
         }
         return toResponse(game, override);
     }
 
-    // 현재 base + override 조회 (UI prefill).
     @Transactional(readOnly = true)
     public GameOverrideResponse get(Long matchId, Integer gameNo) {
         MatchExternalDetailGame game = loadGame(matchId, gameNo);
@@ -93,51 +87,53 @@ public class GameOverrideService {
         return toResponse(game, override);
     }
 
-    // 보정 전체 초기화. override row 삭제 + audit 1건(cleared) 기록.
     @Transactional
     public void clear(Long matchId, Integer gameNo, String updatedBy) {
-        if (updatedBy == null || updatedBy.isBlank()) {
-            throw new BusinessException("INVALID_OVERRIDE","updatedBy 가 비어 있습니다.");
-        }
+        validateUpdatedBy(updatedBy);
         MatchExternalDetailGame game = loadGame(matchId, gameNo);
         GameOverride override = overrideRepository.findByGameId(game.getId()).orElse(null);
-        if (override == null) {
+        List<DistributionOverrideRow> rows = distributionRowRepository.findByGameId(game.getId());
+        if (override == null && rows.isEmpty()) {
             return;
         }
         try {
-            overrideRepository.delete(override);
-            auditRepository.save(new GameOverrideAudit(
-                    game.getId(), "_cleared", null, null, null, updatedBy));
+            if (override != null) {
+                overrideRepository.delete(override);
+            }
+            distributionRowRepository.deleteByGameId(game.getId());
+            auditRepository.save(new GameOverrideAudit(game.getId(), "_cleared", null, null, null, updatedBy));
         } catch (EmptyResultDataAccessException ignored) {
-            // 이미 삭제된 경우 무시
         }
     }
-
-    // ---- 내부 헬퍼 ----
 
     private MatchExternalDetailGame loadGame(Long matchId, Integer gameNo) {
         return gameRepository.findByMatchIdAndGameNo(matchId, gameNo)
                 .orElseThrow(() -> new BusinessException(
                         "GAME_NOT_FOUND",
-                        "매치 %d 의 %d번째 게임을 찾을 수 없습니다.".formatted(matchId, gameNo),
+                        "match %d game %d not found".formatted(matchId, gameNo),
                         HttpStatus.NOT_FOUND));
+    }
+
+    private void validateUpdatedBy(String updatedBy) {
+        if (updatedBy == null || updatedBy.isBlank()) {
+            throw new BusinessException("INVALID_OVERRIDE", "updatedBy is required.");
+        }
     }
 
     private void applyIntegerField(
             Integer currentOverride,
             Integer newValue,
             String fieldName,
-            java.util.function.Consumer<Integer> setter,
+            Consumer<Integer> setter,
             List<GameOverrideAudit> audits,
             Long gameId,
             String note,
             String updatedBy) {
-        // newValue가 null 이면 변경 없음 — DTO null = no-op 규칙. clear 의도라면 별도 clear API 사용.
         if (newValue == null) {
             return;
         }
         if (newValue < 0) {
-            throw new BusinessException("INVALID_OVERRIDE","%s 는 0 이상이어야 합니다.".formatted(fieldName));
+            throw new BusinessException("INVALID_OVERRIDE", "%s must be >= 0".formatted(fieldName));
         }
         if (Objects.equals(currentOverride, newValue)) {
             return;
@@ -152,112 +148,221 @@ public class GameOverrideService {
         setter.accept(newValue);
     }
 
-    private void applyDistributionField(
-            JsonNode currentOverride,
+    private void applyDistributionRows(
+            MatchExternalDetailGame game,
+            DistributionOverrideKind kind,
             List<GameOverrideRequest.DistributionEntryRequest> entries,
-            String fieldName,
-            java.util.function.Consumer<JsonNode> setter,
             List<GameOverrideAudit> audits,
-            Long gameId,
             String note,
             String updatedBy) {
         if (entries == null) {
             return;
         }
-        JsonNode newJson;
+
+        List<DistributionOverrideRow> existing = distributionRowRepository.findByGameId(game.getId()).stream()
+                .filter(row -> row.getKind() == kind)
+                .toList();
+
         if (entries.isEmpty()) {
-            newJson = null;
-        } else {
-            validateDistribution(entries, fieldName);
-            newJson = distributionToJson(entries);
-        }
-        if (jsonEquals(currentOverride, newJson)) {
+            if (!existing.isEmpty()) {
+                distributionRowRepository.deleteByGameIdAndKind(game.getId(), kind);
+                audits.add(new GameOverrideAudit(
+                        game.getId(),
+                        distributionFieldPrefix(kind) + "._cleared",
+                        String.valueOf(existing.size()),
+                        null,
+                        note,
+                        updatedBy));
+            }
             return;
         }
-        audits.add(new GameOverrideAudit(
-                gameId,
-                fieldName,
-                currentOverride != null ? currentOverride.toString() : null,
-                newJson != null ? newJson.toString() : null,
-                note,
-                updatedBy));
-        setter.accept(newJson);
+
+        validateDistributionEntries(entries, distributionFieldPrefix(kind));
+
+        Map<String, DistributionOverrideRow> existingByKey = existing.stream()
+                .collect(Collectors.toMap(this::distributionRowKey, Function.identity(), (a, b) -> a));
+        Map<String, GameOverrideRequest.DistributionEntryRequest> requestedByKey = entries.stream()
+                .collect(Collectors.toMap(this::distributionEntryKey, Function.identity(), (a, b) -> b));
+
+        validateEffectiveDistribution(game, kind, requestedByKey);
+
+        for (DistributionOverrideRow row : existing) {
+            if (requestedByKey.containsKey(distributionRowKey(row))) {
+                continue;
+            }
+            distributionRowRepository.delete(row);
+            audits.add(new GameOverrideAudit(
+                    game.getId(),
+                    distributionFieldPrefix(kind) + "." + row.getSide().name() + "." + row.getPosition(),
+                    row.getPercent() + "/" + row.getPerMinute(),
+                    null,
+                    note,
+                    updatedBy));
+        }
+
+        for (GameOverrideRequest.DistributionEntryRequest entry : entries) {
+            ExternalDetailWinnerSide side = ExternalDetailWinnerSide.valueOf(entry.getSide());
+            String position = entry.getPosition();
+            String key = distributionKey(side.name(), position);
+            DistributionOverrideRow row = existingByKey.get(key);
+            if (row == null) {
+                row = new DistributionOverrideRow();
+                row.setGame(game);
+                row.setKind(kind);
+                row.setSide(side);
+                row.setPosition(position);
+            }
+
+            BigDecimal percent = scale(entry.getPercent());
+            BigDecimal perMinute = scale(entry.getPerMinute());
+            if (row.getId() != null
+                    && row.getPercent().compareTo(percent) == 0
+                    && row.getPerMinute().compareTo(perMinute) == 0) {
+                continue;
+            }
+            audits.add(new GameOverrideAudit(
+                    game.getId(),
+                    distributionFieldPrefix(kind) + "." + side.name() + "." + position,
+                    row.getId() != null ? row.getPercent() + "/" + row.getPerMinute() : null,
+                    percent + "/" + perMinute,
+                    note,
+                    updatedBy));
+            row.setPercent(percent);
+            row.setPerMinute(perMinute);
+            row.setNote(note);
+            row.setUpdatedBy(updatedBy);
+            distributionRowRepository.save(row);
+        }
     }
 
     private void validateRequest(GameOverrideRequest request) {
         if (request.getDurationSec() != null && request.getDurationSec() < 0) {
-            throw new BusinessException("INVALID_OVERRIDE","durationSec 는 0 이상이어야 합니다.");
+            throw new BusinessException("INVALID_OVERRIDE", "durationSec must be >= 0");
         }
         if (request.getBlueTeamGold() != null && request.getBlueTeamGold() < 0) {
-            throw new BusinessException("INVALID_OVERRIDE","blueTeamGold 는 0 이상이어야 합니다.");
+            throw new BusinessException("INVALID_OVERRIDE", "blueTeamGold must be >= 0");
         }
         if (request.getRedTeamGold() != null && request.getRedTeamGold() < 0) {
-            throw new BusinessException("INVALID_OVERRIDE","redTeamGold 는 0 이상이어야 합니다.");
+            throw new BusinessException("INVALID_OVERRIDE", "redTeamGold must be >= 0");
         }
     }
 
-    private void validateDistribution(List<GameOverrideRequest.DistributionEntryRequest> entries, String fieldName) {
-        if (entries.size() != 10) {
-            throw new BusinessException("INVALID_OVERRIDE","%s 는 정확히 10행(블루5+레드5) 이어야 합니다.".formatted(fieldName));
-        }
+    private void validateDistributionEntries(List<GameOverrideRequest.DistributionEntryRequest> entries, String fieldName) {
         Set<String> blueSeen = new HashSet<>();
         Set<String> redSeen = new HashSet<>();
-        BigDecimal blueSum = BigDecimal.ZERO;
-        BigDecimal redSum = BigDecimal.ZERO;
         for (GameOverrideRequest.DistributionEntryRequest e : entries) {
             if (e.getSide() == null || !ALLOWED_SIDES.contains(e.getSide())) {
-                throw new BusinessException("INVALID_OVERRIDE","%s side 값이 잘못되었습니다.".formatted(fieldName));
+                throw new BusinessException("INVALID_OVERRIDE", "%s side is invalid".formatted(fieldName));
             }
             if (e.getPosition() == null || !ALLOWED_POSITIONS.contains(e.getPosition())) {
-                throw new BusinessException("INVALID_OVERRIDE","%s position 값이 잘못되었습니다.".formatted(fieldName));
+                throw new BusinessException("INVALID_OVERRIDE", "%s position is invalid".formatted(fieldName));
             }
-            if (e.getPercent() == null || e.getPercent().signum() < 0
-                    || e.getPercent().compareTo(HUNDRED) > 0) {
-                throw new BusinessException("INVALID_OVERRIDE","%s percent 는 0~100 이어야 합니다.".formatted(fieldName));
+            if (e.getPercent() == null || e.getPercent().signum() < 0 || e.getPercent().compareTo(HUNDRED) > 0) {
+                throw new BusinessException("INVALID_OVERRIDE", "%s percent must be 0..100".formatted(fieldName));
             }
             if (e.getPerMinute() == null || e.getPerMinute().signum() < 0) {
-                throw new BusinessException("INVALID_OVERRIDE","%s perMinute 는 0 이상이어야 합니다.".formatted(fieldName));
+                throw new BusinessException("INVALID_OVERRIDE", "%s perMinute must be >= 0".formatted(fieldName));
             }
-            if ("BLUE".equals(e.getSide())) {
-                if (!blueSeen.add(e.getPosition())) {
-                    throw new BusinessException("INVALID_OVERRIDE","%s 블루 진영 position 이 중복됩니다.".formatted(fieldName));
-                }
-                blueSum = blueSum.add(e.getPercent());
-            } else {
-                if (!redSeen.add(e.getPosition())) {
-                    throw new BusinessException("INVALID_OVERRIDE","%s 레드 진영 position 이 중복됩니다.".formatted(fieldName));
-                }
-                redSum = redSum.add(e.getPercent());
+            if ("BLUE".equals(e.getSide()) && !blueSeen.add(e.getPosition())) {
+                throw new BusinessException("INVALID_OVERRIDE", "%s BLUE position is duplicated".formatted(fieldName));
             }
-        }
-        if (blueSeen.size() != 5 || redSeen.size() != 5) {
-            throw new BusinessException("INVALID_OVERRIDE","%s 는 진영별 5행씩 이어야 합니다.".formatted(fieldName));
-        }
-        if (blueSum.subtract(HUNDRED).abs().compareTo(SIDE_SUM_TOLERANCE) > 0) {
-            throw new BusinessException("INVALID_OVERRIDE",
-                    "%s 블루 진영 percent 합계가 100±0.5%% 범위를 벗어납니다.".formatted(fieldName));
-        }
-        if (redSum.subtract(HUNDRED).abs().compareTo(SIDE_SUM_TOLERANCE) > 0) {
-            throw new BusinessException("INVALID_OVERRIDE",
-                    "%s 레드 진영 percent 합계가 100±0.5%% 범위를 벗어납니다.".formatted(fieldName));
+            if ("RED".equals(e.getSide()) && !redSeen.add(e.getPosition())) {
+                throw new BusinessException("INVALID_OVERRIDE", "%s RED position is duplicated".formatted(fieldName));
+            }
         }
     }
 
-    private JsonNode distributionToJson(List<GameOverrideRequest.DistributionEntryRequest> entries) {
-        ArrayNode arr = objectMapper.createArrayNode();
-        List<GameOverrideRequest.DistributionEntryRequest> sorted = new ArrayList<>(entries);
-        sorted.sort(Comparator
-                .comparing((GameOverrideRequest.DistributionEntryRequest e) -> "BLUE".equals(e.getSide()) ? 0 : 1)
-                .thenComparingInt(e -> positionOrder(e.getPosition())));
-        for (GameOverrideRequest.DistributionEntryRequest e : sorted) {
-            ObjectNode node = objectMapper.createObjectNode();
-            node.put("side", e.getSide());
-            node.put("position", e.getPosition());
-            node.put("percent", e.getPercent().setScale(2, RoundingMode.HALF_UP));
-            node.put("perMinute", e.getPerMinute().setScale(2, RoundingMode.HALF_UP));
-            arr.add(node);
+    private void validateEffectiveDistribution(
+            MatchExternalDetailGame game,
+            DistributionOverrideKind kind,
+            Map<String, GameOverrideRequest.DistributionEntryRequest> requestedByKey) {
+        Map<String, BigDecimal> effectivePercent = distributionFromBase(game.getGoldTimelineJson(), kind).stream()
+                .collect(Collectors.toMap(
+                        row -> distributionKey(row.side(), row.position()),
+                        GameOverrideResponse.DistributionRow::percent,
+                        (a, b) -> b));
+        requestedByKey.forEach((key, row) -> effectivePercent.put(key, row.getPercent()));
+
+        validateSideSum(effectivePercent, ExternalDetailWinnerSide.BLUE, distributionFieldPrefix(kind));
+        validateSideSum(effectivePercent, ExternalDetailWinnerSide.RED, distributionFieldPrefix(kind));
+    }
+
+    private void validateSideSum(Map<String, BigDecimal> effectivePercent,
+                                 ExternalDetailWinnerSide side,
+                                 String fieldName) {
+        BigDecimal sum = BigDecimal.ZERO;
+        int count = 0;
+        for (String position : ALLOWED_POSITIONS) {
+            BigDecimal value = effectivePercent.get(distributionKey(side.name(), position));
+            if (value != null) {
+                sum = sum.add(value);
+                count++;
+            }
         }
-        return arr;
+        if (count != 5) {
+            throw new BusinessException("INVALID_OVERRIDE", "%s %s must have five rows".formatted(fieldName, side.name()));
+        }
+        if (sum.subtract(HUNDRED).abs().compareTo(SIDE_SUM_TOLERANCE) > 0) {
+            throw new BusinessException("INVALID_OVERRIDE",
+                    "%s %s percent sum must be within 100±0.5".formatted(fieldName, side.name()));
+        }
+    }
+
+    private List<GameOverrideResponse.DistributionRow> distributionFromBase(JsonNode node, DistributionOverrideKind kind) {
+        String fieldName = kind == DistributionOverrideKind.GOLD ? "goldDistribution" : "damageDistribution";
+        JsonNode array = node != null && node.isObject() ? node.get(fieldName) : null;
+        if (array == null || !array.isArray()) {
+            return List.of();
+        }
+        List<GameOverrideResponse.DistributionRow> rows = new ArrayList<>();
+        array.forEach(item -> {
+            if (item == null || !item.isObject()) {
+                return;
+            }
+            String side = textOrNull(item.get("side"));
+            String position = textOrNull(item.get("position"));
+            BigDecimal percent = decimalOrNull(item.get("percent"));
+            BigDecimal perMinute = decimalOrNull(item.get("perMinute"));
+            if (side != null && position != null && percent != null && perMinute != null) {
+                rows.add(new GameOverrideResponse.DistributionRow(side, position, percent, perMinute));
+            }
+        });
+        return rows;
+    }
+
+    private String distributionRowKey(DistributionOverrideRow row) {
+        return distributionKey(row.getSide().name(), row.getPosition());
+    }
+
+    private String distributionEntryKey(GameOverrideRequest.DistributionEntryRequest row) {
+        return distributionKey(row.getSide(), row.getPosition());
+    }
+
+    private String distributionKey(String side, String position) {
+        return side + "|" + position;
+    }
+
+    private String distributionFieldPrefix(DistributionOverrideKind kind) {
+        return kind == DistributionOverrideKind.GOLD ? "gold_distribution" : "damage_distribution";
+    }
+
+    private BigDecimal scale(BigDecimal value) {
+        return value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal decimalOrNull(JsonNode node) {
+        if (node == null || node.isNull() || !node.isNumber()) {
+            return null;
+        }
+        return node.decimalValue();
+    }
+
+    private String textOrNull(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        String text = node.asText();
+        return text == null || text.isBlank() ? null : text;
     }
 
     private int positionOrder(String position) {
@@ -271,16 +376,6 @@ public class GameOverrideService {
         };
     }
 
-    private boolean jsonEquals(JsonNode a, JsonNode b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        try {
-            return objectMapper.writeValueAsString(a).equals(objectMapper.writeValueAsString(b));
-        } catch (JsonProcessingException ex) {
-            return false;
-        }
-    }
-
     private String trimToNull(String s) {
         if (s == null) return null;
         String t = s.trim();
@@ -291,8 +386,11 @@ public class GameOverrideService {
         Integer ovDuration = override != null ? override.getDurationSec() : null;
         Integer ovBlueGold = override != null ? override.getBlueTeamGold() : null;
         Integer ovRedGold = override != null ? override.getRedTeamGold() : null;
-        boolean goldDistOv = override != null && override.getGoldDistributionJson() != null;
-        boolean dmgDistOv = override != null && override.getDamageDistributionJson() != null;
+        List<DistributionOverrideRow> rows = distributionRowRepository.findByGameId(game.getId());
+        List<GameOverrideResponse.DistributionRow> goldRows = rowsToResponse(rows, DistributionOverrideKind.GOLD);
+        List<GameOverrideResponse.DistributionRow> damageRows = rowsToResponse(rows, DistributionOverrideKind.DAMAGE);
+        boolean goldDistOv = !goldRows.isEmpty() || (override != null && override.getGoldDistributionJson() != null);
+        boolean dmgDistOv = !damageRows.isEmpty() || (override != null && override.getDamageDistributionJson() != null);
         return new GameOverrideResponse(
                 game.getGameNo(),
                 GameOverrideResponse.field(game.getDurationSec(), ovDuration),
@@ -300,8 +398,26 @@ public class GameOverrideService {
                 GameOverrideResponse.field(game.getRedTeamGold(), ovRedGold),
                 goldDistOv,
                 dmgDistOv,
+                goldRows,
+                damageRows,
                 override != null ? override.getNote() : null,
                 override != null ? override.getUpdatedBy() : null,
                 override != null ? override.getUpdatedAt() : null);
+    }
+
+    private List<GameOverrideResponse.DistributionRow> rowsToResponse(
+            List<DistributionOverrideRow> rows,
+            DistributionOverrideKind kind) {
+        return rows.stream()
+                .filter(row -> row.getKind() == kind)
+                .sorted(Comparator
+                        .comparing((DistributionOverrideRow row) -> row.getSide() == ExternalDetailWinnerSide.BLUE ? 0 : 1)
+                        .thenComparingInt(row -> positionOrder(row.getPosition())))
+                .map(row -> new GameOverrideResponse.DistributionRow(
+                        row.getSide().name(),
+                        row.getPosition(),
+                        row.getPercent(),
+                        row.getPerMinute()))
+                .toList();
     }
 }

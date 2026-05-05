@@ -32,17 +32,20 @@ interface DistributionRow {
 
 function buildDefaultRows(
   source: { side: string | null; position: string | null; percent: number | null; perMinute: number | null }[],
+  overrides: { side: string | null; position: string | null; percent: number | null; perMinute: number | null }[] = [],
 ): DistributionRow[] {
   // 결측 시 빈 10행 + 진영/포지션 라벨로 채움 (사용자가 직접 입력)
   const rows: DistributionRow[] = []
   for (const side of SIDES) {
     for (const pos of POSITIONS) {
       const found = source.find((e) => e.side === side && e.position === pos)
+      const override = overrides.find((e) => e.side === side && e.position === pos)
       rows.push({
         side,
         position: pos,
-        percent: found?.percent != null ? String(found.percent) : '',
-        perMinute: found?.perMinute != null ? String(found.perMinute) : '',
+        percent: override?.percent != null ? String(override.percent) : found?.percent != null ? String(found.percent) : '',
+        perMinute:
+          override?.perMinute != null ? String(override.perMinute) : found?.perMinute != null ? String(found.perMinute) : '',
       })
     }
   }
@@ -53,13 +56,26 @@ function rowsAreBlank(rows: DistributionRow[]): boolean {
   return rows.every((r) => r.percent.trim() === '' && r.perMinute.trim() === '')
 }
 
-function toEntries(rows: DistributionRow[]): GameOverrideDistributionEntry[] {
-  return rows.map((r) => ({
-    side: r.side,
-    position: r.position,
-    percent: Number(r.percent),
-    perMinute: Number(r.perMinute),
-  }))
+function toChangedEntries(
+  rows: DistributionRow[],
+  base: { side: string | null; position: string | null; percent: number | null; perMinute: number | null }[],
+): GameOverrideDistributionEntry[] {
+  return rows.flatMap((r) => {
+    const baseRow = base.find((e) => e.side === r.side && e.position === r.position)
+    const percentText = r.percent.trim()
+    const perMinuteText = r.perMinute.trim()
+    const percent = percentText === '' ? null : Number(percentText)
+    const perMinute = perMinuteText === '' ? null : Number(perMinuteText)
+    const basePercent = baseRow?.percent ?? null
+    const basePerMinute = baseRow?.perMinute ?? null
+    const unchanged = percent === basePercent && perMinute === basePerMinute
+
+    if (unchanged) return []
+    if (percent == null || perMinute == null || !Number.isFinite(percent) || !Number.isFinite(perMinute)) {
+      throw new Error('분포 보정값은 percent와 perMinute를 함께 입력해야 합니다.')
+    }
+    return [{ side: r.side, position: r.position, percent, perMinute }]
+  })
 }
 
 interface Props {
@@ -91,8 +107,8 @@ export function GameOverrideForm({ matchId, gameNo, override, baseGame }: Props)
     setNote(override.note ?? '')
     setEditGold(override.goldDistributionOverridden)
     setEditDamage(override.damageDistributionOverridden)
-    setGoldRows(buildDefaultRows(baseGame?.goldDistribution ?? []))
-    setDamageRows(buildDefaultRows(baseGame?.damageDistribution ?? []))
+    setGoldRows(buildDefaultRows(baseGame?.goldDistribution ?? [], override.goldDistributionOverrides ?? []))
+    setDamageRows(buildDefaultRows(baseGame?.damageDistribution ?? [], override.damageDistributionOverrides ?? []))
   }, [override, baseGame])
 
   const isPending = updateMutation.isPending || clearMutation.isPending
@@ -133,10 +149,14 @@ export function GameOverrideForm({ matchId, gameNo, override, baseGame }: Props)
     }
 
     if (editGold) {
-      payload.goldDistribution = rowsAreBlank(goldRows) ? [] : toEntries(goldRows)
+      payload.goldDistribution = rowsAreBlank(goldRows)
+        ? []
+        : toChangedEntries(goldRows, baseGame?.goldDistribution ?? [])
     }
     if (editDamage) {
-      payload.damageDistribution = rowsAreBlank(damageRows) ? [] : toEntries(damageRows)
+      payload.damageDistribution = rowsAreBlank(damageRows)
+        ? []
+        : toChangedEntries(damageRows, baseGame?.damageDistribution ?? [])
     }
 
     updateMutation.mutate(

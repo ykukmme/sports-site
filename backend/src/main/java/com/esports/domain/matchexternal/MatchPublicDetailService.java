@@ -21,11 +21,14 @@ public class MatchPublicDetailService {
 
     private final MatchExternalDetailRepository detailRepository;
     private final GameOverrideRepository gameOverrideRepository;
+    private final DistributionOverrideRowRepository distributionOverrideRowRepository;
 
     public MatchPublicDetailService(MatchExternalDetailRepository detailRepository,
-                                    GameOverrideRepository gameOverrideRepository) {
+                                    GameOverrideRepository gameOverrideRepository,
+                                    DistributionOverrideRowRepository distributionOverrideRowRepository) {
         this.detailRepository = detailRepository;
         this.gameOverrideRepository = gameOverrideRepository;
+        this.distributionOverrideRowRepository = distributionOverrideRowRepository;
     }
 
     public Optional<MatchExternalDetailPublicResponse> findByMatchId(Long matchId) {
@@ -52,6 +55,10 @@ public class MatchPublicDetailService {
                 ? new HashMap<>()
                 : gameOverrideRepository.findByGameIdIn(gameIds).stream()
                         .collect(Collectors.toMap(o -> o.getGame().getId(), o -> o, (a, b) -> a));
+        Map<Long, List<DistributionOverrideRow>> distributionRowsByGameId = gameIds.isEmpty()
+                ? new HashMap<>()
+                : distributionOverrideRowRepository.findByGameIdIn(gameIds).stream()
+                        .collect(Collectors.groupingBy(row -> row.getGame().getId()));
 
         // game_no 오름차순 — JPA @OrderBy 없으므로 명시적 정렬
         List<MatchExternalDetailPublicResponse.PublicGame> games = detail.getGames().stream()
@@ -59,7 +66,10 @@ public class MatchPublicDetailService {
                         MatchExternalDetailGame::getGameNo,
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
-                .map(g -> toPublicGame(g, overrideByGameId.get(g.getId())))
+                .map(g -> toPublicGame(
+                        g,
+                        overrideByGameId.get(g.getId()),
+                        distributionRowsByGameId.getOrDefault(g.getId(), List.of())))
                 .toList();
 
         return new MatchExternalDetailPublicResponse(
@@ -75,7 +85,10 @@ public class MatchPublicDetailService {
     }
 
     // override 가 null 이면 base 값 그대로 사용. 필드별 coalesce 머지.
-    private MatchExternalDetailPublicResponse.PublicGame toPublicGame(MatchExternalDetailGame game, GameOverride override) {
+    private MatchExternalDetailPublicResponse.PublicGame toPublicGame(
+            MatchExternalDetailGame game,
+            GameOverride override,
+            List<DistributionOverrideRow> distributionRows) {
         Integer durationSec = mergeInteger(game.getDurationSec(), override != null ? override.getDurationSec() : null);
         Integer blueTeamGold = mergeInteger(game.getBlueTeamGold(), override != null ? override.getBlueTeamGold() : null);
         Integer redTeamGold = mergeInteger(game.getRedTeamGold(), override != null ? override.getRedTeamGold() : null);
@@ -112,8 +125,10 @@ public class MatchPublicDetailService {
                 integerOrNull(game.getGoldTimelineJson(), "bluePlates"),
                 integerOrNull(game.getGoldTimelineJson(), "redPlates"),
                 goldTimelineFromJson(game.getGoldTimelineJson()),
-                distributionWithOverride(game.getGoldTimelineJson(), "goldDistribution", goldDistOverride),
-                distributionWithOverride(game.getGoldTimelineJson(), "damageDistribution", dmgDistOverride),
+                distributionWithOverride(game.getGoldTimelineJson(), "goldDistribution", goldDistOverride,
+                        distributionRows, DistributionOverrideKind.GOLD),
+                distributionWithOverride(game.getGoldTimelineJson(), "damageDistribution", dmgDistOverride,
+                        distributionRows, DistributionOverrideKind.DAMAGE),
                 game.getErrorMessage()
         );
     }
@@ -124,11 +139,59 @@ public class MatchPublicDetailService {
 
     // override 배열이 있으면 그것을, 없으면 base 의 fieldName 키 아래 배열을 사용.
     private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithOverride(
-            JsonNode baseGoldTimeline, String fieldName, JsonNode overrideArray) {
+            JsonNode baseGoldTimeline,
+            String fieldName,
+            JsonNode overrideArray,
+            List<DistributionOverrideRow> rowOverrides,
+            DistributionOverrideKind kind) {
+        List<DistributionOverrideRow> rows = rowOverrides.stream()
+                .filter(row -> row.getKind() == kind)
+                .toList();
         if (overrideArray != null && overrideArray.isArray()) {
-            return distributionFromArray(overrideArray);
+            return distributionWithRowOverrides(distributionFromArray(overrideArray), rows);
         }
-        return distributionFromJson(baseGoldTimeline, fieldName);
+        return distributionWithRowOverrides(distributionFromJson(baseGoldTimeline, fieldName), rows);
+    }
+
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithRowOverrides(
+            List<MatchExternalDetailPublicResponse.PublicDistributionEntry> base,
+            List<DistributionOverrideRow> rows) {
+        if (rows.isEmpty()) {
+            return base;
+        }
+        Map<String, MatchExternalDetailPublicResponse.PublicDistributionEntry> byKey = new HashMap<>();
+        for (MatchExternalDetailPublicResponse.PublicDistributionEntry entry : base) {
+            byKey.put(distributionKey(entry.side(), entry.position()), entry);
+        }
+        for (DistributionOverrideRow row : rows) {
+            byKey.put(distributionKey(row.getSide().name(), row.getPosition()),
+                    new MatchExternalDetailPublicResponse.PublicDistributionEntry(
+                            row.getSide().name(),
+                            row.getPosition(),
+                            row.getPercent() != null ? row.getPercent().doubleValue() : null,
+                            row.getPerMinute() != null ? row.getPerMinute().intValue() : null));
+        }
+        return byKey.values().stream()
+                .sorted(Comparator
+                        .comparing((MatchExternalDetailPublicResponse.PublicDistributionEntry e) ->
+                                "BLUE".equals(e.side()) ? 0 : 1)
+                        .thenComparingInt(e -> positionOrder(e.position())))
+                .toList();
+    }
+
+    private String distributionKey(String side, String position) {
+        return side + "|" + position;
+    }
+
+    private int positionOrder(String position) {
+        return switch (position) {
+            case "TOP" -> 0;
+            case "JUNGLE" -> 1;
+            case "MID" -> 2;
+            case "ADC" -> 3;
+            case "SUPPORT" -> 4;
+            default -> 99;
+        };
     }
 
     private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionFromArray(JsonNode array) {

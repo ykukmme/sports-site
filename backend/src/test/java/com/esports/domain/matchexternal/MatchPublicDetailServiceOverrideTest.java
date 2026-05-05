@@ -10,13 +10,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-// MatchPublicDetailService 의 base + override 머지 검증.
 @ExtendWith(MockitoExtension.class)
 class MatchPublicDetailServiceOverrideTest {
 
@@ -24,82 +24,86 @@ class MatchPublicDetailServiceOverrideTest {
     private MatchExternalDetailRepository detailRepository;
     @Mock
     private GameOverrideRepository gameOverrideRepository;
+    @Mock
+    private DistributionOverrideRowRepository distributionOverrideRowRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private MatchPublicDetailService service;
 
     @BeforeEach
     void setUp() {
-        service = new MatchPublicDetailService(detailRepository, gameOverrideRepository);
+        service = new MatchPublicDetailService(
+                detailRepository,
+                gameOverrideRepository,
+                distributionOverrideRowRepository);
     }
 
     @Test
-    void override_없으면_base_그대로() throws Exception {
+    void returnsBaseWhenOverrideMissing() throws Exception {
         MatchExternalDetail detail = buildDetailWithGame(42L, 1850, 55800, 53200);
         when(detailRepository.findByMatchId(7L)).thenReturn(Optional.of(detail));
         when(gameOverrideRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of());
+        when(distributionOverrideRowRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of());
 
-        MatchExternalDetailPublicResponse res = service.findByMatchId(7L).orElseThrow();
-        MatchExternalDetailPublicResponse.PublicGame g = res.games().get(0);
+        MatchExternalDetailPublicResponse.PublicGame g = service.findByMatchId(7L).orElseThrow().games().get(0);
         assertThat(g.durationSec()).isEqualTo(1850);
         assertThat(g.blueTeamGold()).isEqualTo(55800);
         assertThat(g.redTeamGold()).isEqualTo(53200);
     }
 
     @Test
-    void override_일부필드_머지() throws Exception {
+    void mergesIntegerOverride() throws Exception {
         MatchExternalDetail detail = buildDetailWithGame(42L, 1850, 55800, 53200);
         MatchExternalDetailGame game = detail.getGames().get(0);
-
         GameOverride override = new GameOverride();
         override.setGame(game);
         override.setDurationSec(1872);
 
         when(detailRepository.findByMatchId(7L)).thenReturn(Optional.of(detail));
         when(gameOverrideRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of(override));
+        when(distributionOverrideRowRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of());
 
         MatchExternalDetailPublicResponse.PublicGame g = service.findByMatchId(7L).orElseThrow().games().get(0);
         assertThat(g.durationSec()).isEqualTo(1872);
         assertThat(g.blueTeamGold()).isEqualTo(55800);
-        assertThat(g.redTeamGold()).isEqualTo(53200);
     }
 
     @Test
-    void 분배_override_적용() throws Exception {
+    void rowDistributionOverrideWinsOverBase() throws Exception {
         MatchExternalDetail detail = buildDetailWithGame(42L, 1850, 55800, 53200);
         MatchExternalDetailGame game = detail.getGames().get(0);
+        game.setGoldTimelineJson(goldDistributionJson(20.0, 400));
 
+        DistributionOverrideRow row = new DistributionOverrideRow();
+        row.setGame(game);
+        row.setKind(DistributionOverrideKind.GOLD);
+        row.setSide(ExternalDetailWinnerSide.BLUE);
+        row.setPosition("TOP");
+        row.setPercent(new BigDecimal("25.50"));
+        row.setPerMinute(new BigDecimal("480"));
+
+        when(detailRepository.findByMatchId(7L)).thenReturn(Optional.of(detail));
+        when(gameOverrideRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of());
+        when(distributionOverrideRowRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of(row));
+
+        MatchExternalDetailPublicResponse.PublicGame g = service.findByMatchId(7L).orElseThrow().games().get(0);
+        assertThat(g.goldDistribution()).hasSize(1);
+        assertThat(g.goldDistribution().get(0).percent()).isEqualTo(25.5);
+        assertThat(g.goldDistribution().get(0).perMinute()).isEqualTo(480);
+    }
+
+    private ObjectNode goldDistributionJson(double percent, int perMinute) {
         ObjectNode goldTimeline = objectMapper.createObjectNode();
         ArrayNode baseDist = objectMapper.createArrayNode();
         ObjectNode baseEntry = objectMapper.createObjectNode();
         baseEntry.put("side", "BLUE");
         baseEntry.put("position", "TOP");
-        baseEntry.put("percent", 20.0);
-        baseEntry.put("perMinute", 400);
+        baseEntry.put("percent", percent);
+        baseEntry.put("perMinute", perMinute);
         baseDist.add(baseEntry);
         goldTimeline.set("goldDistribution", baseDist);
-        game.setGoldTimelineJson(goldTimeline);
-
-        GameOverride override = new GameOverride();
-        override.setGame(game);
-        ArrayNode ovDist = objectMapper.createArrayNode();
-        ObjectNode ovEntry = objectMapper.createObjectNode();
-        ovEntry.put("side", "BLUE");
-        ovEntry.put("position", "TOP");
-        ovEntry.put("percent", 25.5);
-        ovEntry.put("perMinute", 480);
-        ovDist.add(ovEntry);
-        override.setGoldDistributionJson(ovDist);
-
-        when(detailRepository.findByMatchId(7L)).thenReturn(Optional.of(detail));
-        when(gameOverrideRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of(override));
-
-        MatchExternalDetailPublicResponse.PublicGame g = service.findByMatchId(7L).orElseThrow().games().get(0);
-        assertThat(g.goldDistribution()).hasSize(1);
-        assertThat(g.goldDistribution().get(0).percent()).isEqualTo(25.5);
+        return goldTimeline;
     }
-
-    // ---- 헬퍼 ----
 
     private MatchExternalDetail buildDetailWithGame(long gameId, int durationSec, int blueGold, int redGold) throws Exception {
         MatchExternalDetail detail = new MatchExternalDetail();

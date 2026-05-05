@@ -135,6 +135,8 @@ export interface GameOverrideView {
   redTeamGold: GameOverrideIntegerField
   goldDistributionOverridden: boolean
   damageDistributionOverridden: boolean
+  goldDistributionOverrides: GameOverrideDistributionEntry[]
+  damageDistributionOverrides: GameOverrideDistributionEntry[]
   note: string | null
   updatedBy: string | null
   updatedAt: string | null

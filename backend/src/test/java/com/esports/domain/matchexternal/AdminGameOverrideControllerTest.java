@@ -78,6 +78,7 @@ class AdminGameOverrideControllerTest {
                 GameOverrideResponse.field(55800, null),
                 GameOverrideResponse.field(53200, null),
                 false, false,
+                List.of(), List.of(),
                 "OCR 보정", "admin@example.com",
                 OffsetDateTime.parse("2026-05-02T14:30:00+09:00"));
         when(service.apply(eq(7L), eq(1), any(GameOverrideRequest.class), eq("admin@example.com")))
@@ -119,7 +120,7 @@ class AdminGameOverrideControllerTest {
                 GameOverrideResponse.field(1850, null),
                 GameOverrideResponse.field(55800, null),
                 GameOverrideResponse.field(53200, null),
-                false, false, null, null, null);
+                false, false, List.of(), List.of(), null, null, null);
         when(service.get(7L, 1)).thenReturn(mocked);
 
         mockMvc.perform(get("/api/admin/matches/7/games/1/override"))
