@@ -5,15 +5,18 @@ import { useMatchResults } from '../hooks/useMatches'
 import { MatchCard } from '../components/match/MatchCard'
 import { PlayerRow } from '../components/team/PlayerRow'
 import { TeamPlatformBadges } from '../components/team/TeamPlatformBadges'
+import { TeamStatsCard } from '../components/stats/StatsCard'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
 import { getTeamLeagueLabel } from '../constants/teamLeagues'
+import { useTeamStats } from '../hooks/useStats'
 
 export function TeamDetailPage() {
   const { id } = useParams<{ id: string }>()
   const teamId = id ? parseInt(id, 10) : NaN
   const { data: team, isLoading, error } = useTeamDetail(isNaN(teamId) ? 0 : teamId)
+  const { data: teamStats, isLoading: isStatsLoading } = useTeamStats(isNaN(teamId) ? 0 : teamId)
   const resultsQuery = useMatchResults()
 
   const recentResults = useMemo(() => {
@@ -69,6 +72,14 @@ export function TeamDetailPage() {
           </div>
         </div>
       </div>
+
+      {isStatsLoading ? (
+        <section className="mb-10">
+          <LoadingSpinner />
+        </section>
+      ) : teamStats && teamStats.games > 0 ? (
+        <TeamStatsCard stats={teamStats} />
+      ) : null}
 
       <section className="mb-10">
         <div className="mb-3 flex items-center justify-between">

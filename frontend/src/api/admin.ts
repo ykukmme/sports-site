@@ -27,6 +27,7 @@ import type {
   GameOverrideDistributionRowsPayload,
   GameOverrideDistributionRowsResponse,
   GameOverrideDistributionSide,
+  StatRecalculateResponse,
 } from '../types/domain'
 import type {
   MatchCreateFormValues,
@@ -448,6 +449,15 @@ export async function clearGameOverrideDistributionSide(
 
 export async function clearGameOverride(matchId: number, gameNo: number): Promise<void> {
   await apiClient.delete(`/api/admin/matches/${matchId}/games/${gameNo}/override`)
+}
+
+export async function recalculateAllStats(): Promise<StatRecalculateResponse> {
+  const res = await apiClient.post<ApiResponse<StatRecalculateResponse>>(
+    '/api/admin/stats/recalculate',
+    null,
+    { timeout: 120_000 },
+  )
+  return res.data.data!
 }
 
 export async function importPandaScoreTeams(

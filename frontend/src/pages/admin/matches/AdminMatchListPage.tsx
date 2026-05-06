@@ -25,6 +25,7 @@ import {
   useFindMatchExternalDetailCandidates,
   useGolGgTournamentSources,
   usePandaScoreMatchResultSync,
+  useRecalculateAllStats,
   useResolveMatchExternalDetailSource,
   useSyncGolGgTournamentSource,
   useSyncMatchExternalDetail,
@@ -43,6 +44,7 @@ import type {
   MatchResponse,
   PandaScoreImportResultStatus,
   PandaScoreMatchResultSyncResponse,
+  StatRecalculateResponse,
 } from '../../../types/domain'
 
 const RESULT_SYNC_LABELS: Record<PandaScoreImportResultStatus, string> = {
@@ -193,6 +195,7 @@ export function AdminMatchListPage() {
   const [unbindTargetId, setUnbindTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
+  const [statsRecalculateResult, setStatsRecalculateResult] = useState<StatRecalculateResponse | null>(null)
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
   const [detailSyncMessage, setDetailSyncMessage] = useState<string | null>(null)
   const [golGgSourceMessage, setGolGgSourceMessage] = useState<string | null>(null)
@@ -221,6 +224,7 @@ export function AdminMatchListPage() {
   const { data: golGgSourcesData } = useGolGgTournamentSources()
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
+  const statsRecalculateMutation = useRecalculateAllStats()
   const createGolGgSourceMutation = useCreateGolGgTournamentSource()
   const syncGolGgSourceMutation = useSyncGolGgTournamentSource()
   const deleteGolGgSourceMutation = useDeleteGolGgTournamentSource()
@@ -686,6 +690,23 @@ export function AdminMatchListPage() {
               ? '상세 동기화 중...'
               : `선택 상세 동기화 (${selectedMatchIds.length})`}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={statsRecalculateMutation.isPending}
+            onClick={() =>
+              statsRecalculateMutation.mutate(undefined, {
+                onSuccess: (result) => {
+                  setStatsRecalculateResult(result)
+                  setDetailSyncMessage(
+                    `통계 재계산 완료: 경기 ${result.recalculatedMatchCount}건 / 팀 ${result.teamRows}행 / 선수 ${result.playerRows}행`,
+                  )
+                },
+              })
+            }
+          >
+            {statsRecalculateMutation.isPending ? '통계 재계산 중...' : '통계 재계산'}
+          </Button>
           <Button size="sm" onClick={() => navigate('/admin/matches/new')}>
             경기 등록
           </Button>
@@ -948,6 +969,17 @@ export function AdminMatchListPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {statsRecalculateResult && (
+        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground">
+          <div className="font-medium">통계 재계산 요약</div>
+          <div className="mt-1 text-muted-foreground">
+            요청 {statsRecalculateResult.requestedMatchCount}건 / 재계산{' '}
+            {statsRecalculateResult.recalculatedMatchCount}건 / 팀 행 {statsRecalculateResult.teamRows}개 / 선수 행{' '}
+            {statsRecalculateResult.playerRows}개
+          </div>
         </div>
       )}
 

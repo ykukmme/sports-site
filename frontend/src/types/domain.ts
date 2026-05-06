@@ -440,3 +440,45 @@ export interface PlayerResponse {
   lastSyncedAt: string | null
   teamId: number | null
 }
+
+export interface TeamStatsResponse {
+  teamId: number
+  teamName: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  avgKills: number
+  avgDeaths: number
+  avgGold: number
+  avgTowers: number
+  avgDragons: number
+  avgBarons: number
+}
+
+export interface PlayerStatsResponse {
+  playerId: number
+  playerName: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  kda: number
+  avgKills: number
+  avgDeaths: number
+  avgAssists: number
+  avgCs: number
+  avgVisionScore: number
+  avgGd15: number
+  avgXpd15: number
+  avgCsd15: number
+  avgGoldShare: number
+  avgDamageShare: number
+}
+
+export interface StatRecalculateResponse {
+  requestedMatchCount: number
+  recalculatedMatchCount: number
+  teamRows: number
+  playerRows: number
+}

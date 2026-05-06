@@ -25,6 +25,7 @@ import {
   fetchAdminMatch,
   fetchAdminMatches,
   resolveMatchExternalDetailSource,
+  recalculateAllStats,
   syncMatchExternalDetail,
   syncMatchExternalDetailsBatch,
   autoBindMatchExternalDetail,
@@ -133,6 +134,16 @@ export function usePandaScoreMatchResultSync() {
     mutationFn: () => syncPandaScoreMatchResults(MATCH_LEAGUE_FILTERS.map((league) => league.code)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+}
+
+export function useRecalculateAllStats() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: recalculateAllStats,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }

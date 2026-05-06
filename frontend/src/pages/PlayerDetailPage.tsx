@@ -3,6 +3,8 @@ import { usePlayerDetail } from '../hooks/usePlayerDetail'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
+import { PlayerStatsCard } from '../components/stats/StatsCard'
+import { usePlayerStats } from '../hooks/useStats'
 import type { PlayerResponse, PlayerStatus } from '../types/domain'
 
 const STATUS_LABELS: Record<PlayerStatus, string> = {
@@ -15,6 +17,7 @@ export function PlayerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const playerId = id ? parseInt(id, 10) : NaN
   const { data: player, isLoading, error } = usePlayerDetail(isNaN(playerId) ? 0 : playerId)
+  const { data: playerStats, isLoading: isStatsLoading } = usePlayerStats(isNaN(playerId) ? 0 : playerId)
 
   if (!id || isNaN(playerId)) return <ErrorMessage message="올바르지 않은 로스터 ID입니다." />
   if (isLoading) return <LoadingSpinner />
@@ -24,7 +27,7 @@ export function PlayerDetailPage() {
   const socialLinks = getPlayerSocialLinks(player)
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-5xl">
       <div className="mb-8 flex items-center gap-4">
         {player.profileImageUrl ? (
           <img
@@ -81,6 +84,14 @@ export function PlayerDetailPage() {
           <dd className="text-sm font-medium">{STATUS_LABELS[player.status] ?? player.status}</dd>
         </div>
       </dl>
+
+      {isStatsLoading ? (
+        <div className="mt-8">
+          <LoadingSpinner />
+        </div>
+      ) : playerStats && playerStats.games > 0 ? (
+        <PlayerStatsCard stats={playerStats} />
+      ) : null}
     </div>
   )
 }
