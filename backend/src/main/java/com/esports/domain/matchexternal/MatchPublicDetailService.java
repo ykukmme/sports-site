@@ -125,9 +125,9 @@ public class MatchPublicDetailService {
                 integerOrNull(game.getGoldTimelineJson(), "bluePlates"),
                 integerOrNull(game.getGoldTimelineJson(), "redPlates"),
                 goldTimelineFromJson(game.getGoldTimelineJson()),
-                distributionWithRowOverride(game.getGoldTimelineJson(), "goldDistribution",
+                distributionWithOverrideFallback(game.getGoldTimelineJson(), "goldDistribution", goldDistOverride,
                         distributionRows, DistributionOverrideKind.GOLD),
-                distributionWithRowOverride(game.getGoldTimelineJson(), "damageDistribution",
+                distributionWithOverrideFallback(game.getGoldTimelineJson(), "damageDistribution", dmgDistOverride,
                         distributionRows, DistributionOverrideKind.DAMAGE),
                 game.getErrorMessage()
         );
@@ -137,16 +137,21 @@ public class MatchPublicDetailService {
         return override != null ? override : base;
     }
 
-    // base JSONB 를 기본으로 두고, 행 단위 override row 가 있으면 해당 (side, position) 항목을 교체한다.
-    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithRowOverride(
+    // row override > legacy JSON override > base JSONB 순서로 분배 데이터를 병합한다.
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithOverrideFallback(
             JsonNode baseGoldTimeline,
             String fieldName,
+            JsonNode legacyOverrideArray,
             List<DistributionOverrideRow> rowOverrides,
             DistributionOverrideKind kind) {
         List<DistributionOverrideRow> rows = rowOverrides.stream()
                 .filter(row -> row.getKind() == kind)
                 .toList();
-        return distributionWithRowOverrides(distributionFromJson(baseGoldTimeline, fieldName), rows);
+        List<MatchExternalDetailPublicResponse.PublicDistributionEntry> base =
+                legacyOverrideArray != null && legacyOverrideArray.isArray()
+                        ? distributionFromArray(legacyOverrideArray)
+                        : distributionFromJson(baseGoldTimeline, fieldName);
+        return distributionWithRowOverrides(base, rows);
     }
 
     private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithRowOverrides(
@@ -307,6 +312,10 @@ public class MatchPublicDetailService {
         if (array == null || !array.isArray()) {
             return List.of();
         }
+        return distributionFromArray(array);
+    }
+
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionFromArray(JsonNode array) {
         List<MatchExternalDetailPublicResponse.PublicDistributionEntry> list = new ArrayList<>();
         array.forEach(item -> {
             if (item == null || !item.isObject()) {

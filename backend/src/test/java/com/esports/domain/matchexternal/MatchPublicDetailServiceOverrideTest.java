@@ -92,8 +92,61 @@ class MatchPublicDetailServiceOverrideTest {
         assertThat(g.goldDistribution().get(0).perMinute()).isEqualTo(480);
     }
 
+    @Test
+    void legacyJsonDistributionOverrideWinsOverBase() throws Exception {
+        MatchExternalDetail detail = buildDetailWithGame(42L, 1850, 55800, 53200);
+        MatchExternalDetailGame game = detail.getGames().get(0);
+        game.setGoldTimelineJson(goldDistributionJson(20.0, 400));
+
+        GameOverride override = new GameOverride();
+        override.setGame(game);
+        override.setGoldDistributionJson(distributionArray(31.0, 510));
+
+        when(detailRepository.findByMatchId(7L)).thenReturn(Optional.of(detail));
+        when(gameOverrideRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of(override));
+        when(distributionOverrideRowRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of());
+
+        MatchExternalDetailPublicResponse.PublicGame g = service.findByMatchId(7L).orElseThrow().games().get(0);
+        assertThat(g.goldDistribution()).hasSize(1);
+        assertThat(g.goldDistribution().get(0).percent()).isEqualTo(31.0);
+        assertThat(g.goldDistribution().get(0).perMinute()).isEqualTo(510);
+    }
+
+    @Test
+    void rowDistributionOverrideWinsOverLegacyJsonOverride() throws Exception {
+        MatchExternalDetail detail = buildDetailWithGame(42L, 1850, 55800, 53200);
+        MatchExternalDetailGame game = detail.getGames().get(0);
+        game.setGoldTimelineJson(goldDistributionJson(20.0, 400));
+
+        GameOverride override = new GameOverride();
+        override.setGame(game);
+        override.setGoldDistributionJson(distributionArray(31.0, 510));
+
+        DistributionOverrideRow row = new DistributionOverrideRow();
+        row.setGame(game);
+        row.setKind(DistributionOverrideKind.GOLD);
+        row.setSide(ExternalDetailWinnerSide.BLUE);
+        row.setPosition("TOP");
+        row.setPercent(new BigDecimal("42.00"));
+        row.setPerMinute(new BigDecimal("620"));
+
+        when(detailRepository.findByMatchId(7L)).thenReturn(Optional.of(detail));
+        when(gameOverrideRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of(override));
+        when(distributionOverrideRowRepository.findByGameIdIn(List.of(42L))).thenReturn(List.of(row));
+
+        MatchExternalDetailPublicResponse.PublicGame g = service.findByMatchId(7L).orElseThrow().games().get(0);
+        assertThat(g.goldDistribution()).hasSize(1);
+        assertThat(g.goldDistribution().get(0).percent()).isEqualTo(42.0);
+        assertThat(g.goldDistribution().get(0).perMinute()).isEqualTo(620);
+    }
+
     private ObjectNode goldDistributionJson(double percent, int perMinute) {
         ObjectNode goldTimeline = objectMapper.createObjectNode();
+        goldTimeline.set("goldDistribution", distributionArray(percent, perMinute));
+        return goldTimeline;
+    }
+
+    private ArrayNode distributionArray(double percent, int perMinute) {
         ArrayNode baseDist = objectMapper.createArrayNode();
         ObjectNode baseEntry = objectMapper.createObjectNode();
         baseEntry.put("side", "BLUE");
@@ -101,8 +154,7 @@ class MatchPublicDetailServiceOverrideTest {
         baseEntry.put("percent", percent);
         baseEntry.put("perMinute", perMinute);
         baseDist.add(baseEntry);
-        goldTimeline.set("goldDistribution", baseDist);
-        return goldTimeline;
+        return baseDist;
     }
 
     private MatchExternalDetail buildDetailWithGame(long gameId, int durationSec, int blueGold, int redGold) throws Exception {
