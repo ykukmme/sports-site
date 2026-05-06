@@ -23,7 +23,7 @@ public class GameOverrideAudit {
     @Column(name = "game_id", nullable = false)
     private Long gameId;
 
-    @Column(name = "field_name", nullable = false, length = 50)
+    @Column(name = "field_name", nullable = false, length = 100)
     private String fieldName;
 
     @Column(name = "old_value")

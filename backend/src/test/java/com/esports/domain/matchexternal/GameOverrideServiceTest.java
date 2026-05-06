@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +58,8 @@ class GameOverrideServiceTest {
         when(distributionRowRepository.findByGameId(42L)).thenReturn(List.of());
     }
 
+    // ---- 정수 보정 ----
+
     @Test
     void rejectsNegativeDuration() {
         GameOverrideRequest req = new GameOverrideRequest();
@@ -76,32 +77,6 @@ class GameOverrideServiceTest {
         assertThatThrownBy(() -> service.apply(99L, 1, req, "admin"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("not found");
-    }
-
-    @Test
-    void rejectsInvalidDistributionSum() {
-        GameOverrideRequest req = new GameOverrideRequest();
-        List<GameOverrideRequest.DistributionEntryRequest> entries = balanced();
-        entries.get(0).setPercent(new BigDecimal("16.50"));
-        req.setGoldDistribution(entries);
-        when(overrideRepository.findByGameId(42L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.apply(7L, 1, req, "admin"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("100");
-    }
-
-    @Test
-    void rejectsDuplicatePositionInRequest() {
-        GameOverrideRequest req = new GameOverrideRequest();
-        List<GameOverrideRequest.DistributionEntryRequest> entries = balanced();
-        entries.get(4).setPosition("MID");
-        req.setGoldDistribution(entries);
-        when(overrideRepository.findByGameId(42L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.apply(7L, 1, req, "admin"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("duplicated");
     }
 
     @Test
@@ -130,94 +105,172 @@ class GameOverrideServiceTest {
     }
 
     @Test
-    void appliesDistributionRowsIndividually() {
-        GameOverrideRequest req = new GameOverrideRequest();
-        req.setGoldDistribution(balanced());
+    void getReturnsBaseWhenOverrideMissing() {
         when(overrideRepository.findByGameId(42L)).thenReturn(Optional.empty());
+        GameOverrideResponse res = service.get(7L, 1);
+        assertThat(res.durationSec().effective()).isEqualTo(1850);
+        assertThat(res.distributionRows()).isEmpty();
+    }
 
-        service.apply(7L, 1, req, "admin");
+    // ---- 분배 행 단위 ----
 
-        verify(distributionRowRepository, atLeastOnce()).save(any(DistributionOverrideRow.class));
+    @Test
+    void applyDistributionRows_정상_5행_저장_audit() {
+        when(distributionRowRepository.findByGameIdAndKindAndSide(
+                42L, DistributionOverrideKind.GOLD, ExternalDetailWinnerSide.BLUE))
+                .thenReturn(List.of());
+        DistributionRowOverrideRequest req = balancedRequest();
+
+        service.applyDistributionRows(7L, 1, "GOLD", "BLUE", req, "admin");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<DistributionOverrideRow>> rowCaptor = ArgumentCaptor.forClass(List.class);
+        verify(distributionRowRepository).saveAll(rowCaptor.capture());
+        assertThat(rowCaptor.getValue()).hasSize(5);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameOverrideAudit>> auditCaptor = ArgumentCaptor.forClass(List.class);
+        verify(auditRepository).saveAll(auditCaptor.capture());
+        // 신규 5행 → percent + perMinute = 10건
+        assertThat(auditCaptor.getValue()).hasSize(10);
     }
 
     @Test
-    void clearsDistributionRowsWithEmptyList() {
-        when(overrideRepository.findByGameId(42L)).thenReturn(Optional.empty());
-        when(distributionRowRepository.findByGameId(42L)).thenReturn(List.of(existingRow()));
+    void applyDistributionRows_position_중복시_예외() {
+        DistributionRowOverrideRequest req = balancedRequest();
+        req.getRows().get(4).setPosition("MID");
+        assertThatThrownBy(() -> service.applyDistributionRows(7L, 1, "GOLD", "BLUE", req, "admin"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("duplicated");
+    }
 
-        GameOverrideRequest req = new GameOverrideRequest();
-        req.setGoldDistribution(new ArrayList<>());
+    @Test
+    void applyDistributionRows_percent_합계_초과시_예외() {
+        DistributionRowOverrideRequest req = balancedRequest();
+        req.getRows().get(0).setPercent(new BigDecimal("30.00"));
+        assertThatThrownBy(() -> service.applyDistributionRows(7L, 1, "GOLD", "BLUE", req, "admin"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("100");
+    }
 
-        service.apply(7L, 1, req, "admin");
+    @Test
+    void applyDistributionRows_kind_잘못된값_예외() {
+        DistributionRowOverrideRequest req = balancedRequest();
+        assertThatThrownBy(() -> service.applyDistributionRows(7L, 1, "BAD", "BLUE", req, "admin"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("INVALID_KIND");
+    }
+
+    @Test
+    void applyDistributionRows_side_잘못된값_예외() {
+        DistributionRowOverrideRequest req = balancedRequest();
+        assertThatThrownBy(() -> service.applyDistributionRows(7L, 1, "GOLD", "BAD", req, "admin"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("INVALID_SIDE");
+    }
+
+    @Test
+    void clearDistributionRow_행없으면_no_op() {
+        when(distributionRowRepository.findOne(
+                42L, DistributionOverrideKind.GOLD, ExternalDetailWinnerSide.BLUE, "TOP"))
+                .thenReturn(Optional.empty());
+
+        service.clearDistributionRow(7L, 1, "GOLD", "BLUE", "TOP", "admin");
+
+        verify(distributionRowRepository, never()).delete(any(DistributionOverrideRow.class));
+        verify(auditRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void clearDistributionSide_전체삭제_audit_기록() {
+        List<DistributionOverrideRow> rows = List.of(existingRow("TOP"), existingRow("JUNGLE"));
+        when(distributionRowRepository.findByGameIdAndKindAndSide(
+                42L, DistributionOverrideKind.GOLD, ExternalDetailWinnerSide.BLUE))
+                .thenReturn(rows);
+
+        service.clearDistributionSide(7L, 1, "GOLD", "BLUE", "admin");
+
+        verify(distributionRowRepository).deleteAll(rows);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameOverrideAudit>> auditCaptor = ArgumentCaptor.forClass(List.class);
+        verify(auditRepository).saveAll(auditCaptor.capture());
+        // 행 2개 × (percent + perMinute) = 4 audit
+        assertThat(auditCaptor.getValue()).hasSize(4);
+    }
+
+    @Test
+    void clearDistributionKind_전체삭제_audit_기록() {
+        List<DistributionOverrideRow> rows = List.of(existingRow("TOP"), existingRow("MID"), existingRow("ADC"));
+        when(distributionRowRepository.findByGameIdAndKind(42L, DistributionOverrideKind.GOLD))
+                .thenReturn(rows);
+
+        service.clearDistributionKind(7L, 1, "GOLD", "admin");
 
         verify(distributionRowRepository).deleteByGameIdAndKind(42L, DistributionOverrideKind.GOLD);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameOverrideAudit>> auditCaptor = ArgumentCaptor.forClass(List.class);
+        verify(auditRepository).saveAll(auditCaptor.capture());
+        assertThat(auditCaptor.getValue()).hasSize(6);
     }
 
     @Test
-    void clearDeletesOverrideAndRows() {
+    void clear_전체초기화_분배행도_포함_삭제() {
         GameOverride existing = new GameOverride();
         existing.setGame(baseGame);
         existing.setDurationSec(1900);
         when(overrideRepository.findByGameId(42L)).thenReturn(Optional.of(existing));
+        when(distributionRowRepository.findByGameId(42L)).thenReturn(List.of(existingRow("TOP")));
 
-        service.clear(7L, 1, "admin@example.com");
+        service.clear(7L, 1, "admin");
 
         verify(overrideRepository).delete(existing);
         verify(distributionRowRepository).deleteByGameId(42L);
-        ArgumentCaptor<GameOverrideAudit> auditCaptor = ArgumentCaptor.forClass(GameOverrideAudit.class);
-        verify(auditRepository).save(auditCaptor.capture());
-        assertThat(auditCaptor.getValue().getFieldName()).isEqualTo("_cleared");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GameOverrideAudit>> auditCaptor = ArgumentCaptor.forClass(List.class);
+        verify(auditRepository).saveAll(auditCaptor.capture());
+        assertThat(auditCaptor.getValue()).extracting(GameOverrideAudit::getFieldName)
+                .contains("_cleared");
     }
 
     @Test
     void clearNoOpsWhenNothingExists() {
         when(overrideRepository.findByGameId(42L)).thenReturn(Optional.empty());
+        when(distributionRowRepository.findByGameId(42L)).thenReturn(List.of());
         service.clear(7L, 1, "admin");
         verify(overrideRepository, never()).delete(any());
-        verify(auditRepository, never()).save(any());
+        verify(auditRepository, never()).saveAll(any());
     }
 
-    @Test
-    void getReturnsBaseWhenOverrideMissing() {
-        when(overrideRepository.findByGameId(42L)).thenReturn(Optional.empty());
-        GameOverrideResponse res = service.get(7L, 1);
-        assertThat(res.durationSec().effective()).isEqualTo(1850);
-        assertThat(res.goldDistributionOverridden()).isFalse();
-    }
+    // ---- 헬퍼 ----
 
-    private DistributionOverrideRow existingRow() {
+    private DistributionOverrideRow existingRow(String position) {
         DistributionOverrideRow row = new DistributionOverrideRow();
         row.setGame(baseGame);
         row.setKind(DistributionOverrideKind.GOLD);
         row.setSide(ExternalDetailWinnerSide.BLUE);
-        row.setPosition("TOP");
-        row.setPercent(new BigDecimal("20"));
-        row.setPerMinute(new BigDecimal("400"));
+        row.setPosition(position);
+        row.setPercent(new BigDecimal("20.00"));
+        row.setPerMinute(new BigDecimal("400.00"));
         return row;
     }
 
-    private List<GameOverrideRequest.DistributionEntryRequest> balanced() {
-        List<GameOverrideRequest.DistributionEntryRequest> list = new ArrayList<>();
-        for (String side : new String[]{"BLUE", "RED"}) {
-            list.add(entry(side, "TOP", new BigDecimal("21.50"), new BigDecimal("420")));
-            list.add(entry(side, "JUNGLE", new BigDecimal("18.00"), new BigDecimal("350")));
-            list.add(entry(side, "MID", new BigDecimal("24.00"), new BigDecimal("470")));
-            list.add(entry(side, "ADC", new BigDecimal("22.50"), new BigDecimal("440")));
-            list.add(entry(side, "SUPPORT", new BigDecimal("14.00"), new BigDecimal("275")));
-        }
-        return list;
+    private DistributionRowOverrideRequest balancedRequest() {
+        DistributionRowOverrideRequest req = new DistributionRowOverrideRequest();
+        List<DistributionRowOverrideRequest.RowEntry> rows = new ArrayList<>();
+        rows.add(rowEntry("TOP", "21.50", "420"));
+        rows.add(rowEntry("JUNGLE", "18.00", "350"));
+        rows.add(rowEntry("MID", "24.00", "470"));
+        rows.add(rowEntry("ADC", "22.50", "440"));
+        rows.add(rowEntry("SUPPORT", "14.00", "275"));
+        req.setRows(rows);
+        return req;
     }
 
-    private GameOverrideRequest.DistributionEntryRequest entry(
-            String side,
-            String position,
-            BigDecimal percent,
-            BigDecimal perMinute) {
-        GameOverrideRequest.DistributionEntryRequest e = new GameOverrideRequest.DistributionEntryRequest();
-        e.setSide(side);
+    private DistributionRowOverrideRequest.RowEntry rowEntry(String position, String percent, String perMinute) {
+        DistributionRowOverrideRequest.RowEntry e = new DistributionRowOverrideRequest.RowEntry();
         e.setPosition(position);
-        e.setPercent(percent);
-        e.setPerMinute(perMinute);
+        e.setPercent(new BigDecimal(percent));
+        e.setPerMinute(new BigDecimal(perMinute));
         return e;
     }
 }

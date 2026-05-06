@@ -23,6 +23,10 @@ import type {
   PandaScoreTeamImportResponse,
   GameOverrideView,
   GameOverridePayload,
+  GameOverrideDistributionKind,
+  GameOverrideDistributionRowsPayload,
+  GameOverrideDistributionRowsResponse,
+  GameOverrideDistributionSide,
 } from '../types/domain'
 import type {
   MatchCreateFormValues,
@@ -417,6 +421,31 @@ export async function updateGameOverride(
 }
 
 // 게임 보정 전체 초기화
+export async function updateGameOverrideDistributionRows(
+  matchId: number,
+  gameNo: number,
+  kind: GameOverrideDistributionKind,
+  side: GameOverrideDistributionSide,
+  payload: GameOverrideDistributionRowsPayload,
+): Promise<GameOverrideDistributionRowsResponse> {
+  const res = await apiClient.put<ApiResponse<GameOverrideDistributionRowsResponse>>(
+    `/api/admin/matches/${matchId}/games/${gameNo}/override/distribution/${kind}/${side}`,
+    payload,
+  )
+  return res.data.data!
+}
+
+export async function clearGameOverrideDistributionSide(
+  matchId: number,
+  gameNo: number,
+  kind: GameOverrideDistributionKind,
+  side: GameOverrideDistributionSide,
+): Promise<void> {
+  await apiClient.delete(
+    `/api/admin/matches/${matchId}/games/${gameNo}/override/distribution/${kind}/${side}`,
+  )
+}
+
 export async function clearGameOverride(matchId: number, gameNo: number): Promise<void> {
   await apiClient.delete(`/api/admin/matches/${matchId}/games/${gameNo}/override`)
 }

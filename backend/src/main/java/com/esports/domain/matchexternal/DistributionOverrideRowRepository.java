@@ -27,6 +27,26 @@ public interface DistributionOverrideRowRepository extends JpaRepository<Distrib
             select r from DistributionOverrideRow r
             where r.game.id = :gameId
               and r.kind = :kind
+            order by r.side, r.position
+            """)
+    List<DistributionOverrideRow> findByGameIdAndKind(Long gameId, DistributionOverrideKind kind);
+
+    @Query("""
+            select r from DistributionOverrideRow r
+            where r.game.id = :gameId
+              and r.kind = :kind
+              and r.side = :side
+            order by r.position
+            """)
+    List<DistributionOverrideRow> findByGameIdAndKindAndSide(
+            Long gameId,
+            DistributionOverrideKind kind,
+            ExternalDetailWinnerSide side);
+
+    @Query("""
+            select r from DistributionOverrideRow r
+            where r.game.id = :gameId
+              and r.kind = :kind
               and r.side = :side
               and r.position = :position
             """)

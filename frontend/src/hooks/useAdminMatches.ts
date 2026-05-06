@@ -2,11 +2,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchStatus } from '../types/domain'
 import type { MatchCreateFormValues, MatchResultFormValues, MatchUpdateFormValues } from '../types/adminForms'
 import { MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
-import type { GameOverridePayload } from '../types/domain'
+import type {
+  GameOverrideDistributionKind,
+  GameOverrideDistributionRowsPayload,
+  GameOverrideDistributionSide,
+  GameOverridePayload,
+} from '../types/domain'
 import {
   bindMatchExternalDetailSource,
+  clearGameOverrideDistributionSide,
   clearGameOverride,
   getGameOverride,
+  updateGameOverrideDistributionRows,
   updateGameOverride,
   createGolGgTournamentSource,
   createAdminMatch,
@@ -292,6 +299,54 @@ export function useUpdateGameOverride() {
 }
 
 // 게임 보정 전체 초기화.
+export function useUpdateGameOverrideDistributionRows() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      matchId,
+      gameNo,
+      kind,
+      side,
+      payload,
+    }: {
+      matchId: number
+      gameNo: number
+      kind: GameOverrideDistributionKind
+      side: GameOverrideDistributionSide
+      payload: GameOverrideDistributionRowsPayload
+    }) => updateGameOverrideDistributionRows(matchId, gameNo, kind, side, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'matches', variables.matchId, 'games', variables.gameNo, 'override'],
+      })
+      queryClient.invalidateQueries({ queryKey: ['matches', variables.matchId, 'detail'] })
+    },
+  })
+}
+
+export function useClearGameOverrideDistributionSide() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      matchId,
+      gameNo,
+      kind,
+      side,
+    }: {
+      matchId: number
+      gameNo: number
+      kind: GameOverrideDistributionKind
+      side: GameOverrideDistributionSide
+    }) => clearGameOverrideDistributionSide(matchId, gameNo, kind, side),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'matches', variables.matchId, 'games', variables.gameNo, 'override'],
+      })
+      queryClient.invalidateQueries({ queryKey: ['matches', variables.matchId, 'detail'] })
+    },
+  })
+}
+
 export function useClearGameOverride() {
   const queryClient = useQueryClient()
   return useMutation({

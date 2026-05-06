@@ -125,9 +125,9 @@ public class MatchPublicDetailService {
                 integerOrNull(game.getGoldTimelineJson(), "bluePlates"),
                 integerOrNull(game.getGoldTimelineJson(), "redPlates"),
                 goldTimelineFromJson(game.getGoldTimelineJson()),
-                distributionWithOverride(game.getGoldTimelineJson(), "goldDistribution", goldDistOverride,
+                distributionWithRowOverride(game.getGoldTimelineJson(), "goldDistribution",
                         distributionRows, DistributionOverrideKind.GOLD),
-                distributionWithOverride(game.getGoldTimelineJson(), "damageDistribution", dmgDistOverride,
+                distributionWithRowOverride(game.getGoldTimelineJson(), "damageDistribution",
                         distributionRows, DistributionOverrideKind.DAMAGE),
                 game.getErrorMessage()
         );
@@ -137,19 +137,15 @@ public class MatchPublicDetailService {
         return override != null ? override : base;
     }
 
-    // override 배열이 있으면 그것을, 없으면 base 의 fieldName 키 아래 배열을 사용.
-    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithOverride(
+    // base JSONB 를 기본으로 두고, 행 단위 override row 가 있으면 해당 (side, position) 항목을 교체한다.
+    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionWithRowOverride(
             JsonNode baseGoldTimeline,
             String fieldName,
-            JsonNode overrideArray,
             List<DistributionOverrideRow> rowOverrides,
             DistributionOverrideKind kind) {
         List<DistributionOverrideRow> rows = rowOverrides.stream()
                 .filter(row -> row.getKind() == kind)
                 .toList();
-        if (overrideArray != null && overrideArray.isArray()) {
-            return distributionWithRowOverrides(distributionFromArray(overrideArray), rows);
-        }
         return distributionWithRowOverrides(distributionFromJson(baseGoldTimeline, fieldName), rows);
     }
 
@@ -192,22 +188,6 @@ public class MatchPublicDetailService {
             case "SUPPORT" -> 4;
             default -> 99;
         };
-    }
-
-    private List<MatchExternalDetailPublicResponse.PublicDistributionEntry> distributionFromArray(JsonNode array) {
-        List<MatchExternalDetailPublicResponse.PublicDistributionEntry> list = new ArrayList<>();
-        array.forEach(item -> {
-            if (item == null || !item.isObject()) {
-                return;
-            }
-            list.add(new MatchExternalDetailPublicResponse.PublicDistributionEntry(
-                    textOrNull(item.get("side")),
-                    textOrNull(item.get("position")),
-                    doubleOrNull(item.get("percent")),
-                    integerOrNull(item.get("perMinute"))
-            ));
-        });
-        return List.copyOf(list);
     }
 
     // JSON 배열 → 챔피언 ID 문자열 리스트. 배열이 아니거나 null이면 빈 리스트.

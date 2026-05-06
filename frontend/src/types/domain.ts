@@ -145,16 +145,51 @@ export interface GameOverrideView {
   durationSec: GameOverrideIntegerField
   blueTeamGold: GameOverrideIntegerField
   redTeamGold: GameOverrideIntegerField
-  goldDistributionOverridden: boolean
-  damageDistributionOverridden: boolean
-  goldDistributionOverrides: GameOverrideDistributionEntry[]
-  damageDistributionOverrides: GameOverrideDistributionEntry[]
+  distributionRows: GameOverrideDistributionRow[]
   note: string | null
   updatedBy: string | null
   updatedAt: string | null
 }
 
+export type GameOverrideDistributionKind = 'GOLD' | 'DAMAGE'
+export type GameOverrideDistributionSide = 'BLUE' | 'RED'
+export type GameOverrideDistributionPosition = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
+
 export interface GameOverrideDistributionEntry {
+  side: GameOverrideDistributionSide
+  position: GameOverrideDistributionPosition
+  percent: number
+  perMinute: number
+}
+
+export interface GameOverrideDistributionRow {
+  kind: GameOverrideDistributionKind
+  side: GameOverrideDistributionSide
+  position: GameOverrideDistributionPosition
+  percent: number
+  perMinute: number
+  note: string | null
+  updatedBy: string | null
+  updatedAt: string | null
+}
+
+export interface GameOverrideDistributionRowPayloadEntry {
+  position: GameOverrideDistributionPosition
+  percent: number
+  perMinute: number
+}
+
+export interface GameOverrideDistributionRowsPayload {
+  rows: GameOverrideDistributionRowPayloadEntry[]
+  note?: string | null
+}
+
+export interface GameOverrideDistributionRowsResponse {
+  gameNo: number | null
+  distributionRows: GameOverrideDistributionRow[]
+}
+
+export interface LegacyGameOverrideDistributionEntry {
   side: 'BLUE' | 'RED'
   position: 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
   percent: number
@@ -166,8 +201,6 @@ export interface GameOverridePayload {
   durationSec?: number | null
   blueTeamGold?: number | null
   redTeamGold?: number | null
-  goldDistribution?: GameOverrideDistributionEntry[] | null
-  damageDistribution?: GameOverrideDistributionEntry[] | null
   note?: string | null
 }
 

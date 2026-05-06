@@ -54,6 +54,79 @@ public class AdminGameOverrideController {
         service.clear(matchId, gameNo, updatedBy);
     }
 
+    // PUT — 분배 (kind, side) 묶음 5행 보정.
+    @PutMapping("/distribution/{kind}/{side}")
+    public ApiResponse<DistributionRowOverrideResponse> applyDistributionRows(
+            @PathVariable Long matchId,
+            @PathVariable Integer gameNo,
+            @PathVariable String kind,
+            @PathVariable String side,
+            @Valid @RequestBody DistributionRowOverrideRequest request,
+            Authentication authentication) {
+        String updatedBy = resolveUpdatedBy(authentication);
+        return ApiResponse.ok(service.applyDistributionRows(
+                matchId,
+                gameNo,
+                kind != null ? kind.toUpperCase() : null,
+                side != null ? side.toUpperCase() : null,
+                request,
+                updatedBy));
+    }
+
+    // DELETE — 분배 단일 행(라이너 1명) 보정 제거.
+    @DeleteMapping("/distribution/{kind}/{side}/{position}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearDistributionRow(
+            @PathVariable Long matchId,
+            @PathVariable Integer gameNo,
+            @PathVariable String kind,
+            @PathVariable String side,
+            @PathVariable String position,
+            Authentication authentication) {
+        String updatedBy = resolveUpdatedBy(authentication);
+        service.clearDistributionRow(
+                matchId,
+                gameNo,
+                kind != null ? kind.toUpperCase() : null,
+                side != null ? side.toUpperCase() : null,
+                position != null ? position.toUpperCase() : null,
+                updatedBy);
+    }
+
+    // DELETE — 분배 (kind, side) 진영 5행 일괄 제거.
+    @DeleteMapping("/distribution/{kind}/{side}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearDistributionSide(
+            @PathVariable Long matchId,
+            @PathVariable Integer gameNo,
+            @PathVariable String kind,
+            @PathVariable String side,
+            Authentication authentication) {
+        String updatedBy = resolveUpdatedBy(authentication);
+        service.clearDistributionSide(
+                matchId,
+                gameNo,
+                kind != null ? kind.toUpperCase() : null,
+                side != null ? side.toUpperCase() : null,
+                updatedBy);
+    }
+
+    // DELETE — 분배 kind(GOLD/DAMAGE) 10행 일괄 제거.
+    @DeleteMapping("/distribution/{kind}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearDistributionKind(
+            @PathVariable Long matchId,
+            @PathVariable Integer gameNo,
+            @PathVariable String kind,
+            Authentication authentication) {
+        String updatedBy = resolveUpdatedBy(authentication);
+        service.clearDistributionKind(
+                matchId,
+                gameNo,
+                kind != null ? kind.toUpperCase() : null,
+                updatedBy);
+    }
+
     // JWT subject(username) 추출. 인증 컨텍스트는 SecurityConfig 가 보장하지만 방어적 처리.
     private String resolveUpdatedBy(Authentication authentication) {
         if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
