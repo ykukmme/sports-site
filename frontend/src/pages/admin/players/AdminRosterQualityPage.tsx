@@ -32,9 +32,9 @@ export function AdminRosterQualityPage() {
     return `${teamId}:${normalizedName}`
   }
 
-  function bindAlias(teamId: number, normalizedName: string, aliasName: string) {
+  function bindAlias(teamId: number, normalizedName: string, aliasName: string, fallbackPlayerId?: number) {
     const key = rowKey(teamId, normalizedName)
-    const selectedPlayerId = Number(selectedPlayerByKey[key])
+    const selectedPlayerId = Number(selectedPlayerByKey[key] ?? fallbackPlayerId ?? 0)
     if (!selectedPlayerId) return
     createAliasMutation.mutate(
       { playerId: selectedPlayerId, aliasName },
@@ -146,7 +146,9 @@ export function AdminRosterQualityPage() {
                           size="sm"
                           variant="outline"
                           disabled={!selectedValue || createAliasMutation.isPending}
-                          onClick={() => bindAlias(row.teamId, row.normalizedName, row.playerName)}
+                          onClick={() =>
+                            bindAlias(row.teamId, row.normalizedName, row.playerName, row.candidatePlayers[0]?.playerId)
+                          }
                         >
                           alias 연결
                         </Button>
