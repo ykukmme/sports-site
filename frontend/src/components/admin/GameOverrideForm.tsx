@@ -21,6 +21,8 @@ import { Label } from '../ui/label'
 
 const POSITIONS: GameOverrideDistributionPosition[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 const SIDES: GameOverrideDistributionSide[] = ['BLUE', 'RED']
+const SIDE_SUM_TARGET = 100
+const SIDE_SUM_TOLERANCE = 0.5
 
 interface DistributionRow {
   side: GameOverrideDistributionSide
@@ -66,28 +68,48 @@ function buildDefaultRows(
   return rows
 }
 
+function sideRows(rows: DistributionRow[], side: GameOverrideDistributionSide) {
+  return rows.filter((row) => row.side === side)
+}
+
 function sideRowsAreBlank(rows: DistributionRow[], side: GameOverrideDistributionSide): boolean {
-  return rows
-    .filter((row) => row.side === side)
-    .every((row) => row.percent.trim() === '' && row.perMinute.trim() === '')
+  return sideRows(rows, side).every((row) => row.percent.trim() === '' && row.perMinute.trim() === '')
+}
+
+function sidePercentSum(rows: DistributionRow[], side: GameOverrideDistributionSide): number | null {
+  let sum = 0
+  for (const row of sideRows(rows, side)) {
+    if (row.percent.trim() === '') return null
+    const value = Number(row.percent)
+    if (!Number.isFinite(value)) return null
+    sum += value
+  }
+  return Math.round(sum * 100) / 100
+}
+
+function sideSumIsValid(sum: number | null): boolean {
+  return sum != null && Math.abs(sum - SIDE_SUM_TARGET) <= SIDE_SUM_TOLERANCE
 }
 
 function toSidePayloadRows(rows: DistributionRow[], side: GameOverrideDistributionSide) {
-  return rows
-    .filter((row) => row.side === side)
-    .map((row) => {
-      const percent = Number(row.percent)
-      const perMinute = Number(row.perMinute)
-      if (
-        row.percent.trim() === '' ||
-        row.perMinute.trim() === '' ||
-        !Number.isFinite(percent) ||
-        !Number.isFinite(perMinute)
-      ) {
-        throw new Error(`${side} 진영은 5개 포지션의 percent와 perMinute를 모두 입력해야 합니다.`)
-      }
-      return { position: row.position, percent, perMinute }
-    })
+  const sum = sidePercentSum(rows, side)
+  if (!sideSumIsValid(sum)) {
+    throw new Error(`${side} 진영 percent 합계가 100±0.5 범위를 벗어났습니다.`)
+  }
+
+  return sideRows(rows, side).map((row) => {
+    const percent = Number(row.percent)
+    const perMinute = Number(row.perMinute)
+    if (
+      row.percent.trim() === '' ||
+      row.perMinute.trim() === '' ||
+      !Number.isFinite(percent) ||
+      !Number.isFinite(perMinute)
+    ) {
+      throw new Error(`${side} 진영은 5개 포지션의 percent와 perMinute를 모두 입력해야 합니다.`)
+    }
+    return { position: row.position, percent, perMinute }
+  })
 }
 
 function hasKindOverride(rows: GameOverrideDistributionRow[], kind: GameOverrideDistributionKind): boolean {
@@ -249,6 +271,41 @@ export function GameOverrideForm({ matchId, gameNo, override, baseGame }: Props)
     setRows(next)
   }
 
+  function clearSideRows(
+    rows: DistributionRow[],
+    setRows: (rows: DistributionRow[]) => void,
+    side: GameOverrideDistributionSide,
+  ) {
+    setRows(rows.map((row) => (row.side === side ? { ...row, percent: '', perMinute: '' } : row)))
+  }
+
+  function renderSideSummary(rows: DistributionRow[], setRows: (rows: DistributionRow[]) => void) {
+    return (
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        {SIDES.map((side) => {
+          const sum = sidePercentSum(rows, side)
+          const blank = sideRowsAreBlank(rows, side)
+          const valid = blank || sideSumIsValid(sum)
+          return (
+            <div
+              key={side}
+              className={`flex items-center justify-between rounded-md border px-3 py-2 text-xs ${
+                valid ? 'border-border bg-muted/20' : 'border-destructive bg-destructive/10 text-destructive'
+              }`}
+            >
+              <span>
+                {side} 합계: {blank ? '삭제 예정' : sum == null ? '입력 필요' : `${sum.toFixed(2)}%`}
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={() => clearSideRows(rows, setRows, side)}>
+                {side} 진영 삭제
+              </Button>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -328,52 +385,56 @@ export function GameOverrideForm({ matchId, gameNo, override, baseGame }: Props)
                 {editing ? '편집 취소' : '편집'}
               </Button>
             </div>
+
             {editing && (
-              <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="px-3 py-2 text-left">진영</th>
-                      <th className="px-3 py-2 text-left">포지션</th>
-                      <th className="px-3 py-2 text-left">percent</th>
-                      <th className="px-3 py-2 text-left">perMinute</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={`${row.side}-${row.position}`} className="border-t border-border">
-                        <td className="px-3 py-2">{row.side}</td>
-                        <td className="px-3 py-2">{row.position}</td>
-                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            max={100}
-                            value={row.percent}
-                            onChange={(event) =>
-                              updateRow(rows, setRows, index, 'percent', event.target.value)
-                            }
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            value={row.perMinute}
-                            onChange={(event) =>
-                              updateRow(rows, setRows, index, 'perMinute', event.target.value)
-                            }
-                          />
-                        </td>
+              <div className="space-y-3">
+                {renderSideSummary(rows, setRows)}
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">진영</th>
+                        <th className="px-3 py-2 text-left">포지션</th>
+                        <th className="px-3 py-2 text-left">percent</th>
+                        <th className="px-3 py-2 text-left">perMinute</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  한 진영 5행을 모두 비우면 해당 진영의 분배 보정이 삭제됩니다.
-                </p>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, index) => (
+                        <tr key={`${row.side}-${row.position}`} className="border-t border-border">
+                          <td className="px-3 py-2">{row.side}</td>
+                          <td className="px-3 py-2">{row.position}</td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              max={100}
+                              value={row.percent}
+                              onChange={(event) =>
+                                updateRow(rows, setRows, index, 'percent', event.target.value)
+                              }
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              value={row.perMinute}
+                              onChange={(event) =>
+                                updateRow(rows, setRows, index, 'perMinute', event.target.value)
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    진영 삭제 버튼은 해당 진영 5행을 비웁니다. 저장하면 서버에서 해당 진영 보정이 삭제됩니다.
+                  </p>
+                </div>
               </div>
             )}
           </section>
