@@ -185,6 +185,15 @@ class GolDetailEnrichmentServiceTest {
 
         when(matchRepository.findById(1L)).thenReturn(Optional.of(match));
         when(detailRepository.findByMatchId(1L)).thenReturn(Optional.of(detail));
+        when(indexedMatchRepository.findByProviderGameIdIn(List.of("123"))).thenReturn(List.of(
+                new GolGgIndexedMatch(
+                        new GolGgTournamentSource("https://gol.gg/tournament/tournament-matchlist/LCK%20Cup%202026/", "LCK Cup 2026"),
+                        "123",
+                        "https://gol.gg/game/stats/123/page-summary/",
+                        "Dplus KIA vs T1 16.3 2026-01-01",
+                        "16.3"
+                )
+        ));
         when(detailRepository.save(any(MatchExternalDetail.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MatchExternalDetailSummaryResponse response = service.resolveCandidate(
@@ -194,6 +203,7 @@ class GolDetailEnrichmentServiceTest {
 
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.sourceUrl()).isEqualTo("https://gol.gg/game/stats/123/page-summary/");
+        assertThat(detail.getPatchVersion()).isEqualTo("16.3");
         verify(golGgClient, never()).fetchDetail(any(), any());
     }
 

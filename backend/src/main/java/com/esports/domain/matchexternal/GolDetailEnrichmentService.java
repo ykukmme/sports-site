@@ -368,7 +368,7 @@ public class GolDetailEnrichmentService {
             detail.setSummaryJson(mergeParsedSummaryWithCandidateSnapshot(detail.getSummaryJson(), parsed.summaryJson()));
             detail.setRawJson(parsed.rawJson());
             detail.setConfidence(parsed.confidence());
-            detail.setPatchVersion(resolvePatchVersion(parsed.providerGameIds()));
+            detail.setPatchVersion(resolvePatchVersion(parsed.providerGameIds(), detail.getPatchVersion()));
             detail.setLastSyncedAt(OffsetDateTime.now());
             detail.setParseVersion(golGgProperties.getParseVersion());
 
@@ -642,6 +642,7 @@ public class GolDetailEnrichmentService {
         detail.setStatus(ExternalDetailStatus.PENDING);
         detail.setSourceUrl(trimmed);
         detail.setProviderGameIds(toJsonArray(extractGameIdsFromSourceUrl(trimmed)));
+        detail.setPatchVersion(resolvePatchVersion(extractGameIdsFromSourceUrl(trimmed), detail.getPatchVersion()));
         detail.setParseVersion(golGgProperties.getParseVersion());
         detail.setErrorMessage(null);
         // 자동/수동 바인딩 audit
@@ -770,15 +771,15 @@ public class GolDetailEnrichmentService {
         }
     }
 
-    private String resolvePatchVersion(List<String> providerGameIds) {
+    private String resolvePatchVersion(List<String> providerGameIds, String fallback) {
         if (providerGameIds == null || providerGameIds.isEmpty()) {
-            return null;
+            return fallback;
         }
         return indexedMatchRepository.findByProviderGameIdIn(providerGameIds).stream()
                 .map(GolGgIndexedMatch::getPatchVersion)
                 .filter(value -> value != null && !value.isBlank())
                 .findFirst()
-                .orElse(null);
+                .orElse(fallback);
     }
 
     // 챔피언 표시명 리스트 → DDragon ID 정규화 후 JSON array.
