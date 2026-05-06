@@ -11,4 +11,6 @@ public interface MatchExternalDetailRepository extends JpaRepository<MatchExtern
     Optional<MatchExternalDetail> findByMatchId(Long matchId);
 
     List<MatchExternalDetail> findByMatchIdIn(Collection<Long> matchIds);
+
+    List<MatchExternalDetail> findByStatus(ExternalDetailStatus status);
 }
