@@ -6,6 +6,11 @@
   - `memory/**`
   - `docs/portfolio/**`
   - `docs/decisions/**`
+- When discussing production checks, avoid security-triggering detail unless strictly needed:
+  - Do not paste real cookies, tokens, passwords, private keys, or full auth headers.
+  - Prefer UI verification steps over raw admin API commands.
+  - If a command is necessary, redact sensitive values and keep logs to the minimum relevant lines.
+  - Describe `curl`, DB, container, and remote-server checks as concise operational verification, not exploit or bypass language.
 
 ## MCP Tools: code-review-graph
 

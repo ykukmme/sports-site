@@ -20,10 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class StatsRecalculationService {
@@ -57,7 +59,14 @@ public class StatsRecalculationService {
                 HttpStatus.NOT_FOUND
         ));
         RowCount count = recalculate(detail);
-        return new StatRecalculateResponse(1, count.matchRecalculated() ? 1 : 0, count.teamRows(), count.playerRows());
+        return new StatRecalculateResponse(
+                1,
+                count.matchRecalculated() ? 1 : 0,
+                count.teamRows(),
+                count.playerRows(),
+                count.matchRecalculated() ? 0 : 1,
+                count.skippedGames()
+        );
     }
 
     @Transactional
@@ -66,36 +75,53 @@ public class StatsRecalculationService {
         int recalculated = 0;
         int teamRows = 0;
         int playerRows = 0;
+        int skippedMatches = 0;
+        int skippedGames = 0;
         for (MatchExternalDetail detail : details) {
             RowCount count = recalculate(detail);
             if (count.matchRecalculated()) {
                 recalculated++;
+            } else {
+                skippedMatches++;
             }
             teamRows += count.teamRows();
             playerRows += count.playerRows();
+            skippedGames += count.skippedGames();
         }
-        return new StatRecalculateResponse(details.size(), recalculated, teamRows, playerRows);
+        return new StatRecalculateResponse(details.size(), recalculated, teamRows, playerRows, skippedMatches, skippedGames);
     }
 
     private RowCount recalculate(MatchExternalDetail detail) {
         Match match = detail.getMatch();
         if (match == null || match.getId() == null || detail.getStatus() != ExternalDetailStatus.SYNCED) {
-            return new RowCount(false, 0, 0);
+            return new RowCount(false, 0, 0, 0);
         }
         teamStatRepository.deleteByMatchId(match.getId());
         playerStatRepository.deleteByMatchId(match.getId());
 
         List<TeamGameStat> teamRows = new ArrayList<>();
         List<PlayerGameStat> playerRows = new ArrayList<>();
+        int skippedGames = 0;
 
         for (MatchExternalDetailGame game : detail.getGames()) {
+            if (invalidTeamMapping(game)) {
+                skippedGames++;
+                continue;
+            }
             addTeamRows(detail, match, game, teamRows);
             addPlayerRows(detail, match, game, playerRows);
         }
 
         teamStatRepository.saveAll(teamRows);
         playerStatRepository.saveAll(playerRows);
-        return new RowCount(true, teamRows.size(), playerRows.size());
+        return new RowCount(true, teamRows.size(), playerRows.size(), skippedGames);
+    }
+
+    private boolean invalidTeamMapping(MatchExternalDetailGame game) {
+        return game == null
+                || game.getBlueTeamId() == null
+                || game.getRedTeamId() == null
+                || game.getBlueTeamId().equals(game.getRedTeamId());
     }
 
     private void addTeamRows(MatchExternalDetail detail,
@@ -165,6 +191,7 @@ public class StatsRecalculationService {
             return;
         }
         Map<String, Player> playersByName = playersByName(team.getId());
+        Set<String> rowKeys = new HashSet<>();
         for (JsonNode pick : picks) {
             if (pick == null || !pick.isObject()) {
                 continue;
@@ -174,6 +201,10 @@ public class StatsRecalculationService {
                 continue;
             }
             String position = text(pick, "position");
+            String rowKey = side + ":" + normalize(position) + ":" + normalize(playerName);
+            if (!rowKeys.add(rowKey)) {
+                continue;
+            }
             PlayerGameStat row = new PlayerGameStat();
             row.setMatch(match);
             row.setGame(game);
@@ -271,6 +302,6 @@ public class StatsRecalculationService {
         return normalized.replaceAll("[^a-z0-9가-힣]", "");
     }
 
-    private record RowCount(boolean matchRecalculated, int teamRows, int playerRows) {
+    private record RowCount(boolean matchRecalculated, int teamRows, int playerRows, int skippedGames) {
     }
 }

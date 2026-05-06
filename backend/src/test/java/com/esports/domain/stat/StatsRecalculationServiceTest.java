@@ -127,6 +127,38 @@ class StatsRecalculationServiceTest {
         verify(playerStatRepository).deleteByMatchId(10L);
     }
 
+    @Test
+    void recalculateMatchSkipsGameWhenBlueAndRedTeamAreSame() {
+        Match match = mock(Match.class);
+        when(match.getId()).thenReturn(20L);
+        when(match.getTournamentName()).thenReturn("LCK 2026");
+        when(match.getScheduledAt()).thenReturn(OffsetDateTime.parse("2026-01-01T10:00:00Z"));
+
+        MatchExternalDetail detail = new MatchExternalDetail(match);
+        detail.setStatus(ExternalDetailStatus.SYNCED);
+
+        MatchExternalDetailGame game = new MatchExternalDetailGame();
+        game.setGameNo(1);
+        game.setBlueTeamId(9L);
+        game.setRedTeamId(9L);
+        detail.replaceGames(List.of(game));
+
+        when(detailRepository.findByMatchId(20L)).thenReturn(Optional.of(detail));
+
+        StatRecalculateResponse response = service.recalculateMatch(20L);
+
+        assertThat(response.recalculatedMatchCount()).isEqualTo(1);
+        assertThat(response.teamRows()).isZero();
+        assertThat(response.playerRows()).isZero();
+        assertThat(response.skippedGameCount()).isEqualTo(1);
+
+        verify(teamStatRepository).deleteByMatchId(20L);
+        verify(playerStatRepository).deleteByMatchId(20L);
+        verify(teamStatRepository).saveAll(List.of());
+        verify(playerStatRepository).saveAll(List.of());
+        verifyNoInteractions(teamRepository);
+    }
+
     private ArrayNode picks(String playerName, String position, String championId) {
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode array = mapper.createArrayNode();
