@@ -27,7 +27,9 @@ import type {
   GameOverrideDistributionRowsPayload,
   GameOverrideDistributionRowsResponse,
   GameOverrideDistributionSide,
+  PlayerAliasResponse,
   StatRecalculateResponse,
+  UnmatchedPlayerResponse,
 } from '../types/domain'
 import type {
   MatchCreateFormValues,
@@ -457,6 +459,24 @@ export async function recalculateAllStats(): Promise<StatRecalculateResponse> {
     null,
     { timeout: 120_000 },
   )
+  return res.data.data!
+}
+
+export async function fetchUnmatchedPlayers(): Promise<UnmatchedPlayerResponse[]> {
+  const res = await apiClient.get<ApiResponse<UnmatchedPlayerResponse[]>>('/api/admin/stats/unmatched-players')
+  return res.data.data ?? []
+}
+
+export async function createPlayerAlias(
+  playerId: number,
+  aliasName: string,
+  source = 'GOL_GG',
+): Promise<PlayerAliasResponse> {
+  const res = await apiClient.post<ApiResponse<PlayerAliasResponse>>('/api/admin/stats/player-aliases', {
+    playerId,
+    aliasName,
+    source,
+  })
   return res.data.data!
 }
 

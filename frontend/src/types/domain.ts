@@ -482,3 +482,31 @@ export interface StatRecalculateResponse {
   teamRows: number
   playerRows: number
 }
+
+export interface UnmatchedPlayerCandidateResponse {
+  playerId: number
+  inGameName: string
+  teamId: number
+  teamName: string
+  exactNameMatch: boolean
+}
+
+export interface UnmatchedPlayerResponse {
+  teamId: number
+  teamName: string
+  league: string | null
+  playerName: string
+  normalizedName: string
+  matchCount: number
+  latestMatchAt: string | null
+  candidatePlayers: UnmatchedPlayerCandidateResponse[]
+}
+
+export interface PlayerAliasResponse {
+  aliasId: number
+  playerId: number
+  aliasName: string
+  normalizedAlias: string
+  source: string
+  rematchedRows: number
+}

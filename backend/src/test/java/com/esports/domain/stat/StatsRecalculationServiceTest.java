@@ -7,6 +7,7 @@ import com.esports.domain.matchexternal.MatchExternalDetail;
 import com.esports.domain.matchexternal.MatchExternalDetailGame;
 import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import com.esports.domain.player.Player;
+import com.esports.domain.player.PlayerAliasRepository;
 import com.esports.domain.player.PlayerRepository;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamRepository;
@@ -31,6 +32,7 @@ class StatsRecalculationServiceTest {
     private PlayerGameStatRepository playerStatRepository;
     private TeamRepository teamRepository;
     private PlayerRepository playerRepository;
+    private PlayerAliasRepository playerAliasRepository;
     private StatsRecalculationService service;
 
     @BeforeEach
@@ -40,12 +42,14 @@ class StatsRecalculationServiceTest {
         playerStatRepository = mock(PlayerGameStatRepository.class);
         teamRepository = mock(TeamRepository.class);
         playerRepository = mock(PlayerRepository.class);
+        playerAliasRepository = mock(PlayerAliasRepository.class);
         service = new StatsRecalculationService(
                 detailRepository,
                 teamStatRepository,
                 playerStatRepository,
                 teamRepository,
-                playerRepository
+                playerRepository,
+                playerAliasRepository
         );
     }
 
@@ -95,6 +99,8 @@ class StatsRecalculationServiceTest {
         when(teamRepository.findById(2L)).thenReturn(Optional.of(redTeam));
         when(playerRepository.findByTeamId(1L)).thenReturn(List.of(player));
         when(playerRepository.findByTeamId(2L)).thenReturn(List.of());
+        when(playerAliasRepository.findByPlayerTeamIdAndActiveTrue(1L)).thenReturn(List.of());
+        when(playerAliasRepository.findByPlayerTeamIdAndActiveTrue(2L)).thenReturn(List.of());
 
         StatRecalculateResponse response = service.recalculateMatch(10L);
 

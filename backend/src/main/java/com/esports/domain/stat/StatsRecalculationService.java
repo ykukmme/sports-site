@@ -8,6 +8,8 @@ import com.esports.domain.matchexternal.MatchExternalDetail;
 import com.esports.domain.matchexternal.MatchExternalDetailGame;
 import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import com.esports.domain.player.Player;
+import com.esports.domain.player.PlayerAlias;
+import com.esports.domain.player.PlayerAliasRepository;
 import com.esports.domain.player.PlayerRepository;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamRepository;
@@ -31,17 +33,20 @@ public class StatsRecalculationService {
     private final PlayerGameStatRepository playerStatRepository;
     private final TeamRepository teamRepository;
     private final PlayerRepository playerRepository;
+    private final PlayerAliasRepository playerAliasRepository;
 
     public StatsRecalculationService(MatchExternalDetailRepository detailRepository,
                                      TeamGameStatRepository teamStatRepository,
                                      PlayerGameStatRepository playerStatRepository,
                                      TeamRepository teamRepository,
-                                     PlayerRepository playerRepository) {
+                                     PlayerRepository playerRepository,
+                                     PlayerAliasRepository playerAliasRepository) {
         this.detailRepository = detailRepository;
         this.teamStatRepository = teamStatRepository;
         this.playerStatRepository = playerStatRepository;
         this.teamRepository = teamRepository;
         this.playerRepository = playerRepository;
+        this.playerAliasRepository = playerAliasRepository;
     }
 
     @Transactional
@@ -208,6 +213,11 @@ public class StatsRecalculationService {
         for (Player player : playerRepository.findByTeamId(teamId)) {
             if (player.getInGameName() != null) {
                 map.put(normalize(player.getInGameName()), player);
+            }
+        }
+        for (PlayerAlias alias : playerAliasRepository.findByPlayerTeamIdAndActiveTrue(teamId)) {
+            if (alias.getNormalizedAlias() != null && alias.getPlayer() != null) {
+                map.putIfAbsent(alias.getNormalizedAlias(), alias.getPlayer());
             }
         }
         return map;

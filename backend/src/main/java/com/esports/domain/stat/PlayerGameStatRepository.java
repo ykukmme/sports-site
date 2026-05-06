@@ -9,4 +9,6 @@ public interface PlayerGameStatRepository extends JpaRepository<PlayerGameStat, 
     void deleteByMatchId(Long matchId);
 
     List<PlayerGameStat> findByPlayerIdOrderByScheduledAtDesc(Long playerId);
+
+    List<PlayerGameStat> findByPlayerIsNullOrderByScheduledAtDesc();
 }
