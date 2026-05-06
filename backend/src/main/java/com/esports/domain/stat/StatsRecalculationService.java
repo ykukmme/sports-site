@@ -98,6 +98,8 @@ public class StatsRecalculationService {
         }
         teamStatRepository.deleteByMatchId(match.getId());
         playerStatRepository.deleteByMatchId(match.getId());
+        teamStatRepository.flush();
+        playerStatRepository.flush();
 
         List<TeamGameStat> teamRows = new ArrayList<>();
         List<PlayerGameStat> playerRows = new ArrayList<>();

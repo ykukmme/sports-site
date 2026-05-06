@@ -125,6 +125,8 @@ class StatsRecalculationServiceTest {
 
         verify(teamStatRepository).deleteByMatchId(10L);
         verify(playerStatRepository).deleteByMatchId(10L);
+        verify(teamStatRepository).flush();
+        verify(playerStatRepository).flush();
     }
 
     @Test
@@ -154,6 +156,8 @@ class StatsRecalculationServiceTest {
 
         verify(teamStatRepository).deleteByMatchId(20L);
         verify(playerStatRepository).deleteByMatchId(20L);
+        verify(teamStatRepository).flush();
+        verify(playerStatRepository).flush();
         verify(teamStatRepository).saveAll(List.of());
         verify(playerStatRepository).saveAll(List.of());
         verifyNoInteractions(teamRepository);
