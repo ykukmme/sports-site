@@ -79,6 +79,15 @@ const DETAIL_SYNC_STATUS_VARIANTS: Record<
 }
 
 const GOLGG_SOURCE_PAGE_SIZE = 6
+const DETAIL_SYNC_CHUNK_SIZE = 3
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+  return chunks
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('ko-KR')
@@ -195,6 +204,7 @@ export function AdminMatchListPage() {
   const [unbindTargetId, setUnbindTargetId] = useState<number | null>(null)
   const [resultSyncResult, setResultSyncResult] = useState<PandaScoreMatchResultSyncResponse | null>(null)
   const [detailSyncResult, setDetailSyncResult] = useState<MatchExternalDetailBatchSyncResponse | null>(null)
+  const [detailSyncProgress, setDetailSyncProgress] = useState<{ completed: number; total: number } | null>(null)
   const [statsRecalculateResult, setStatsRecalculateResult] = useState<StatRecalculateResponse | null>(null)
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
   const [detailSyncMessage, setDetailSyncMessage] = useState<string | null>(null)
@@ -417,15 +427,39 @@ export function AdminMatchListPage() {
     )
   }
 
-  function runBatchDetailSync() {
+  async function runBatchDetailSync() {
     if (selectedMatchIds.length === 0) return
-    detailSyncBatchMutation.mutate(selectedMatchIds, {
-      onSuccess: (result) => {
-        setDetailSyncResult(result)
-        setDetailSyncMessage(`상세 동기화 완료: 성공 ${result.syncedCount}건 / 실패 ${result.failedCount}건`)
-        setSelectedMatchIds([])
-      },
-    })
+    const targetIds = [...selectedMatchIds]
+    const chunks = chunkArray(targetIds, DETAIL_SYNC_CHUNK_SIZE)
+    const merged: MatchExternalDetailBatchSyncResponse = {
+      requestedCount: 0,
+      syncedCount: 0,
+      failedCount: 0,
+      items: [],
+    }
+
+    setDetailSyncResult(null)
+    setDetailSyncProgress({ completed: 0, total: targetIds.length })
+
+    try {
+      for (const chunk of chunks) {
+        const result = await detailSyncBatchMutation.mutateAsync(chunk)
+        merged.requestedCount += result.requestedCount
+        merged.syncedCount += result.syncedCount
+        merged.failedCount += result.failedCount
+        merged.items.push(...result.items)
+        setDetailSyncProgress((prev) => ({
+          completed: Math.min((prev?.completed ?? 0) + chunk.length, targetIds.length),
+          total: targetIds.length,
+        }))
+        setDetailSyncResult({ ...merged, items: [...merged.items] })
+      }
+
+      setDetailSyncMessage(`상세 동기화 완료: 성공 ${merged.syncedCount}건 / 실패 ${merged.failedCount}건`)
+      setSelectedMatchIds([])
+    } finally {
+      setDetailSyncProgress(null)
+    }
   }
 
   // 자동 후보 바인딩 — 임계값(score>=85, gap>=15) 통과 항목만 자동 resolve, 나머지는 skip
@@ -645,6 +679,7 @@ export function AdminMatchListPage() {
   const currentPageMatchIds = matches.map((match) => match.id)
   const selectedCountOnPage = currentPageMatchIds.filter((id) => selectedMatchIds.includes(id)).length
   const isAllCurrentPageSelected = currentPageMatchIds.length > 0 && selectedCountOnPage === currentPageMatchIds.length
+  const isDetailSyncRunning = detailSyncBatchMutation.isPending || detailSyncProgress != null
 
   return (
     <div className="flex flex-col gap-4">
@@ -683,11 +718,11 @@ export function AdminMatchListPage() {
           <Button
             size="sm"
             variant="outline"
-            disabled={selectedMatchIds.length === 0 || detailSyncBatchMutation.isPending}
+            disabled={selectedMatchIds.length === 0 || isDetailSyncRunning}
             onClick={runBatchDetailSync}
           >
-            {detailSyncBatchMutation.isPending
-              ? '상세 동기화 중...'
+            {isDetailSyncRunning
+              ? `상세 동기화 중... ${detailSyncProgress?.completed ?? 0}/${detailSyncProgress?.total ?? selectedMatchIds.length}`
               : `선택 상세 동기화 (${selectedMatchIds.length})`}
           </Button>
           <Button
