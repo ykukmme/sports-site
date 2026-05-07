@@ -67,6 +67,7 @@ public class PlayerAlias {
     public String getSource() { return source; }
     public Boolean getActive() { return active; }
 
+    public void setPlayer(Player player) { this.player = player; }
     public void setAliasName(String aliasName) { this.aliasName = aliasName; }
     public void setNormalizedAlias(String normalizedAlias) { this.normalizedAlias = normalizedAlias; }
     public void setSource(String source) { this.source = source; }

@@ -9,5 +9,7 @@ public interface PlayerAliasRepository extends JpaRepository<PlayerAlias, Long> 
 
     List<PlayerAlias> findByPlayerTeamIdAndActiveTrue(Long teamId);
 
+    List<PlayerAlias> findByActiveTrueOrderByUpdatedAtDesc();
+
     Optional<PlayerAlias> findByPlayerIdAndNormalizedAlias(Long playerId, String normalizedAlias);
 }

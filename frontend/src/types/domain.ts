@@ -510,3 +510,20 @@ export interface PlayerAliasResponse {
   source: string
   rematchedRows: number
 }
+
+export interface PlayerAliasListResponse {
+  aliasId: number
+  playerId: number
+  playerName: string
+  teamId: number | null
+  teamName: string | null
+  aliasName: string
+  normalizedAlias: string
+  source: string
+  active: boolean
+}
+
+export interface PlayerAliasDeleteResponse {
+  aliasId: number
+  unlinkedRows: number
+}

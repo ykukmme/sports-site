@@ -27,6 +27,8 @@ import type {
   GameOverrideDistributionRowsPayload,
   GameOverrideDistributionRowsResponse,
   GameOverrideDistributionSide,
+  PlayerAliasDeleteResponse,
+  PlayerAliasListResponse,
   PlayerAliasResponse,
   StatRecalculateResponse,
   UnmatchedPlayerResponse,
@@ -467,6 +469,11 @@ export async function fetchUnmatchedPlayers(): Promise<UnmatchedPlayerResponse[]
   return res.data.data ?? []
 }
 
+export async function fetchPlayerAliases(): Promise<PlayerAliasListResponse[]> {
+  const res = await apiClient.get<ApiResponse<PlayerAliasListResponse[]>>('/api/admin/stats/player-aliases')
+  return res.data.data ?? []
+}
+
 export async function createPlayerAlias(
   playerId: number,
   aliasName: string,
@@ -477,6 +484,27 @@ export async function createPlayerAlias(
     aliasName,
     source,
   })
+  return res.data.data!
+}
+
+export async function updatePlayerAlias(
+  aliasId: number,
+  playerId: number,
+  aliasName: string,
+  source = 'GOL_GG',
+): Promise<PlayerAliasResponse> {
+  const res = await apiClient.put<ApiResponse<PlayerAliasResponse>>(`/api/admin/stats/player-aliases/${aliasId}`, {
+    playerId,
+    aliasName,
+    source,
+  })
+  return res.data.data!
+}
+
+export async function deletePlayerAlias(aliasId: number): Promise<PlayerAliasDeleteResponse> {
+  const res = await apiClient.delete<ApiResponse<PlayerAliasDeleteResponse>>(
+    `/api/admin/stats/player-aliases/${aliasId}`,
+  )
   return res.data.data!
 }
 
