@@ -26,6 +26,7 @@ import {
   useGolGgTournamentSources,
   usePandaScoreMatchResultSync,
   useRecalculateAllStats,
+  useRecalculateMatchStats,
   useResolveMatchExternalDetailSource,
   useSyncGolGgTournamentSource,
   useSyncMatchExternalDetail,
@@ -209,6 +210,7 @@ export function AdminMatchListPage() {
   const [bindResultMessage, setBindResultMessage] = useState<string | null>(null)
   const [detailSyncMessage, setDetailSyncMessage] = useState<string | null>(null)
   const [golGgSourceMessage, setGolGgSourceMessage] = useState<string | null>(null)
+  const [statsRecalculateTargetId, setStatsRecalculateTargetId] = useState<number | null>(null)
   const [candidateMap, setCandidateMap] = useState<Record<number, MatchExternalDetailCandidatesResponse>>({})
   const [selectedCandidateSourceMap, setSelectedCandidateSourceMap] = useState<Record<number, string>>({})
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
@@ -235,6 +237,7 @@ export function AdminMatchListPage() {
   const deleteMutation = useAdminDeleteMatch()
   const resultSyncMutation = usePandaScoreMatchResultSync()
   const statsRecalculateMutation = useRecalculateAllStats()
+  const matchStatsRecalculateMutation = useRecalculateMatchStats()
   const createGolGgSourceMutation = useCreateGolGgTournamentSource()
   const syncGolGgSourceMutation = useSyncGolGgTournamentSource()
   const deleteGolGgSourceMutation = useDeleteGolGgTournamentSource()
@@ -394,6 +397,19 @@ export function AdminMatchListPage() {
             : `matchId ${matchId} 상세 동기화 완료`,
         )
       },
+    })
+  }
+
+  function runMatchStatsRecalculate(matchId: number) {
+    setStatsRecalculateTargetId(matchId)
+    matchStatsRecalculateMutation.mutate(matchId, {
+      onSuccess: (result) => {
+        setStatsRecalculateResult(result)
+        setDetailSyncMessage(
+          `matchId ${matchId} 통계 재계산 완료: 팀 ${result.teamRows}행 / 선수 ${result.playerRows}행`,
+        )
+      },
+      onSettled: () => setStatsRecalculateTargetId(null),
     })
   }
 
@@ -595,6 +611,12 @@ export function AdminMatchListPage() {
       : syncGolGgSourceMutation.error instanceof ApiError
         ? syncGolGgSourceMutation.error.message
         : createGolGgSourceMutation.error?.message ?? syncGolGgSourceMutation.error?.message
+  const statsRecalculateErrorMessage =
+    statsRecalculateMutation.error instanceof ApiError
+      ? statsRecalculateMutation.error.message
+      : matchStatsRecalculateMutation.error instanceof ApiError
+        ? matchStatsRecalculateMutation.error.message
+        : statsRecalculateMutation.error?.message ?? matchStatsRecalculateMutation.error?.message
 
   const operationNotices: OperationNotice[] = [
     resultSyncErrorMessage
@@ -654,6 +676,17 @@ export function AdminMatchListPage() {
           onClose: () => {
             createGolGgSourceMutation.reset()
             syncGolGgSourceMutation.reset()
+          },
+        }
+      : null,
+    statsRecalculateErrorMessage
+      ? {
+          key: 'stats-recalculate-error',
+          message: statsRecalculateErrorMessage,
+          variant: 'error',
+          onClose: () => {
+            statsRecalculateMutation.reset()
+            matchStatsRecalculateMutation.reset()
           },
         }
       : null,
@@ -1099,6 +1132,7 @@ export function AdminMatchListPage() {
                 const bindInputValue = getBindInputValue(match.id, effectiveSourceUrl)
                 const canBind = bindInputValue.trim().length > 0
                 const canSync = Boolean(effectiveSourceUrl)
+                const canRecalculateStats = detailStatus === 'SYNCED' || detailStatus === 'PARTIAL_SYNC'
                 const candidateResult = candidateMap[match.id]
                 const selectedCandidateSourceUrl =
                   selectedCandidateSourceMap[match.id] ?? candidateResult?.autoSelectedSourceUrl ?? ''
@@ -1300,6 +1334,21 @@ export function AdminMatchListPage() {
                           title={canSync ? 'Gol.gg 상세 동기화' : '먼저 sourceUrl을 바인딩하세요'}
                         >
                           상세 동기화
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !canRecalculateStats ||
+                            matchStatsRecalculateMutation.isPending ||
+                            statsRecalculateMutation.isPending
+                          }
+                          onClick={() => runMatchStatsRecalculate(match.id)}
+                          title={canRecalculateStats ? '이 경기 통계 재계산' : '상세 동기화 완료 후 사용하세요'}
+                        >
+                          {matchStatsRecalculateMutation.isPending && statsRecalculateTargetId === match.id
+                            ? '계산 중'
+                            : '통계'}
                         </Button>
                         <Button
                           variant="outline"

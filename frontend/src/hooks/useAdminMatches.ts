@@ -26,6 +26,7 @@ import {
   fetchAdminMatches,
   resolveMatchExternalDetailSource,
   recalculateAllStats,
+  recalculateMatchStats,
   syncMatchExternalDetail,
   syncMatchExternalDetailsBatch,
   autoBindMatchExternalDetail,
@@ -142,6 +143,16 @@ export function useRecalculateAllStats() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: recalculateAllStats,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    },
+  })
+}
+
+export function useRecalculateMatchStats() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (matchId: number) => recalculateMatchStats(matchId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stats'] })
     },

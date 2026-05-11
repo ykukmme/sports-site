@@ -464,6 +464,15 @@ export async function recalculateAllStats(): Promise<StatRecalculateResponse> {
   return res.data.data!
 }
 
+export async function recalculateMatchStats(matchId: number): Promise<StatRecalculateResponse> {
+  const res = await apiClient.post<ApiResponse<StatRecalculateResponse>>(
+    `/api/admin/stats/matches/${matchId}/recalculate`,
+    null,
+    { timeout: 60_000 },
+  )
+  return res.data.data!
+}
+
 export async function fetchUnmatchedPlayers(): Promise<UnmatchedPlayerResponse[]> {
   const res = await apiClient.get<ApiResponse<UnmatchedPlayerResponse[]>>('/api/admin/stats/unmatched-players')
   return res.data.data ?? []
