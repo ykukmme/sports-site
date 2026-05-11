@@ -1,11 +1,12 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { usePlayerDetail } from '../hooks/usePlayerDetail'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
-import { PlayerStatsCard } from '../components/stats/StatsCard'
+import { PlayerStatsCard, StatsFilterBar } from '../components/stats/StatsCard'
 import { usePlayerStats } from '../hooks/useStats'
-import type { PlayerResponse, PlayerStatus } from '../types/domain'
+import type { PlayerResponse, PlayerStatus, StatsFilters } from '../types/domain'
 
 const STATUS_LABELS: Record<PlayerStatus, string> = {
   ACTIVE: '활동 중',
@@ -16,8 +17,9 @@ const STATUS_LABELS: Record<PlayerStatus, string> = {
 export function PlayerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const playerId = id ? parseInt(id, 10) : NaN
+  const [statsFilters, setStatsFilters] = useState<StatsFilters>({})
   const { data: player, isLoading, error } = usePlayerDetail(isNaN(playerId) ? 0 : playerId)
-  const { data: playerStats, isLoading: isStatsLoading } = usePlayerStats(isNaN(playerId) ? 0 : playerId)
+  const { data: playerStats, isLoading: isStatsLoading } = usePlayerStats(isNaN(playerId) ? 0 : playerId, statsFilters)
 
   if (!id || isNaN(playerId)) return <ErrorMessage message="올바르지 않은 로스터 ID입니다." />
   if (isLoading) return <LoadingSpinner />
@@ -85,13 +87,16 @@ export function PlayerDetailPage() {
         </div>
       </dl>
 
-      {isStatsLoading ? (
-        <div className="mt-8">
+      <div className="mt-8">
+        <StatsFilterBar filters={statsFilters} onChange={setStatsFilters} />
+        {isStatsLoading ? (
           <LoadingSpinner />
-        </div>
-      ) : playerStats && playerStats.games > 0 ? (
-        <PlayerStatsCard stats={playerStats} />
-      ) : null}
+        ) : playerStats && playerStats.games > 0 ? (
+          <PlayerStatsCard stats={playerStats} />
+        ) : (
+          <EmptyState message="조건에 맞는 선수 통계가 없습니다." />
+        )}
+      </div>
     </div>
   )
 }

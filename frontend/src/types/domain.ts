@@ -456,6 +456,12 @@ export interface TeamStatsResponse {
   avgBarons: number
 }
 
+export interface StatsFilters {
+  recent?: number
+  league?: string
+  patch?: string
+}
+
 export interface PlayerStatsResponse {
   playerId: number
   playerName: string

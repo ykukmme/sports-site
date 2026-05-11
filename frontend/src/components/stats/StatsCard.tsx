@@ -1,4 +1,12 @@
-import type { PlayerStatsResponse, TeamStatsResponse } from '../../types/domain'
+import { MATCH_LEAGUE_FILTERS, getTeamLeagueLabel } from '../../constants/teamLeagues'
+import type { PlayerStatsResponse, StatsFilters, TeamStatsResponse } from '../../types/domain'
+
+const RECENT_OPTIONS = [
+  { label: '전체', value: '' },
+  { label: '최근 5게임', value: '5' },
+  { label: '최근 10게임', value: '10' },
+  { label: '최근 20게임', value: '20' },
+]
 
 function formatNumber(value: number, digits = 1) {
   if (!Number.isFinite(value)) return '-'
@@ -15,6 +23,74 @@ function StatItem({ label, value }: { label: string; value: string | number }) {
     <div className="rounded-lg border border-border bg-card p-3">
       <dt className="mb-1 text-xs text-muted-foreground">{label}</dt>
       <dd className="text-lg font-semibold text-foreground">{value}</dd>
+    </div>
+  )
+}
+
+export function StatsFilterBar({
+  filters,
+  onChange,
+}: {
+  filters: StatsFilters
+  onChange: (filters: StatsFilters) => void
+}) {
+  return (
+    <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-3">
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs text-muted-foreground">집계 범위</span>
+        <select
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+          value={filters.recent?.toString() ?? ''}
+          onChange={(event) =>
+            onChange({
+              ...filters,
+              recent: event.target.value ? Number(event.target.value) : undefined,
+            })
+          }
+        >
+          {RECENT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs text-muted-foreground">리그</span>
+        <select
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+          value={filters.league ?? 'ALL'}
+          onChange={(event) =>
+            onChange({
+              ...filters,
+              league: event.target.value === 'ALL' ? undefined : event.target.value,
+            })
+          }
+        >
+          <option value="ALL">전체</option>
+          {MATCH_LEAGUE_FILTERS.map((league) => (
+            <option key={league.code} value={league.code}>
+              {getTeamLeagueLabel(league.code)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-xs text-muted-foreground">패치</span>
+        <input
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+          placeholder="예: 16.8"
+          value={filters.patch ?? ''}
+          onChange={(event) =>
+            onChange({
+              ...filters,
+              patch: event.target.value || undefined,
+            })
+          }
+        />
+      </label>
     </div>
   )
 }

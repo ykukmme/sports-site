@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 @Service
 public class StatsQueryService {
@@ -33,12 +34,20 @@ public class StatsQueryService {
 
     @Transactional(readOnly = true)
     public TeamStatsResponse teamStats(Long teamId) {
+        return teamStats(teamId, new StatsFilterCondition(null, null, null));
+    }
+
+    @Transactional(readOnly = true)
+    public TeamStatsResponse teamStats(Long teamId, StatsFilterCondition condition) {
         Team team = teamRepository.findById(teamId).orElseThrow(() -> new BusinessException(
                 "TEAM_NOT_FOUND",
                 "Team not found. id=" + teamId,
                 HttpStatus.NOT_FOUND
         ));
-        List<TeamGameStat> rows = teamStatRepository.findByTeamIdOrderByScheduledAtDesc(teamId);
+        List<TeamGameStat> rows = filterTeamRows(
+                teamStatRepository.findByTeamIdOrderByScheduledAtDesc(teamId),
+                normalizeCondition(condition)
+        );
         int games = rows.size();
         int wins = (int) rows.stream().filter(row -> Boolean.TRUE.equals(row.getWin())).count();
         int losses = games - wins;
@@ -60,12 +69,20 @@ public class StatsQueryService {
 
     @Transactional(readOnly = true)
     public PlayerStatsResponse playerStats(Long playerId) {
+        return playerStats(playerId, new StatsFilterCondition(null, null, null));
+    }
+
+    @Transactional(readOnly = true)
+    public PlayerStatsResponse playerStats(Long playerId, StatsFilterCondition condition) {
         Player player = playerRepository.findById(playerId).orElseThrow(() -> new BusinessException(
                 "PLAYER_NOT_FOUND",
                 "Player not found. id=" + playerId,
                 HttpStatus.NOT_FOUND
         ));
-        List<PlayerGameStat> rows = playerStatRepository.findByPlayerIdOrderByScheduledAtDesc(playerId);
+        List<PlayerGameStat> rows = filterPlayerRows(
+                playerStatRepository.findByPlayerIdOrderByScheduledAtDesc(playerId),
+                normalizeCondition(condition)
+        );
         int games = rows.size();
         int wins = (int) rows.stream().filter(row -> Boolean.TRUE.equals(row.getWin())).count();
         int losses = games - wins;
@@ -92,6 +109,67 @@ public class StatsQueryService {
                 avgDouble(rows, PlayerGameStat::getGoldShare),
                 avgDouble(rows, PlayerGameStat::getDamageShare)
         );
+    }
+
+    private StatsFilterCondition normalizeCondition(StatsFilterCondition condition) {
+        if (condition == null) {
+            return new StatsFilterCondition(null, null, null);
+        }
+        Integer recent = condition.recent();
+        if (recent != null && recent <= 0) {
+            throw new BusinessException("INVALID_STATS_FILTER", "recent must be greater than 0.", HttpStatus.BAD_REQUEST);
+        }
+        return new StatsFilterCondition(
+                recent == null ? null : Math.min(recent, 100),
+                blankToNull(condition.league()),
+                blankToNull(condition.patch())
+        );
+    }
+
+    private List<TeamGameStat> filterTeamRows(List<TeamGameStat> rows, StatsFilterCondition condition) {
+        Stream<TeamGameStat> stream = rows.stream();
+        if (condition.league() != null) {
+            stream = stream.filter(row -> equalsIgnoreCase(row.getLeague(), condition.league()));
+        }
+        if (condition.patch() != null) {
+            stream = stream.filter(row -> patchMatches(row.getPatchVersion(), condition.patch()));
+        }
+        if (condition.recent() != null) {
+            stream = stream.limit(condition.recent());
+        }
+        return stream.toList();
+    }
+
+    private List<PlayerGameStat> filterPlayerRows(List<PlayerGameStat> rows, StatsFilterCondition condition) {
+        Stream<PlayerGameStat> stream = rows.stream();
+        if (condition.league() != null) {
+            stream = stream.filter(row -> equalsIgnoreCase(row.getLeague(), condition.league()));
+        }
+        if (condition.patch() != null) {
+            stream = stream.filter(row -> patchMatches(row.getPatchVersion(), condition.patch()));
+        }
+        if (condition.recent() != null) {
+            stream = stream.limit(condition.recent());
+        }
+        return stream.toList();
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank() || "ALL".equalsIgnoreCase(value.trim())) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private boolean equalsIgnoreCase(String left, String right) {
+        return left != null && right != null && left.equalsIgnoreCase(right);
+    }
+
+    private boolean patchMatches(String rowPatch, String filterPatch) {
+        if (rowPatch == null || filterPatch == null) {
+            return false;
+        }
+        return rowPatch.trim().toLowerCase().startsWith(filterPatch.trim().toLowerCase());
     }
 
     private int sumInt(List<PlayerGameStat> rows, Function<PlayerGameStat, Integer> mapper) {
