@@ -1,18 +1,13 @@
 package com.esports.domain.stat;
 
-import com.esports.domain.match.Match;
 import com.esports.domain.matchexternal.ExternalDetailStatus;
-import com.esports.domain.matchexternal.MatchExternalDetail;
-import com.esports.domain.matchexternal.MatchExternalDetailGameRepository;
 import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -25,18 +20,18 @@ public class StatQualityService {
     );
 
     private final MatchExternalDetailRepository detailRepository;
-    private final MatchExternalDetailGameRepository detailGameRepository;
     private final TeamGameStatRepository teamStatRepository;
     private final PlayerGameStatRepository playerStatRepository;
+    private final StatQualityIssueQueryRepository issueQueryRepository;
 
     public StatQualityService(MatchExternalDetailRepository detailRepository,
-                              MatchExternalDetailGameRepository detailGameRepository,
                               TeamGameStatRepository teamStatRepository,
-                              PlayerGameStatRepository playerStatRepository) {
+                              PlayerGameStatRepository playerStatRepository,
+                              StatQualityIssueQueryRepository issueQueryRepository) {
         this.detailRepository = detailRepository;
-        this.detailGameRepository = detailGameRepository;
         this.teamStatRepository = teamStatRepository;
         this.playerStatRepository = playerStatRepository;
+        this.issueQueryRepository = issueQueryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -57,7 +52,7 @@ public class StatQualityService {
                 playerStatRepository.countByPlayerIsNull(),
                 playerStatRepository.countByGd15IsNullOrXpd15IsNullOrCsd15IsNull(),
                 playerStatRepository.countByVisionScoreIsNull(),
-                detailGameRepository.countByBlueTeamIdIsNullOrRedTeamIdIsNull(),
+                issueQueryRepository.countMissingSideTeamGames(),
                 partialDetailCount,
                 failedDetailCount,
                 needsReviewDetailCount
@@ -66,51 +61,30 @@ public class StatQualityService {
 
     @Transactional(readOnly = true)
     public Page<StatQualityMatchIssueResponse> matchIssues(StatQualityIssueType type, Pageable pageable) {
-        List<StatQualityMatchIssueResponse> rows = detailRepository.findAllForQuality().stream()
-                .map(this::toIssueRow)
-                .filter(row -> !row.issueTypes().isEmpty())
-                .filter(row -> type == null || row.issueTypes().contains(type))
-                .sorted(Comparator.comparing(StatQualityMatchIssueResponse::scheduledAt).reversed())
-                .toList();
-
-        int start = Math.min((int) pageable.getOffset(), rows.size());
-        int end = Math.min(start + pageable.getPageSize(), rows.size());
-        return new PageImpl<>(rows.subList(start, end), pageable, rows.size());
+        return issueQueryRepository.findIssues(type, pageable)
+                .map(this::toResponse);
     }
 
-    private StatQualityMatchIssueResponse toIssueRow(MatchExternalDetail detail) {
-        Match match = detail.getMatch();
-        Long matchId = match.getId();
-        long teamRows = teamStatRepository.countByMatchId(matchId);
-        long playerRows = playerStatRepository.countByMatchId(matchId);
-        List<StatQualityIssueType> issues = findIssues(detail, matchId, teamRows, playerRows);
-
-        String league = match.getInternationalCompetitionCode() != null
-                ? match.getInternationalCompetitionCode()
-                : match.getTeamA().getLeague();
-
+    private StatQualityMatchIssueResponse toResponse(StatQualityMatchIssueProjection row) {
         return new StatQualityMatchIssueResponse(
-                matchId,
-                league,
-                match.getTournamentName(),
-                match.getTeamA().getName(),
-                match.getTeamB().getName(),
-                match.getScheduledAt(),
-                detail.getStatus(),
-                detail.getExpectedGameCount(),
-                detail.getSyncedGameCount(),
-                teamRows,
-                playerRows,
-                issues
+                row.matchId(),
+                row.league(),
+                row.tournamentName(),
+                row.teamAName(),
+                row.teamBName(),
+                row.scheduledAt(),
+                row.detailStatus(),
+                row.expectedGameCount(),
+                row.syncedGameCount(),
+                row.teamStatRows(),
+                row.playerStatRows(),
+                findIssues(row)
         );
     }
 
-    private List<StatQualityIssueType> findIssues(MatchExternalDetail detail,
-                                                  Long matchId,
-                                                  long teamRows,
-                                                  long playerRows) {
+    private List<StatQualityIssueType> findIssues(StatQualityMatchIssueProjection row) {
         List<StatQualityIssueType> issues = new ArrayList<>();
-        ExternalDetailStatus status = detail.getStatus();
+        ExternalDetailStatus status = row.detailStatus();
 
         if (status == ExternalDetailStatus.PARTIAL_SYNC) {
             issues.add(StatQualityIssueType.PARTIAL_DETAIL);
@@ -121,26 +95,26 @@ public class StatQualityService {
         if (status == ExternalDetailStatus.NEEDS_REVIEW) {
             issues.add(StatQualityIssueType.NEEDS_REVIEW);
         }
-        if (detailGameRepository.existsMissingSideTeamByMatchId(matchId)) {
+        if (row.missingSideTeam()) {
             issues.add(StatQualityIssueType.MISSING_SIDE_TEAM);
         }
 
         if (status == ExternalDetailStatus.SYNCED) {
-            if (teamRows == 0) {
+            if (row.teamStatRows() == 0) {
                 issues.add(StatQualityIssueType.NO_TEAM_STATS);
             }
-            if (playerRows == 0) {
+            if (row.playerStatRows() == 0) {
                 issues.add(StatQualityIssueType.NO_PLAYER_STATS);
             }
         }
 
-        if (playerStatRepository.existsByMatchIdAndPlayerIsNull(matchId)) {
+        if (row.hasUnmatchedPlayer()) {
             issues.add(StatQualityIssueType.UNMATCHED_PLAYER);
         }
-        if (playerStatRepository.existsMissingLaningByMatchId(matchId)) {
+        if (row.missingLaning()) {
             issues.add(StatQualityIssueType.MISSING_LANING);
         }
-        if (playerStatRepository.existsByMatchIdAndVisionScoreIsNull(matchId)) {
+        if (row.missingVision()) {
             issues.add(StatQualityIssueType.MISSING_VISION);
         }
 

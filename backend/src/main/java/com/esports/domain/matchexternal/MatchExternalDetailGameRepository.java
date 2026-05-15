@@ -11,8 +11,6 @@ public interface MatchExternalDetailGameRepository extends JpaRepository<MatchEx
     @Query("select g from MatchExternalDetailGame g where g.detail.match.id = :matchId and g.gameNo = :gameNo")
     Optional<MatchExternalDetailGame> findByMatchIdAndGameNo(Long matchId, Integer gameNo);
 
-    long countByBlueTeamIdIsNullOrRedTeamIdIsNull();
-
     @Query("""
             select count(g) > 0
             from MatchExternalDetailGame g
