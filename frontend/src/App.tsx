@@ -25,6 +25,7 @@ import { AdminTeamFormPage } from './pages/admin/teams/AdminTeamFormPage'
 import { AdminPlayerListPage } from './pages/admin/players/AdminPlayerListPage'
 import { AdminPlayerFormPage } from './pages/admin/players/AdminPlayerFormPage'
 import { AdminRosterQualityPage } from './pages/admin/players/AdminRosterQualityPage'
+import { AdminStatQualityPage } from './pages/admin/stats/AdminStatQualityPage'
 import { AdminPandaScorePreviewPage } from './pages/admin/pandascore/AdminPandaScorePreviewPage'
 // AI 챗봇 위젯 — AI_ENABLED=0이면 렌더링하지 않음
 import { ChatbotWidget } from './components/chatbot/ChatbotWidget'
@@ -77,6 +78,7 @@ function App() {
               <Route path="/admin/players/quality" element={<AdminRosterQualityPage />} />
               <Route path="/admin/players/new" element={<AdminPlayerFormPage />} />
               <Route path="/admin/players/:id/edit" element={<AdminPlayerFormPage />} />
+              <Route path="/admin/stats/quality" element={<AdminStatQualityPage />} />
               <Route path="/admin/pandascore/preview" element={<AdminPandaScorePreviewPage />} />
             </Route>
           </Route>

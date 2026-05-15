@@ -2,6 +2,9 @@ package com.esports.domain.stat;
 
 import com.esports.common.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,11 +22,14 @@ public class AdminStatsController {
 
     private final StatsRecalculationService statsRecalculationService;
     private final RosterQualityService rosterQualityService;
+    private final StatQualityService statQualityService;
 
     public AdminStatsController(StatsRecalculationService statsRecalculationService,
-                                RosterQualityService rosterQualityService) {
+                                RosterQualityService rosterQualityService,
+                                StatQualityService statQualityService) {
         this.statsRecalculationService = statsRecalculationService;
         this.rosterQualityService = rosterQualityService;
+        this.statQualityService = statQualityService;
     }
 
     @PostMapping("/matches/{matchId}/recalculate")
@@ -34,6 +40,23 @@ public class AdminStatsController {
     @PostMapping("/recalculate")
     public ApiResponse<StatRecalculateResponse> recalculateAllSynced() {
         return ApiResponse.ok(statsRecalculationService.recalculateAllSynced());
+    }
+
+    @GetMapping("/quality/summary")
+    public ApiResponse<StatQualitySummaryResponse> qualitySummary() {
+        return ApiResponse.ok(statQualityService.summary());
+    }
+
+    @GetMapping("/quality/matches")
+    public ApiResponse<Page<StatQualityMatchIssueResponse>> qualityMatches(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int size,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) StatQualityIssueType type
+    ) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        return ApiResponse.ok(statQualityService.matchIssues(type, pageable));
     }
 
     @GetMapping("/unmatched-players")

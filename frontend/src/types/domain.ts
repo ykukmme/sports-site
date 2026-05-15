@@ -489,6 +489,45 @@ export interface StatRecalculateResponse {
   playerRows: number
 }
 
+export type StatQualityIssueType =
+  | 'NO_TEAM_STATS'
+  | 'NO_PLAYER_STATS'
+  | 'MISSING_SIDE_TEAM'
+  | 'PARTIAL_DETAIL'
+  | 'FAILED_DETAIL'
+  | 'NEEDS_REVIEW'
+  | 'MISSING_LANING'
+  | 'MISSING_VISION'
+  | 'UNMATCHED_PLAYER'
+
+export interface StatQualitySummaryResponse {
+  syncedMatchCount: number
+  statReadyMatchCount: number
+  missingStatMatchCount: number
+  unmatchedPlayerRowCount: number
+  missingLaningRowCount: number
+  missingVisionRowCount: number
+  missingSideTeamGameCount: number
+  partialDetailCount: number
+  failedDetailCount: number
+  needsReviewDetailCount: number
+}
+
+export interface StatQualityMatchIssueResponse {
+  matchId: number
+  league: string | null
+  tournamentName: string
+  teamAName: string
+  teamBName: string
+  scheduledAt: string
+  detailStatus: MatchExternalDetailStatus | null
+  expectedGameCount: number | null
+  syncedGameCount: number | null
+  teamStatRows: number
+  playerStatRows: number
+  issueTypes: StatQualityIssueType[]
+}
+
 export interface UnmatchedPlayerCandidateResponse {
   playerId: number
   inGameName: string

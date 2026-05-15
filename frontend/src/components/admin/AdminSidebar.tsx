@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { to: '/admin/teams', label: '팀 관리' },
   { to: '/admin/players', label: '로스터 관리' },
   { to: '/admin/players/quality', label: '로스터 매칭' },
+  { to: '/admin/stats/quality', label: '통계 품질' },
   { to: '/admin/pandascore/preview', label: 'PandaScore Preview' },
 ]
 

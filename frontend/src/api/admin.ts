@@ -31,6 +31,9 @@ import type {
   PlayerAliasListResponse,
   PlayerAliasResponse,
   StatRecalculateResponse,
+  StatQualityIssueType,
+  StatQualityMatchIssueResponse,
+  StatQualitySummaryResponse,
   UnmatchedPlayerResponse,
 } from '../types/domain'
 import type {
@@ -469,6 +472,27 @@ export async function recalculateMatchStats(matchId: number): Promise<StatRecalc
     `/api/admin/stats/matches/${matchId}/recalculate`,
     null,
     { timeout: 60_000 },
+  )
+  return res.data.data!
+}
+
+export async function fetchStatQualitySummary(): Promise<StatQualitySummaryResponse> {
+  const res = await apiClient.get<ApiResponse<StatQualitySummaryResponse>>('/api/admin/stats/quality/summary')
+  return res.data.data!
+}
+
+export async function fetchStatQualityMatches(
+  page = 0,
+  type?: StatQualityIssueType | 'ALL',
+): Promise<PageResponse<StatQualityMatchIssueResponse>> {
+  const params = {
+    page,
+    size: 20,
+    type: type && type !== 'ALL' ? type : undefined,
+  }
+  const res = await apiClient.get<ApiResponse<PageResponse<StatQualityMatchIssueResponse>>>(
+    '/api/admin/stats/quality/matches',
+    { params },
   )
   return res.data.data!
 }
