@@ -183,8 +183,12 @@ export function AdminStatQualityPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/admin/matches?matchId=${row.matchId}`)}>
-                        경기 관리
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate(`/admin/matches/${row.matchId}/override`)}
+                      >
+                        게임 보정
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => navigate('/admin/players/quality')}>
                         로스터
