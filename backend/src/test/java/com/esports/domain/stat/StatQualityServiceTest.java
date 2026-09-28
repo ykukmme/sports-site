@@ -17,7 +17,6 @@ import static org.mockito.Mockito.when;
 class StatQualityServiceTest {
 
     private MatchExternalDetailRepository detailRepository;
-    private TeamGameStatRepository teamStatRepository;
     private PlayerGameStatRepository playerStatRepository;
     private StatQualityIssueQueryRepository issueQueryRepository;
     private StatQualityService service;
@@ -25,12 +24,10 @@ class StatQualityServiceTest {
     @BeforeEach
     void setUp() {
         detailRepository = mock(MatchExternalDetailRepository.class);
-        teamStatRepository = mock(TeamGameStatRepository.class);
         playerStatRepository = mock(PlayerGameStatRepository.class);
         issueQueryRepository = mock(StatQualityIssueQueryRepository.class);
         service = new StatQualityService(
                 detailRepository,
-                teamStatRepository,
                 playerStatRepository,
                 issueQueryRepository
         );

@@ -20,16 +20,13 @@ public class StatQualityService {
     );
 
     private final MatchExternalDetailRepository detailRepository;
-    private final TeamGameStatRepository teamStatRepository;
     private final PlayerGameStatRepository playerStatRepository;
     private final StatQualityIssueQueryRepository issueQueryRepository;
 
     public StatQualityService(MatchExternalDetailRepository detailRepository,
-                              TeamGameStatRepository teamStatRepository,
                               PlayerGameStatRepository playerStatRepository,
                               StatQualityIssueQueryRepository issueQueryRepository) {
         this.detailRepository = detailRepository;
-        this.teamStatRepository = teamStatRepository;
         this.playerStatRepository = playerStatRepository;
         this.issueQueryRepository = issueQueryRepository;
     }
