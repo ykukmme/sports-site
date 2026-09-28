@@ -126,7 +126,12 @@ export function AdminStatQualityPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      {/* 갱신 중에는 이전 결과를 흐리게 표시 — 화면 전체가 교체되지 않는다 */}
+      <div
+        className={`overflow-x-auto rounded-lg border border-border bg-card transition-opacity ${
+          matchesQuery.isFetching ? 'opacity-60' : ''
+        }`}
+      >
         <Table className="min-w-[1120px]">
           <TableHeader>
             <TableRow>
