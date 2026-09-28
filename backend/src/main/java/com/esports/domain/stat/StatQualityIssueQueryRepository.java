@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -80,6 +81,36 @@ public class StatQualityIssueQueryRepository {
         List<StatQualityMatchIssueProjection> rows = query.getResultList();
         long total = countQuery.getSingleResult();
         return new PageImpl<>(rows, pageable, total);
+    }
+
+    // 상세 동기화가 완료된 경기 중 팀·선수 통계가 모두 존재하는 경기 수
+    public long countStatReadyMatches(Collection<ExternalDetailStatus> doneStatuses) {
+        return entityManager.createQuery("""
+                        select count(d)
+                        from MatchExternalDetail d
+                        join d.match m
+                        where d.status in :doneStatuses
+                          and exists (select 1 from TeamGameStat tgs where tgs.match.id = m.id)
+                          and exists (select 1 from PlayerGameStat pgs where pgs.match.id = m.id)
+                        """, Long.class)
+                .setParameter("doneStatuses", doneStatuses)
+                .getSingleResult();
+    }
+
+    // 상세 동기화가 완료됐는데 팀 또는 선수 통계가 없는 경기 수
+    public long countMissingStatMatches(Collection<ExternalDetailStatus> doneStatuses) {
+        return entityManager.createQuery("""
+                        select count(d)
+                        from MatchExternalDetail d
+                        join d.match m
+                        where d.status in :doneStatuses
+                          and (
+                              not exists (select 1 from TeamGameStat tgs where tgs.match.id = m.id)
+                              or not exists (select 1 from PlayerGameStat pgs where pgs.match.id = m.id)
+                          )
+                        """, Long.class)
+                .setParameter("doneStatuses", doneStatuses)
+                .getSingleResult();
     }
 
     public long countMissingSideTeamGames() {

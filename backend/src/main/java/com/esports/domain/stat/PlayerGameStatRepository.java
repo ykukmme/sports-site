@@ -32,7 +32,4 @@ public interface PlayerGameStatRepository extends JpaRepository<PlayerGameStat, 
               and (s.gd15 is null or s.xpd15 is null or s.csd15 is null)
             """)
     boolean existsMissingLaningByMatchId(Long matchId);
-
-    @Query("select count(distinct s.match.id) from PlayerGameStat s")
-    long countDistinctMatchIds();
 }

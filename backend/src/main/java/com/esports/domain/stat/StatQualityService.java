@@ -36,11 +36,11 @@ public class StatQualityService {
 
     @Transactional(readOnly = true)
     public StatQualitySummaryResponse summary() {
+        // 세 카드는 같은 모집단(상세 동기화 완료 경기) 위에서 계산한다.
+        // 불변식: syncedMatchCount == statReadyMatchCount + missingStatMatchCount
         long syncedMatchCount = detailRepository.countByStatusIn(DETAIL_DONE_STATUSES);
-        long statReadyMatchCount = Math.max(
-                teamStatRepository.countDistinctMatchIds(),
-                playerStatRepository.countDistinctMatchIds()
-        );
+        long statReadyMatchCount = issueQueryRepository.countStatReadyMatches(DETAIL_DONE_STATUSES);
+        long missingStatMatchCount = issueQueryRepository.countMissingStatMatches(DETAIL_DONE_STATUSES);
         long partialDetailCount = detailRepository.countByStatus(ExternalDetailStatus.PARTIAL_SYNC);
         long failedDetailCount = detailRepository.countByStatus(ExternalDetailStatus.FAILED);
         long needsReviewDetailCount = detailRepository.countByStatus(ExternalDetailStatus.NEEDS_REVIEW);
@@ -48,7 +48,7 @@ public class StatQualityService {
         return new StatQualitySummaryResponse(
                 syncedMatchCount,
                 statReadyMatchCount,
-                Math.max(0, syncedMatchCount - statReadyMatchCount),
+                missingStatMatchCount,
                 playerStatRepository.countByPlayerIsNull(),
                 playerStatRepository.countByGd15IsNullOrXpd15IsNullOrCsd15IsNull(),
                 playerStatRepository.countByVisionScoreIsNull(),
