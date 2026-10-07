@@ -30,6 +30,25 @@ export async function fetchMatchDetail(id: number): Promise<MatchExternalDetailP
   return res.data.data
 }
 
+// 진행 중 경기 목록 — /upcoming은 SCHEDULED만 반환하므로 별도 조회
+export async function fetchOngoingMatches(league?: string): Promise<MatchResponse[]> {
+  const params: Record<string, unknown> = { status: 'ONGOING', page: 0, size: 20, sort: 'scheduledAt,asc' }
+  if (league && league !== 'ALL') params.league = league
+  const res = await apiClient.get<ApiResponse<PageResponse<MatchResponse>>>('/api/v1/matches', { params })
+  return res.data.data?.content ?? []
+}
+
+// 리그별 예정 경기 — 서버 league 필터 사용 (국제전 구분은 서버 판정 기준)
+export async function fetchUpcomingMatchesByLeague(league: string): Promise<MatchResponse[]> {
+  const today = new Date().toISOString().slice(0, 10)
+  const res = await apiClient.get<ApiResponse<PageResponse<MatchResponse>>>('/api/v1/matches', {
+    params: { status: 'SCHEDULED', league, sinceDate: today, page: 0, size: 50, sort: 'scheduledAt,asc' },
+  })
+  // /upcoming과 동일하게 현재 시각 이후 경기만
+  const now = Date.now()
+  return (res.data.data?.content ?? []).filter((match) => new Date(match.scheduledAt).getTime() > now)
+}
+
 export async function fetchMatchesByGame(
   gameId: number,
   page = 0,

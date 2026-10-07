@@ -1,17 +1,28 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   fetchUpcomingMatches,
+  fetchUpcomingMatchesByLeague,
+  fetchOngoingMatches,
   fetchMatchResults,
   fetchMatchResultsPage,
   fetchMatchesByGame,
 } from '../api/matches'
 
-// 예정 경기 목록 훅
-export function useUpcomingMatches() {
+// 예정 경기 목록 훅 — league 지정 시 서버 리그 필터, 'ALL'이면 /upcoming
+export function useUpcomingMatches(league: string = 'ALL') {
   return useQuery({
-    queryKey: ['matches', 'upcoming'],
-    queryFn: fetchUpcomingMatches,
+    queryKey: ['matches', 'upcoming', league],
+    queryFn: () => (league === 'ALL' ? fetchUpcomingMatches() : fetchUpcomingMatchesByLeague(league)),
     staleTime: 60_000,
+  })
+}
+
+// 진행 중 경기 목록 훅 — league 지정 시 서버 리그 필터
+export function useOngoingMatches(league: string = 'ALL') {
+  return useQuery({
+    queryKey: ['matches', 'ongoing', league],
+    queryFn: () => fetchOngoingMatches(league),
+    staleTime: 30_000,
   })
 }
 
