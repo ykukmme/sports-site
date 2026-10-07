@@ -1,15 +1,19 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { useTeamDetail } from '../hooks/useTeamDetail'
-import { useMatchResults } from '../hooks/useMatches'
-import { MatchCard } from '../components/match/MatchCard'
+import { useMatchResultsPage } from '../hooks/useMatches'
+import { MatchList } from '../components/match/MatchList'
 import { PlayerRow } from '../components/team/PlayerRow'
+import { TeamLogo } from '../components/team/TeamLogo'
 import { TeamPlatformBadges } from '../components/team/TeamPlatformBadges'
 import { StatsFilterBar, TeamStatsCard } from '../components/stats/StatsCard'
+import { SectionHeader } from '../components/common/SectionHeader'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
 import { getTeamLeagueLabel } from '../constants/teamLeagues'
+import { useTeamTheme } from '../context/TeamThemeContext'
 import { useTeamStats } from '../hooks/useStats'
 import type { StatsFilters } from '../types/domain'
 
@@ -19,60 +23,48 @@ export function TeamDetailPage() {
   const [statsFilters, setStatsFilters] = useState<StatsFilters>({})
   const { data: team, isLoading, error } = useTeamDetail(isNaN(teamId) ? 0 : teamId)
   const { data: teamStats, isLoading: isStatsLoading } = useTeamStats(isNaN(teamId) ? 0 : teamId, statsFilters)
-  const resultsQuery = useMatchResults()
+  // 팀별 최근 결과 — 서버 teamId 필터 (전체 최근 50건 중 추출하지 않음)
+  const resultsQuery = useMatchResultsPage(0, undefined, isNaN(teamId) ? undefined : teamId)
+  const { activeTeamId, setTeamTheme } = useTeamTheme()
 
-  const recentResults = useMemo(() => {
-    if (!resultsQuery.data || isNaN(teamId)) {
-      return []
-    }
-    return resultsQuery.data
-      .filter((match) => match.teamA.id === teamId || match.teamB.id === teamId)
-      .slice(0, 5)
-  }, [resultsQuery.data, teamId])
+  const recentResults = useMemo(() => (resultsQuery.data?.content ?? []).slice(0, 5), [resultsQuery.data])
 
   if (!id || isNaN(teamId)) {
     return <ErrorMessage message="올바르지 않은 팀 ID입니다." />
   }
-
   if (isLoading) {
     return <LoadingSpinner />
   }
-
   if (error) {
     return <ErrorMessage message={error.message} />
   }
-
   if (!team) {
     return <EmptyState message="팀 정보를 찾을 수 없습니다." />
   }
 
+  const isActive = activeTeamId === team.id
+
   return (
     <div>
-      <div className="mb-8 flex items-center gap-4">
-        {team.logoUrl ? (
-          <div className="asset-plate h-20 w-20">
-            <img
-              src={team.logoUrl}
-              alt={`${team.name} 로고`}
-              className="h-full w-full object-contain"
-              onError={(event) => {
-                event.currentTarget.parentElement?.classList.add('hidden')
-              }}
-            />
-          </div>
-        ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-border bg-muted text-xl font-bold text-muted-foreground">
-            {(team.shortName ?? team.name).charAt(0)}
-          </div>
-        )}
-
-        <div>
-          <h1 className="text-4xl font-semibold leading-tight">{team.name}</h1>
-          <p className="text-sm text-muted-foreground">{getTeamLeagueLabel(team.league)}</p>
-          <div className="mt-3">
-            <TeamPlatformBadges team={team} teamName={team.name} align="start" size="md" />
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <TeamLogo name={team.name} shortName={team.shortName} logoUrl={team.logoUrl} size="xl" />
+          <div className="min-w-0">
+            <h1 className="text-4xl font-semibold leading-tight">{team.name}</h1>
+            <p className="text-sm text-muted-foreground">{getTeamLeagueLabel(team.league)}</p>
+            <div className="mt-3">
+              <TeamPlatformBadges team={team} teamName={team.name} align="start" size="md" />
+            </div>
           </div>
         </div>
+        <Button
+          type="button"
+          variant={isActive ? 'default' : 'outline'}
+          aria-pressed={isActive}
+          onClick={() => setTeamTheme(isActive ? null : team)}
+        >
+          {isActive ? '응원 중' : '응원팀으로 설정'}
+        </Button>
       </div>
 
       <section className="mb-10">
@@ -87,25 +79,13 @@ export function TeamDetailPage() {
       </section>
 
       <section className="mb-10">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold leading-tight">최근 경기 결과</h2>
-          <Link to="/matches/results" className="text-sm text-primary hover:underline">
-            경기 결과 전체보기
-          </Link>
-        </div>
-        {resultsQuery.isLoading ? (
-          <LoadingSpinner />
-        ) : resultsQuery.error ? (
-          <ErrorMessage message={resultsQuery.error.message} />
-        ) : recentResults.length === 0 ? (
-          <EmptyState message="최근 경기 결과가 없습니다." />
-        ) : (
-          <div className="grid gap-4">
-            {recentResults.map((match) => (
-              <MatchCard key={match.id} match={match} />
-            ))}
-          </div>
-        )}
+        <SectionHeader title="최근 경기 결과" to="/matches/results" linkLabel="경기 결과 전체보기" />
+        <MatchList
+          matches={recentResults}
+          isLoading={resultsQuery.isLoading}
+          error={resultsQuery.error}
+          emptyMessage="최근 경기 결과가 없습니다."
+        />
       </section>
 
       <h2 className="mb-3 text-2xl font-semibold leading-tight">로스터</h2>

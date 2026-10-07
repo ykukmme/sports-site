@@ -2,14 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
+import { SectionHeader } from '../components/common/SectionHeader'
 import { DetailUnavailable } from '../components/match-detail/DetailUnavailable'
 import { GameDraftCard } from '../components/match-detail/GameDraftCard'
 import { GameGoldTimelineCard } from '../components/match-detail/GameGoldTimelineCard'
 import { GameObjectivesCard } from '../components/match-detail/GameObjectivesCard'
+import { GameResultStrip } from '../components/match-detail/GameResultStrip'
 import { GameTabBar } from '../components/match-detail/GameTabBar'
-import { MatchDetailHeader } from '../components/match-detail/MatchDetailHeader'
+import { MatchContextPanels } from '../components/match-detail/MatchContextPanels'
+import { MatchScoreboard } from '../components/match-detail/MatchScoreboard'
+import { PlayerStatTable } from '../components/match-detail/PlayerStatTable'
+import { TeamStatCompare } from '../components/match-detail/TeamStatCompare'
 import { useMatch } from '../hooks/useMatch'
 import { useMatchDetail } from '../hooks/useMatchDetail'
+import { useTeamLookup } from '../hooks/useTeamLookup'
+import { getGameNo } from '../lib/matchDetail'
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('ko-KR')
@@ -24,6 +31,7 @@ function PartialFailureNotice({ message }: { message: string }) {
   )
 }
 
+// 경기 상세 — 스코어보드, 세트 결과, 팀 기록 비교, 선수 성적, 세트 상세, 최근 폼/상대 전적
 export function MatchDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -31,96 +39,124 @@ export function MatchDetailPage() {
   const isValidMatchId = Number.isInteger(matchId) && matchId > 0
   const matchQuery = useMatch(isValidMatchId ? matchId : 0)
   const detailQuery = useMatchDetail(isValidMatchId ? matchId : 0)
-  const [activeGameNo, setActiveGameNo] = useState<number | null>(null)
+  const teams = useTeamLookup()
+  // null = 전체 세트 (비교/성적 합산), 숫자 = 해당 세트
+  const [selectedGameNo, setSelectedGameNo] = useState<number | null>(null)
   const match = matchQuery.data
   const detail = detailQuery.data
-  const games = useMemo(() => detail?.games ?? [], [detail?.games])
-  const activeGame = games.find((game, index) => (game.gameNo ?? index + 1) === activeGameNo) ?? games[0] ?? null
+  const games = useMemo(() => (detail?.available ? detail.games : []), [detail])
+  const hasDetail = games.length > 0
 
   useEffect(() => {
-    if (!detail?.available || games.length === 0) {
-      setActiveGameNo(null)
-      return
-    }
-    setActiveGameNo((current) => {
-      const stillExists = games.some((game, index) => (game.gameNo ?? index + 1) === current)
-      return stillExists ? current : games[0].gameNo ?? 1
-    })
-  }, [detail?.available, games])
+    setSelectedGameNo(null)
+  }, [matchId])
+
+  const compareGames = useMemo(
+    () => (selectedGameNo == null ? games : games.filter((game, index) => getGameNo(game, index) === selectedGameNo)),
+    [games, selectedGameNo],
+  )
+  const activeIndex = selectedGameNo == null ? 0 : Math.max(0, games.findIndex((game, index) => getGameNo(game, index) === selectedGameNo))
+  const activeGame = games[activeIndex] ?? null
 
   if (!isValidMatchId) {
     return <ErrorMessage message="올바르지 않은 경기 ID입니다." />
   }
-
   if (matchQuery.isLoading) {
     return <LoadingSpinner />
   }
-
   if (matchQuery.error) {
     return <ErrorMessage message={matchQuery.error.message} />
   }
-
   if (!match) {
     return <ErrorMessage message="경기 정보를 찾을 수 없습니다." />
   }
 
+  const teamA = teams.get(match.teamA.id)
+  const teamB = teams.get(match.teamB.id)
+  // 팀 컬러가 없으면 테마 변수로 대체
+  const colorA = teamA?.primaryColor ?? 'var(--primary)'
+  const colorB = teamB?.primaryColor ?? 'var(--muted-foreground)'
+  const compareLabel = selectedGameNo == null ? '전체 세트' : `Game ${selectedGameNo}`
+
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
-      <MatchDetailHeader match={match} detail={detail} onBack={() => navigate(-1)} />
+    <div className="flex flex-col gap-8">
+      <MatchScoreboard
+        match={match}
+        detail={detail}
+        teamA={teamA}
+        teamB={teamB}
+        colorA={colorA}
+        colorB={colorB}
+        onBack={() => navigate(-1)}
+      />
 
-      <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
-        <div className="text-sm font-medium text-foreground">경기 정보</div>
-        <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-          <div>
-            <span className="text-foreground">{match.teamA.name}</span>
-            <span className="mx-2">vs</span>
-            <span className="text-foreground">{match.teamB.name}</span>
-          </div>
-          <div>상태: {match.status}</div>
-          <div>대회: {match.tournamentName}</div>
-          <div>일정: {formatDate(match.scheduledAt)}</div>
-        </div>
-      </section>
+      {detailQuery.isLoading ? (
+        <LoadingSpinner />
+      ) : detailQuery.error ? (
+        <DetailUnavailable detail={detail} errorMessage={detailQuery.error.message} />
+      ) : hasDetail ? (
+        <>
+          <section>
+            <SectionHeader title="세트 결과" />
+            <GameResultStrip
+              games={games}
+              match={match}
+              selectedGameNo={selectedGameNo}
+              onSelect={setSelectedGameNo}
+              colorA={colorA}
+              colorB={colorB}
+            />
+          </section>
 
-      <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-          <div className="text-sm font-medium text-foreground">GOL.GG 상세 데이터</div>
-          {detail?.available && (
+          <section>
+            <SectionHeader title={`팀 기록 비교 · ${compareLabel}`} />
+            <TeamStatCompare match={match} games={compareGames} colorA={colorA} colorB={colorB} />
+          </section>
+
+          <section>
+            <SectionHeader title={`선수 성적 · ${compareLabel}`} />
+            <PlayerStatTable match={match} games={compareGames} colorA={colorA} colorB={colorB} />
+          </section>
+        </>
+      ) : (
+        <DetailUnavailable detail={detail} />
+      )}
+
+      {hasDetail && activeGame && (
+        <section className="rounded-lg border border-border bg-card p-3 sm:p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div className="text-sm font-medium text-foreground">세트 상세 (GOL.GG)</div>
             <div className="text-xs text-muted-foreground">
-              게임 {detail.games.length}개 · 마지막 동기화 {detail.lastSyncedAt ? formatDate(detail.lastSyncedAt) : '-'}
+              게임 {games.length}개 · 마지막 동기화 {detail?.lastSyncedAt ? formatDate(detail.lastSyncedAt) : '-'}
             </div>
-          )}
-        </div>
-        {detailQuery.isLoading ? (
-          <p className="mt-2 text-sm text-muted-foreground">상세 데이터를 불러오는 중입니다.</p>
-        ) : detailQuery.error ? (
-          <DetailUnavailable detail={detail} errorMessage={detailQuery.error.message} />
-        ) : detail?.available && games.length > 0 ? (
-          <div className="mt-3 text-sm text-muted-foreground">
-            <div>
-              <GameTabBar games={games} activeGameNo={activeGameNo} onChange={setActiveGameNo} />
-            </div>
-            {activeGame && (
-              <div className="mt-4">
-                {activeGame.errorMessage && <PartialFailureNotice message={activeGame.errorMessage} />}
-                <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-                  <div className="grid min-w-0 grid-cols-1 gap-3">
-                    <GameObjectivesCard game={activeGame} match={match} />
-                  </div>
-                  <div className="grid min-w-0 grid-cols-1 gap-3">
-                    <GameGoldTimelineCard game={activeGame} />
-                  </div>
-                </div>
-                <div className="mt-3 min-w-0">
-                  <GameDraftCard game={activeGame} match={match} />
-                </div>
-              </div>
+          </div>
+          <div className="mt-3">
+            <GameTabBar games={games} activeGameNo={getGameNo(activeGame, activeIndex)} onChange={setSelectedGameNo} />
+            {/* 전체 세트 모드 — 위 비교/성적은 합산, 아래 상세는 첫 세트임을 명시 */}
+            {selectedGameNo == null && games.length > 1 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                위 비교·성적은 전체 세트 합산입니다. 아래는 Game {getGameNo(activeGame, activeIndex)} 상세이며, 세트를 고르면 함께 바뀝니다.
+              </p>
             )}
           </div>
-        ) : (
-          <DetailUnavailable detail={detail} />
-        )}
-      </section>
+          <div className="mt-4">
+            {activeGame.errorMessage && <PartialFailureNotice message={activeGame.errorMessage} />}
+            <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+              <div className="grid min-w-0 grid-cols-1 gap-3">
+                <GameObjectivesCard game={activeGame} match={match} />
+              </div>
+              <div className="grid min-w-0 grid-cols-1 gap-3">
+                <GameGoldTimelineCard game={activeGame} />
+              </div>
+            </div>
+            <div className="mt-3 min-w-0">
+              <GameDraftCard game={activeGame} match={match} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      <MatchContextPanels match={match} />
     </div>
   )
 }

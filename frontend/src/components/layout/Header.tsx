@@ -1,177 +1,94 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Sun, Moon, Monitor, Menu } from 'lucide-react'
+import { Sun, Moon, Monitor } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import { useTeamTheme } from '../../context/TeamThemeContext'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { TeamLogo } from '../team/TeamLogo'
+import { cn } from '@/lib/utils'
+import { NAV_ITEMS } from './navItems'
 
-export function Header() {
+// 테마 순환 — 라이트 → 다크 → 시스템
+export function useThemeCycle() {
   const { theme, setTheme } = useTheme()
-  const { activeTeam, setTeamTheme } = useTeamTheme()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const next = () => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')
+  const Icon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor
+  const label = theme === 'light' ? '라이트' : theme === 'dark' ? '다크' : '시스템'
+  return { next, Icon, label }
+}
 
+// 상단 헤더 — 데스크톱 메뉴 + 로고 옆 응원팀, 모바일 메뉴는 MobileTabBar
+export function Header() {
+  const { activeTeam } = useTeamTheme()
+  const { next: toggleTheme, Icon: ThemeIcon, label: themeLabel } = useThemeCycle()
+  const [scrolled, setScrolled] = useState(false)
+
+  // 스크롤 시 배경 불투명 + 그림자
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // 활성 메뉴 밑줄 — 가운데에서 펼쳐지는 애니메이션
   const navClass = ({ isActive }: { isActive: boolean }) =>
-    `text-sm transition-colors ${
-      isActive ? 'font-medium text-foreground' : 'text-foreground/60 hover:text-foreground'
-    }`
-
-  const handleThemeToggle = () => {
-    if (theme === 'light') {
-      setTheme('dark')
-      return
-    }
-
-    if (theme === 'dark') {
-      setTheme('system')
-      return
-    }
-
-    setTheme('light')
-  }
-
-  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor
-  const themeLabel = theme === 'light' ? '라이트' : theme === 'dark' ? '다크' : '시스템'
+    cn(
+      'relative py-1 text-sm transition-colors',
+      'after:absolute after:inset-x-0 after:-bottom-[17px] after:h-0.5 after:origin-center after:bg-primary after:transition-transform after:duration-300',
+      isActive
+        ? 'font-medium text-foreground after:scale-x-100'
+        : 'text-foreground/60 after:scale-x-0 hover:text-foreground hover:after:scale-x-50',
+    )
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border [background:var(--header-bg)] backdrop-blur-md">
-      <div className="container mx-auto grid h-14 grid-cols-[auto_1fr_auto] items-center gap-2 px-4 md:grid-cols-[1fr_auto_1fr]">
-        <NavLink
-          to="/"
-          className="flex items-center gap-2 font-heading text-base font-semibold text-foreground md:justify-self-start"
-        >
-          <span className="brand-signal" aria-hidden="true" />
-          <span>E-sports</span>
-        </NavLink>
+    <header
+      className={cn(
+        'sticky top-0 z-50 border-b backdrop-blur-md transition-[background,box-shadow,border-color] duration-300',
+        scrolled
+          ? 'border-border [background:var(--background)] shadow-[0_10px_30px_-20px_var(--foreground)]'
+          : 'border-border/60 [background:var(--header-bg)]',
+      )}
+    >
+      {activeTeam && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-primary" />}
+      <div className="mx-auto grid h-14 w-full max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 md:grid-cols-[1fr_auto_1fr]">
+        <div className="flex min-w-0 items-center gap-3">
+          <NavLink to="/" className="flex shrink-0 items-center gap-2 font-heading text-base font-semibold text-foreground">
+            <span className="brand-signal" aria-hidden="true" />
+            <span>E-sports</span>
+          </NavLink>
+          {activeTeam && (
+            <>
+              <span aria-hidden="true" className="h-4 w-px shrink-0 bg-border" />
+              <NavLink
+                to="/cheer"
+                title="응원팀 관리"
+                className="flex min-w-0 items-center gap-2 rounded-md py-1 pr-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <TeamLogo name={activeTeam.name} shortName={activeTeam.shortName} logoUrl={activeTeam.logoUrl} size="sm" />
+                <span className="truncate font-medium">{activeTeam.shortName || activeTeam.name}</span>
+              </NavLink>
+            </>
+          )}
+        </div>
 
-        <nav className="hidden items-center justify-self-center gap-8 md:flex">
-          <NavLink to="/matches/upcoming" className={navClass}>
-            경기 일정
-          </NavLink>
-          <NavLink to="/matches/results" className={navClass}>
-            경기 결과
-          </NavLink>
-          <NavLink to="/teams" className={navClass}>
-            팀
-          </NavLink>
+        <nav className="hidden items-center gap-8 md:flex">
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navClass}>
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="flex items-center justify-self-end gap-2">
-          {activeTeam && (
-            <button
-              onClick={() => setTeamTheme(null)}
-              className="hidden max-w-[11rem] items-center rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground md:flex"
-              title="응원팀 해제"
-              aria-label="응원팀 해제"
-            >
-              <span
-                className="mr-1.5 inline-block h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: activeTeam.primaryColor ?? 'var(--primary)' }}
-              />
-              <span className="truncate">{activeTeam.name}</span>
-            </button>
-          )}
-
+        {/* 테마 버튼 — 모바일에서는 하단 탭바로 이동 */}
+        <div className="hidden justify-self-end md:flex">
           <button
-            onClick={handleThemeToggle}
+            onClick={toggleTheme}
             className="rounded-md border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-primary"
             title={`현재: ${themeLabel} 모드`}
             aria-label={`현재: ${themeLabel} 모드`}
           >
             <ThemeIcon size={16} />
           </button>
-
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger
-              className="rounded-md border border-border bg-card p-2 text-muted-foreground transition-colors hover:text-primary md:hidden"
-              aria-label="메뉴 열기"
-            >
-              <Menu size={16} />
-            </SheetTrigger>
-            <SheetContent side="left" className="data-[side=left]:w-64 gap-0 border-border bg-background p-0">
-              <div className="flex h-14 items-center border-b border-border px-4">
-                <NavLink
-                  to="/"
-                  className="font-heading text-base font-semibold"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  E-sports
-                </NavLink>
-              </div>
-
-              <nav className="flex flex-col gap-2 px-2 py-3">
-                <NavLink
-                  to="/matches/upcoming"
-                  className={({ isActive }) =>
-                    `block w-full rounded-md px-2 py-2 text-sm transition-colors ${
-                      isActive ? 'font-medium text-foreground' : 'text-foreground/60 hover:text-foreground'
-                    }`
-                  }
-                  onClick={() => setMobileOpen(false)}
-                >
-                  경기 일정
-                </NavLink>
-                <NavLink
-                  to="/matches/results"
-                  className={({ isActive }) =>
-                    `block w-full rounded-md px-2 py-2 text-sm transition-colors ${
-                      isActive ? 'font-medium text-foreground' : 'text-foreground/60 hover:text-foreground'
-                    }`
-                  }
-                  onClick={() => setMobileOpen(false)}
-                >
-                  경기 결과
-                </NavLink>
-                <NavLink
-                  to="/teams"
-                  className={({ isActive }) =>
-                    `block w-full rounded-md px-2 py-2 text-sm transition-colors ${
-                      isActive ? 'font-medium text-foreground' : 'text-foreground/60 hover:text-foreground'
-                    }`
-                  }
-                  onClick={() => setMobileOpen(false)}
-                >
-                  팀
-                </NavLink>
-              </nav>
-
-              <div className="mx-2 border-t border-border" />
-
-              <div className="flex flex-col gap-2 px-2 py-3">
-                {activeTeam && (
-                  <button
-                    onClick={() => {
-                      setTeamTheme(null)
-                      setMobileOpen(false)
-                    }}
-                    className="flex items-center rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    title="응원팀 해제"
-                    aria-label="응원팀 해제"
-                  >
-                    <span
-                      className="mr-1.5 inline-block h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: activeTeam.primaryColor ?? 'var(--primary)' }}
-                    />
-                    <span className="truncate">{activeTeam.name}</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={handleThemeToggle}
-                  className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={`현재: ${themeLabel} 모드`}
-                >
-                  <ThemeIcon size={14} />
-                  <span>
-                    {theme === 'light'
-                      ? '라이트 모드'
-                      : theme === 'dark'
-                        ? '다크 모드'
-                        : '시스템 모드'}
-                  </span>
-                </button>
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
     </header>

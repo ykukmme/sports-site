@@ -11,15 +11,32 @@ interface TeamThemeContextValue {
 
 const TeamThemeContext = createContext<TeamThemeContextValue | undefined>(undefined)
 
+// 팀 컬러 위 글자색 — 밝기(상대 휘도)에 따라 흰색/검정 중 대비가 큰 쪽 선택
+function getReadableForeground(color: string): string | null {
+  const hex = color.trim().replace('#', '')
+  if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) return null
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const v = parseInt(full.slice(i, i + 2), 16) / 255
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  })
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return (luminance + 0.05) / 0.05 > 1.05 / (luminance + 0.05) ? '#050507' : '#ffffff'
+}
+
 // CSS variable 오버라이드 — html 엘리먼트에 직접 주입
 function applyTeamColor(color: string) {
   document.documentElement.style.setProperty('--primary', color)
   document.documentElement.style.setProperty('--ring', color)
+  const foreground = getReadableForeground(color)
+  if (foreground) document.documentElement.style.setProperty('--primary-foreground', foreground)
+  else document.documentElement.style.removeProperty('--primary-foreground')
 }
 
 function clearTeamColor() {
   document.documentElement.style.removeProperty('--primary')
   document.documentElement.style.removeProperty('--ring')
+  document.documentElement.style.removeProperty('--primary-foreground')
 }
 
 export function TeamThemeProvider({ children }: { children: ReactNode }) {

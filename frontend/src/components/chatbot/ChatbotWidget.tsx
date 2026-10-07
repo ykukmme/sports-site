@@ -66,7 +66,7 @@ export function ChatbotWidget() {
       {/* 챗봇 열기 버튼 */}
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card text-xs font-semibold text-primary shadow-card transition-colors hover:bg-primary/10"
+        className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6 flex h-12 w-12 items-center justify-center rounded-lg border border-primary bg-card text-xs font-semibold text-primary shadow-card transition-colors hover:bg-primary/10"
         aria-label={open ? '챗봇 닫기' : '챗봇 열기'}
       >
         {open ? '닫기' : 'AI'}
@@ -74,7 +74,7 @@ export function ChatbotWidget() {
 
       {/* 챗봇 패널 */}
       {open && (
-        <div className="fixed bottom-20 right-6 z-50 flex h-96 w-80 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card">
+        <div className="fixed bottom-36 right-4 z-50 md:bottom-20 md:right-6 flex h-96 w-80 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card">
           {/* 헤더 */}
           <div className="border-b border-border bg-background px-4 py-3 text-sm font-medium text-primary">
             E-sports 도우미

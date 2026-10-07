@@ -69,7 +69,7 @@ export function MatchResultsPage() {
     <div>
       <h1 className="mb-6 text-4xl font-semibold leading-tight">경기 결과</h1>
 
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
+      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-sm">
           <span className="mb-1 block text-muted-foreground">리그</span>
           <select
@@ -110,7 +110,7 @@ export function MatchResultsPage() {
           <div className="flex gap-2">
             <input
               type="date"
-              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
+              className="h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm"
               value={sinceDate}
               onChange={(event) => {
                 setSinceDate(event.target.value)
@@ -141,7 +141,13 @@ export function MatchResultsPage() {
 
       <p className="mb-4 text-sm text-muted-foreground">전체 {pageData?.totalElements ?? 0}건</p>
 
-      <MatchList matches={matches} isLoading={resultsQuery.isLoading} error={resultsQuery.error} />
+      <MatchList
+        matches={matches}
+        isLoading={resultsQuery.isLoading}
+        error={resultsQuery.error}
+        groupByDate
+        emptyMessage="조건에 맞는 경기 결과가 없습니다."
+      />
 
       <div className="mt-4 flex justify-end gap-2">
         <Button

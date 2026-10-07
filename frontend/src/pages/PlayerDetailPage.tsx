@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { usePlayerDetail } from '../hooks/usePlayerDetail'
 import { LoadingSpinner } from '../components/common/LoadingSpinner'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { EmptyState } from '../components/common/EmptyState'
 import { PlayerStatsCard, StatsFilterBar } from '../components/stats/StatsCard'
 import { usePlayerStats } from '../hooks/useStats'
+import { useTeamLookup } from '../hooks/useTeamLookup'
+import { TeamLogo } from '../components/team/TeamLogo'
 import type { PlayerResponse, PlayerStatus, StatsFilters } from '../types/domain'
 
 const STATUS_LABELS: Record<PlayerStatus, string> = {
@@ -20,6 +22,7 @@ export function PlayerDetailPage() {
   const [statsFilters, setStatsFilters] = useState<StatsFilters>({})
   const { data: player, isLoading, error } = usePlayerDetail(isNaN(playerId) ? 0 : playerId)
   const { data: playerStats, isLoading: isStatsLoading } = usePlayerStats(isNaN(playerId) ? 0 : playerId, statsFilters)
+  const teams = useTeamLookup()
 
   if (!id || isNaN(playerId)) return <ErrorMessage message="올바르지 않은 로스터 ID입니다." />
   if (isLoading) return <LoadingSpinner />
@@ -27,6 +30,8 @@ export function PlayerDetailPage() {
   if (!player) return <EmptyState message="로스터 정보를 찾을 수 없습니다." />
 
   const socialLinks = getPlayerSocialLinks(player)
+  // 소속 팀 — 팀 목록에 없으면 표시하지 않음
+  const team = player.teamId != null ? teams.get(player.teamId) : undefined
 
   return (
     <div className="max-w-5xl">
@@ -49,6 +54,15 @@ export function PlayerDetailPage() {
           <h1 className="text-4xl font-semibold leading-tight">{player.inGameName}</h1>
           {player.realName && (
             <p className="text-sm text-muted-foreground">{player.realName}</p>
+          )}
+          {team && (
+            <Link
+              to={`/teams/${team.id}`}
+              className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+            >
+              <TeamLogo name={team.name} shortName={team.shortName} logoUrl={team.logoUrl} size="sm" />
+              <span>{team.name}</span>
+            </Link>
           )}
           {socialLinks.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">

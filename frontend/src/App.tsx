@@ -12,6 +12,7 @@ import { MatchDetailPage } from './pages/MatchDetailPage'
 import { TeamsPage } from './pages/TeamsPage'
 import { TeamDetailPage } from './pages/TeamDetailPage'
 import { PlayerDetailPage } from './pages/PlayerDetailPage'
+import { CheerPage } from './pages/CheerPage'
 // 어드민 라우팅
 import { AdminRoute } from './components/admin/AdminRoute'
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -56,6 +57,8 @@ function App() {
             <Route path="teams" element={<TeamsPage />} />
             <Route path="teams/:id" element={<TeamDetailPage />} />
             <Route path="players/:id" element={<PlayerDetailPage />} />
+            {/* 응원하기 — 응원팀 선택(브라우저 저장), 백엔드 API 불필요 */}
+            <Route path="cheer" element={<CheerPage />} />
             <Route path="*" element={<ErrorMessage message="페이지를 찾을 수 없습니다." />} />
           </Route>
 
