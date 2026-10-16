@@ -13,18 +13,16 @@ public final class BracketGraphValidator {
 
     private BracketGraphValidator() {}
 
-    // 진출 간선 — source 경기의 승자/패자가 target 경기로 진출
-    public record Edge(long sourceKey, long targetKey, SlotSourceType outcome, SlotOrigin origin, boolean crossStage) {}
+    // 진출 간선 — source 경기의 승자/패자가 target 경기의 (확정된 경우) 특정 팀 줄로 진출
+    public record Edge(long sourceKey, long targetKey, BracketOutcome outcome, EdgeOrigin origin,
+                       Integer targetSlotIndex, boolean crossStage) {}
 
-    // 슬롯 → 간선. 선행 경기 참조가 없는 슬롯은 null
-    public static Edge fromSlot(BracketSlot slot, Long stageId) {
-        BracketNode source = slot.getSourceNode();
-        if (source == null || !slot.getSourceType().requiresSourceNode()) {
-            return null;
-        }
-        boolean crossStage = !source.getStage().getId().equals(stageId);
-        return new Edge(source.getExternalMatchId(), slot.getNode().getExternalMatchId(),
-                slot.getSourceType(), slot.getOrigin(), crossStage);
+    // 저장된 간선 → 검증용 간선
+    public static Edge fromEdge(BracketEdge edge, Long stageId) {
+        boolean crossStage = !edge.getSourceNode().getStage().getId().equals(stageId)
+                || !edge.getTargetNode().getStage().getId().equals(stageId);
+        return new Edge(edge.getSourceNode().getExternalMatchId(), edge.getTargetNode().getExternalMatchId(),
+                edge.getOutcome(), edge.getOrigin(), edge.getTargetSlotIndex(), crossStage);
     }
 
     // nodeLabels: 단계 전체 노드 키 → 표시 이름 (사유 메시지용)
@@ -35,6 +33,7 @@ public final class BracketGraphValidator {
         }
 
         Map<String, Edge> byOutcome = new HashMap<>();
+        Map<String, Edge> bySlot = new HashMap<>();
         Map<Long, List<Long>> next = new HashMap<>();
         for (Edge edge : edges) {
             String ref = describe(edge, nodeLabels);
@@ -56,6 +55,15 @@ public final class BracketGraphValidator {
                 reasons.add(ref + ": 같은 진출이 " + label(previous.targetKey(), nodeLabels)
                         + " 에도 연결되어 있습니다 (" + previous.origin() + "/" + edge.origin() + ").");
                 continue;
+            }
+            // 한 팀 줄에는 확정 간선 하나만
+            if (edge.targetSlotIndex() != null) {
+                Edge sameSlot = bySlot.putIfAbsent(edge.targetKey() + ":" + edge.targetSlotIndex(), edge);
+                if (sameSlot != null) {
+                    reasons.add(ref + ": " + (edge.targetSlotIndex() + 1) + "번째 팀 줄에 이미 "
+                            + describe(sameSlot, nodeLabels) + " 연결이 있습니다.");
+                    continue;
+                }
             }
             next.computeIfAbsent(edge.sourceKey(), key -> new ArrayList<>()).add(edge.targetKey());
         }
@@ -93,7 +101,7 @@ public final class BracketGraphValidator {
     }
 
     private static String describe(Edge edge, Map<Long, String> nodeLabels) {
-        String outcome = edge.outcome() == SlotSourceType.WINNER_OF ? "승자" : "패자";
+        String outcome = edge.outcome() == BracketOutcome.WINNER ? "승자" : "패자";
         return label(edge.sourceKey(), nodeLabels) + " " + outcome + " → " + label(edge.targetKey(), nodeLabels);
     }
 

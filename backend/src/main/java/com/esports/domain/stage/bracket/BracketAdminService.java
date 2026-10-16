@@ -10,22 +10,25 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
-// 어드민 대진표 보정 — 노드 배치, 슬롯 출처/문구
+// 어드민 대진표 보정 — 노드 배치, 팀 줄 문구, 진출 간선 (설계 §14.3)
 @Service
 @Transactional
 public class BracketAdminService {
 
     private static final Logger log = LoggerFactory.getLogger(BracketAdminService.class);
     private static final String INVALID_SLOT = "INVALID_BRACKET_SLOT";
+    private static final String INVALID_EDGE = "INVALID_BRACKET_EDGE";
 
     private final BracketNodeRepository nodeRepository;
     private final BracketSlotRepository slotRepository;
+    private final BracketEdgeRepository edgeRepository;
     private final CompetitionStageService stageService;
 
     public BracketAdminService(BracketNodeRepository nodeRepository, BracketSlotRepository slotRepository,
-                               CompetitionStageService stageService) {
+                               BracketEdgeRepository edgeRepository, CompetitionStageService stageService) {
         this.nodeRepository = nodeRepository;
         this.slotRepository = slotRepository;
+        this.edgeRepository = edgeRepository;
         this.stageService = stageService;
     }
 
@@ -44,42 +47,75 @@ public class BracketAdminService {
                 nodeId, node.getColumnOverride(), node.getRowOverride());
     }
 
-    public void updateSlot(Long nodeId, int slotIndex, BracketSlotRequest request) {
+    // 팀 줄 표시 문구 — 비우면 삭제
+    public void updateSlotLabel(Long nodeId, int slotIndex, BracketSlotRequest request) {
         if (slotIndex != 0 && slotIndex != 1) {
             throw new BusinessException(INVALID_SLOT, "슬롯 번호는 0 또는 1 이어야 합니다.", HttpStatus.BAD_REQUEST);
         }
         BracketNode node = lockStageAndGetNode(nodeId);
-        BracketSlot slot = slotRepository.findByNode_IdAndSlotIndex(nodeId, slotIndex)
-                .orElseGet(() -> slotRepository.save(new BracketSlot(node, slotIndex)));
+        String label = request.label() == null ? "" : request.label().trim();
+        Optional<BracketSlot> current = slotRepository.findByNode_IdAndSlotIndex(nodeId, slotIndex);
+        String before = current.map(BracketSlot::getLabel).orElse(null);
 
-        SlotSourceType type = request.sourceType();
-        if (type == SlotSourceType.UNKNOWN) {
-            // 보정 해제 — 다음 동기화가 다시 채운다
-            slot.resetToAuto();
-            log.info("[Bracket admin] slot reset: nodeId={}, slot={}", nodeId, slotIndex);
-            return;
-        }
-
-        BracketNode source = null;
-        String label = null;
-        if (type.requiresSourceNode()) {
-            source = resolveSourceNode(node, request.sourceNodeId());
-            // 기존 AUTO·ADMIN 연결 전체에 이번 변경을 합친 최종 그래프가 유효해야 저장
-            validateFinalGraph(node, slotIndex, type, source);
+        if (label.isEmpty()) {
+            current.ifPresent(slotRepository::delete);
         } else {
-            label = request.label() == null ? null : request.label().trim();
-            if (label == null || label.isEmpty()) {
-                throw new BusinessException(INVALID_SLOT, "문구를 입력해주세요.", HttpStatus.BAD_REQUEST);
+            try {
+                if (current.isPresent()) {
+                    current.get().changeLabel(label);
+                } else {
+                    slotRepository.save(new BracketSlot(node, slotIndex, label));
+                }
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(INVALID_SLOT, e.getMessage(), HttpStatus.BAD_REQUEST);
             }
         }
+        log.info("[Bracket admin] slot label changed: nodeId={}, slot={}, before={}, after={}",
+                nodeId, slotIndex, before, label.isEmpty() ? null : label);
+    }
+
+    // 진출 간선 생성·수정 — (출처, 진출 유형) 기준. 기존 AUTO 간선은 ADMIN 으로 바뀌어 재동기화에서 보존
+    public void upsertEdge(BracketEdgeRequest request) {
+        BracketNode target = lockStageAndGetNode(request.targetNodeId());
+        BracketNode source = getNode(request.sourceNodeId());
+        if (!source.getStage().getId().equals(target.getStage().getId())) {
+            throw new BusinessException(INVALID_EDGE, "같은 단계의 경기만 연결할 수 있습니다.", HttpStatus.BAD_REQUEST);
+        }
+        if (source.getId().equals(target.getId())) {
+            throw new BusinessException(INVALID_EDGE, "자기 자신으로 진출할 수 없습니다.", HttpStatus.BAD_REQUEST);
+        }
+
+        BracketEdge current = edgeRepository.findBySourceNode_IdAndOutcome(source.getId(), request.outcome()).orElse(null);
+        String before = current == null ? null : describe(current);
+        validateFinalGraph(target.getStage().getId(), current, new BracketGraphValidator.Edge(
+                source.getExternalMatchId(), target.getExternalMatchId(), request.outcome(), EdgeOrigin.ADMIN,
+                request.targetSlotIndex(), false));
 
         try {
-            slot.applyAdmin(type, source, label);
+            if (current == null) {
+                current = edgeRepository.save(BracketEdge.admin(target.getStage(), source, request.outcome(),
+                        target, request.targetSlotIndex()));
+            } else {
+                current.applyAdmin(target, request.targetSlotIndex());
+            }
         } catch (IllegalArgumentException e) {
-            throw new BusinessException(INVALID_SLOT, e.getMessage(), HttpStatus.BAD_REQUEST);
+            throw new BusinessException(INVALID_EDGE, e.getMessage(), HttpStatus.BAD_REQUEST);
         }
-        log.info("[Bracket admin] slot changed: nodeId={}, slot={}, type={}, sourceNodeId={}, label={}",
-                nodeId, slotIndex, type, source != null ? source.getId() : null, label);
+        log.info("[Bracket admin] edge upserted: edgeId={}, before={}, after={}", current.getId(), before, describe(current));
+    }
+
+    // 어드민 보정 해제 — ADMIN 간선만 삭제. 다음 동기화가 AUTO 간선으로 복구한다
+    public void deleteEdge(Long edgeId) {
+        Long stageId = edgeRepository.findStageIdById(edgeId).orElseThrow(() -> edgeNotFound(edgeId));
+        stageService.lockStage(stageId);
+        BracketEdge edge = edgeRepository.findById(edgeId).orElseThrow(() -> edgeNotFound(edgeId));
+        if (edge.getOrigin() != EdgeOrigin.ADMIN) {
+            throw new BusinessException(INVALID_EDGE,
+                    "자동 연결은 삭제할 수 없습니다. 다른 경기로 연결을 바꾸면 어드민 보정으로 저장됩니다.", HttpStatus.BAD_REQUEST);
+        }
+        String before = describe(edge);
+        edgeRepository.delete(edge);
+        log.info("[Bracket admin] edge override removed: edgeId={}, before={}", edgeId, before);
     }
 
     // 단계 잠금 후 노드 조회 — 잠금 이후에 읽어야 동시 동기화·보정의 최신 상태를 본다
@@ -90,44 +126,30 @@ public class BracketAdminService {
         return getNode(nodeId);
     }
 
-    // 이번 슬롯 변경을 반영한 단계 전체 그래프 검증 — 순환·중복 진출 등 (설계 §14.2)
-    private void validateFinalGraph(BracketNode node, int slotIndex, SlotSourceType type, BracketNode source) {
-        Long stageId = node.getStage().getId();
-        List<BracketNode> stageNodes = nodeRepository.findByStage_IdOrderByIdAsc(stageId);
+    // 이번 간선 변경을 반영한 단계 전체 그래프 검증 — 순환·중복 진출·팀 줄 충돌 (설계 §14.2)
+    private void validateFinalGraph(Long stageId, BracketEdge replacing, BracketGraphValidator.Edge proposed) {
         Map<Long, String> labels = new LinkedHashMap<>();
-        for (BracketNode stageNode : stageNodes) {
+        for (BracketNode stageNode : nodeRepository.findByStage_IdOrderByIdAsc(stageId)) {
             labels.put(stageNode.getExternalMatchId(),
                     BracketGraphValidator.nodeLabel(stageNode.getRoundLabel(), stageNode.getSequenceInRound()));
         }
         List<BracketGraphValidator.Edge> edges = new ArrayList<>();
-        for (BracketSlot slot : slotRepository.findByNode_IdIn(stageNodes.stream().map(BracketNode::getId).toList())) {
-            boolean changing = slot.getNode().getId().equals(node.getId()) && slot.getSlotIndex() == slotIndex;
-            BracketGraphValidator.Edge edge = changing ? null : BracketGraphValidator.fromSlot(slot, stageId);
-            if (edge != null) {
-                edges.add(edge);
+        for (BracketEdge edge : edgeRepository.findByStageId(stageId)) {
+            if (edge != replacing) {
+                edges.add(BracketGraphValidator.fromEdge(edge, stageId));
             }
         }
-        edges.add(new BracketGraphValidator.Edge(source.getExternalMatchId(), node.getExternalMatchId(),
-                type, SlotOrigin.ADMIN, false));
+        edges.add(proposed);
         List<String> reasons = BracketGraphValidator.validate(labels, edges);
         if (!reasons.isEmpty()) {
-            throw new BusinessException(INVALID_SLOT, String.join(" ", reasons), HttpStatus.BAD_REQUEST);
+            throw new BusinessException(INVALID_EDGE, String.join(" ", reasons), HttpStatus.BAD_REQUEST);
         }
     }
 
-    // 선행 노드 검증 — 같은 단계, 자기 자신 금지 (순환·중복은 최종 그래프 검증에서)
-    private BracketNode resolveSourceNode(BracketNode node, Long sourceNodeId) {
-        if (sourceNodeId == null) {
-            throw new BusinessException(INVALID_SLOT, "선행 경기를 선택해주세요.", HttpStatus.BAD_REQUEST);
-        }
-        if (sourceNodeId.equals(node.getId())) {
-            throw new BusinessException(INVALID_SLOT, "자기 자신을 선행 경기로 지정할 수 없습니다.", HttpStatus.BAD_REQUEST);
-        }
-        BracketNode source = getNode(sourceNodeId);
-        if (!source.getStage().getId().equals(node.getStage().getId())) {
-            throw new BusinessException(INVALID_SLOT, "같은 단계의 경기만 선행 경기로 지정할 수 있습니다.", HttpStatus.BAD_REQUEST);
-        }
-        return source;
+    // 감사 로그용 간선 요약
+    private static String describe(BracketEdge edge) {
+        return edge.getSourceNode().getId() + ":" + edge.getOutcome() + "->" + edge.getTargetNode().getId()
+                + "[slot=" + edge.getTargetSlotIndex() + "," + edge.getOrigin() + "]";
     }
 
     private BracketNode getNode(Long id) {
@@ -136,5 +158,9 @@ public class BracketAdminService {
 
     private static BusinessException nodeNotFound(Long id) {
         return new BusinessException("BRACKET_NODE_NOT_FOUND", "대진표 노드를 찾을 수 없습니다. id=" + id, HttpStatus.NOT_FOUND);
+    }
+
+    private static BusinessException edgeNotFound(Long id) {
+        return new BusinessException("BRACKET_EDGE_NOT_FOUND", "진출 연결을 찾을 수 없습니다. id=" + id, HttpStatus.NOT_FOUND);
     }
 }

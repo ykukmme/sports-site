@@ -11,8 +11,8 @@ import java.util.Optional;
 
 public interface BracketSlotRepository extends JpaRepository<BracketSlot, Long> {
 
-    // 노드 목록의 슬롯 일괄 조회 — 노드·출처 노드까지 함께 로딩 (N+1 방지)
-    @Query("select s from BracketSlot s join fetch s.node left join fetch s.sourceNode where s.node.id in :nodeIds")
+    // 노드 목록의 팀 줄 문구 일괄 조회 (N+1 방지)
+    @Query("select s from BracketSlot s join fetch s.node where s.node.id in :nodeIds")
     List<BracketSlot> findByNode_IdIn(@Param("nodeIds") Collection<Long> nodeIds);
 
     Optional<BracketSlot> findByNode_IdAndSlotIndex(Long nodeId, int slotIndex);

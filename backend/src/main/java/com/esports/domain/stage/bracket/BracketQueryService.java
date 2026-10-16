@@ -21,15 +21,18 @@ public class BracketQueryService {
     private final CompetitionStageService stageService;
     private final BracketNodeRepository nodeRepository;
     private final BracketSlotRepository slotRepository;
+    private final BracketEdgeRepository edgeRepository;
     private final MatchResultRepository matchResultRepository;
 
     public BracketQueryService(CompetitionStageService stageService,
                                BracketNodeRepository nodeRepository,
                                BracketSlotRepository slotRepository,
+                               BracketEdgeRepository edgeRepository,
                                MatchResultRepository matchResultRepository) {
         this.stageService = stageService;
         this.nodeRepository = nodeRepository;
         this.slotRepository = slotRepository;
+        this.edgeRepository = edgeRepository;
         this.matchResultRepository = matchResultRepository;
     }
 
@@ -38,17 +41,18 @@ public class BracketQueryService {
         if (stage.getDisplayType() != StageDisplayType.BRACKET) {
             throw CompetitionStageService.stageNotFound(stageId);
         }
-        return build(stage);
+        return build(stage, false);
     }
 
     public BracketResponse getAdminBracket(Long stageId) {
-        return build(stageService.getStage(stageId));
+        return build(stageService.getStage(stageId), true);
     }
 
-    private BracketResponse build(CompetitionStage stage) {
+    // includeOrigin: 어드민 미리보기만 간선 출처(AUTO/ADMIN)를 내린다 — 공개 응답은 null
+    private BracketResponse build(CompetitionStage stage, boolean includeOrigin) {
         List<BracketNode> nodes = nodeRepository.findWithMatchByStageId(stage.getId());
         if (nodes.isEmpty()) {
-            return new BracketResponse(stage.getId(), stage.getStageName(), stage.getBracketSyncedAt(), List.of());
+            return new BracketResponse(stage.getId(), stage.getStageName(), stage.getBracketSyncedAt(), List.of(), List.of());
         }
         Map<Long, List<BracketSlot>> slotsByNode = slotRepository.findByNode_IdIn(nodes.stream().map(BracketNode::getId).toList())
                 .stream()
@@ -64,7 +68,16 @@ public class BracketQueryService {
                         .thenComparingInt(BracketResponse.Node::column)
                         .thenComparingInt(BracketResponse.Node::row))
                 .toList();
-        return new BracketResponse(stage.getId(), stage.getStageName(), stage.getBracketSyncedAt(), responses);
+        List<BracketResponse.Edge> edges = edgeRepository.findByStageId(stage.getId()).stream()
+                .map(edge -> new BracketResponse.Edge(
+                        edge.getId(),
+                        edge.getSourceNode().getId(),
+                        edge.getTargetNode().getId(),
+                        edge.getOutcome(),
+                        includeOrigin ? edge.getOrigin() : null,
+                        edge.getTargetSlotIndex()))
+                .toList();
+        return new BracketResponse(stage.getId(), stage.getStageName(), stage.getBracketSyncedAt(), responses, edges);
     }
 
     private static BracketResponse.Node toNode(BracketNode node, List<BracketSlot> slots, Map<Long, MatchResult> results) {
@@ -76,7 +89,7 @@ public class BracketQueryService {
         }
         List<BracketResponse.Slot> slotResponses = slots.stream()
                 .sorted(Comparator.comparingInt(BracketSlot::getSlotIndex))
-                .map(BracketQueryService::toSlot)
+                .map(slot -> new BracketResponse.Slot(slot.getSlotIndex(), slot.getLabel()))
                 .toList();
         return new BracketResponse.Node(
                 node.getId(),
@@ -89,19 +102,6 @@ public class BracketQueryService {
                 node.getScheduledAt(),
                 matchResponse,
                 slotResponses
-        );
-    }
-
-    private static BracketResponse.Slot toSlot(BracketSlot slot) {
-        BracketNode source = slot.getSourceNode();
-        return new BracketResponse.Slot(
-                slot.getSlotIndex(),
-                slot.getSourceType(),
-                source != null ? source.getId() : null,
-                source != null ? source.getRoundLabel() : null,
-                source != null ? source.getSequenceInRound() : null,
-                slot.getLabel(),
-                slot.getOrigin()
         );
     }
 }

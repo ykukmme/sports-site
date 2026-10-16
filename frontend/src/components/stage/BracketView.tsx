@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { BracketNodeCard } from './BracketNodeCard'
 import type { BracketNodeResponse, BracketResponse } from '../../types/domain'
 import { cn } from '@/lib/utils'
-import { formatRoundLabel } from '../../lib/bracketLabel'
+import { buildSlotContext, formatRoundLabel } from '../../lib/bracketLabel'
 
 // 대진표 — 승자조(+결승)를 위, 패자조를 아래에 두고 노드를 절대 배치, 선행 경기 연결은 SVG 곡선
 // 크기는 8px 그리드 배수
@@ -28,6 +28,7 @@ interface Placed {
 
 export function BracketView({ bracket, selectedNodeId, onSelectNode }: BracketViewProps) {
   const rounds = useMemo(() => buildMobileRounds(bracket.nodes), [bracket.nodes])
+  const slotContext = useMemo(() => buildSlotContext(bracket.nodes, bracket.edges), [bracket.nodes, bracket.edges])
   const [activeRoundKey, setActiveRoundKey] = useState(rounds[0]?.key ?? '')
   const [highlightedTeamId, setHighlightedTeamId] = useState<number | null>(null)
 
@@ -93,45 +94,45 @@ export function BracketView({ bracket, selectedNodeId, onSelectNode }: BracketVi
         {hasLower && <RoundHeaders nodes={lower} top={lowerHeaderTop} />}
 
         <svg className="pointer-events-none absolute inset-0" width={width} height={height} aria-hidden="true">
-          {placed.flatMap(({ node, x, y }) =>
-            node.slots
-              .filter((slot) => (slot.sourceType === 'WINNER_OF' || slot.sourceType === 'LOSER_OF') && slot.sourceNodeId != null)
-              .map((slot) => {
-                const source = byId.get(slot.sourceNodeId!)
-                if (!source) return null
-                const x1 = source.x + NODE_WIDTH
-                const y1 = source.y + NODE_HEIGHT / 2
-                const x2 = x
-                // 머리줄(약 29px) 아래 두 슬롯 줄의 세로 중심
-                // 자동 수집 간선은 팀 슬롯을 추정하지 않고 카드 중앙으로 연결한다.
-                const y2 = slot.origin === 'ADMIN' ? y + NODE_HEIGHT * (slot.slotIndex === 0 ? 0.46 : 0.82) : y + NODE_HEIGHT / 2
-                const bend = Math.max(Math.abs(x2 - x1) / 2, COLUMN_GAP / 2)
-                const onTeamPath = highlightedTeamId != null && nodeHasTeam(source.node, highlightedTeamId) && nodeHasTeam(node, highlightedTeamId)
-                return (
-                  <path
-                    key={`${node.id}-${slot.slotIndex}`}
-                    d={`M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`}
-                    fill="none"
-                    style={{
-                      stroke: onTeamPath
-                        ? 'var(--primary)'
-                        : slot.sourceType === 'LOSER_OF'
-                          ? 'var(--muted-foreground)'
-                          : 'var(--border)',
-                      opacity: highlightedTeamId != null && !onTeamPath ? 0.2 : 1,
-                    }}
-                    strokeWidth={onTeamPath ? 2 : 1.5}
-                    strokeDasharray={slot.sourceType === 'LOSER_OF' ? '4 4' : undefined}
-                  />
-                )
-              }),
-          )}
+          {bracket.edges.map((edge) => {
+            const source = byId.get(edge.sourceNodeId)
+            const target = byId.get(edge.targetNodeId)
+            if (!source || !target) return null
+            const x1 = source.x + NODE_WIDTH
+            const y1 = source.y + NODE_HEIGHT / 2
+            const x2 = target.x
+            // 팀 줄이 확정된 간선만 해당 줄(머리줄 아래 두 줄의 세로 중심)로, 미확정은 카드 중앙으로 연결 (설계 §14.3)
+            const y2 =
+              edge.targetSlotIndex != null
+                ? target.y + NODE_HEIGHT * (edge.targetSlotIndex === 0 ? 0.46 : 0.82)
+                : target.y + NODE_HEIGHT / 2
+            const bend = Math.max(Math.abs(x2 - x1) / 2, COLUMN_GAP / 2)
+            const onTeamPath =
+              highlightedTeamId != null &&
+              nodeHasTeam(source.node, highlightedTeamId) &&
+              nodeHasTeam(target.node, highlightedTeamId)
+            const loser = edge.outcome === 'LOSER'
+            return (
+              <path
+                key={edge.id}
+                d={`M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`}
+                fill="none"
+                style={{
+                  stroke: onTeamPath ? 'var(--primary)' : loser ? 'var(--muted-foreground)' : 'var(--border)',
+                  opacity: highlightedTeamId != null && !onTeamPath ? 0.2 : 1,
+                }}
+                strokeWidth={onTeamPath ? 2 : 1.5}
+                strokeDasharray={loser ? '4 4' : undefined}
+              />
+            )
+          })}
         </svg>
 
         {placed.map(({ node, x, y }) => (
           <BracketNodeCard
             key={node.id}
             node={node}
+            context={slotContext}
             selected={selectedNodeId === node.id}
             highlightedTeamId={highlightedTeamId}
             dimmed={highlightedTeamId != null && !nodeHasTeam(node, highlightedTeamId)}
@@ -171,6 +172,7 @@ export function BracketView({ bracket, selectedNodeId, onSelectNode }: BracketVi
               <BracketNodeCard
                 key={node.id}
                 node={node}
+                context={slotContext}
                 selected={selectedNodeId === node.id}
                 highlightedTeamId={highlightedTeamId}
                 dimmed={highlightedTeamId != null && !nodeHasTeam(node, highlightedTeamId)}

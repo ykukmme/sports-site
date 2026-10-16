@@ -5,7 +5,7 @@ import type {
   AdminStageResponse,
   BracketResponse,
   BracketSyncResponse,
-  SlotSourceType,
+  BracketOutcome,
   StageBackfillResponse,
   StageRegisterResponse,
   StageUpdateRequest,
@@ -81,11 +81,22 @@ export async function updateBracketNodeLayout(
   await apiClient.patch(`/api/admin/bracket-nodes/${nodeId}`, body)
 }
 
-// 슬롯 출처/문구 보정 — UNKNOWN 이면 보정 해제
-export async function updateBracketSlot(
-  nodeId: number,
-  slotIndex: number,
-  body: { sourceType: SlotSourceType; sourceNodeId?: number | null; label?: string | null },
-): Promise<void> {
-  await apiClient.put(`/api/admin/bracket-nodes/${nodeId}/slots/${slotIndex}`, body)
+// 팀 줄 표시 문구 — 빈 값이면 삭제
+export async function updateBracketSlot(nodeId: number, slotIndex: number, label: string): Promise<void> {
+  await apiClient.put(`/api/admin/bracket-nodes/${nodeId}/slots/${slotIndex}`, { label })
+}
+
+// 진출 간선 생성·수정 — (출처, 진출 유형) 기준, 팀 줄은 확인한 경우에만 지정
+export async function upsertBracketEdge(body: {
+  sourceNodeId: number
+  outcome: BracketOutcome
+  targetNodeId: number
+  targetSlotIndex: number | null
+}): Promise<void> {
+  await apiClient.put('/api/admin/bracket-edges', body)
+}
+
+// 어드민 보정 간선 해제 — 다음 동기화가 자동 연결로 복구
+export async function deleteBracketEdge(edgeId: number): Promise<void> {
+  await apiClient.delete(`/api/admin/bracket-edges/${edgeId}`)
 }

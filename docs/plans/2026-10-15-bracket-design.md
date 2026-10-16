@@ -364,6 +364,29 @@ CREATE TABLE bracket_slots (
 
 현재 미배포 V27 구조는 이 모델에 맞춰 수정한다. 이미 배포된 환경이 생기면 기존 마이그레이션을 고치지 않고 후속 마이그레이션을 추가한다.
 
+#### 14.3.1 B3 세부안 (2026-10-16 승인)
+
+- 스키마 (V27 직접 수정)
+  - `bracket_edges`: `stage_id`, `source_node_id`, `target_node_id`, `outcome`(`WINNER`/`LOSER`), `origin`(`AUTO`/`ADMIN`), `target_slot_index`(NULL 또는 0/1)
+    - `UNIQUE(source_node_id, outcome)` — 한 경기의 승자·패자는 한 곳으로만 진출 (B2 규칙을 DB 에서도 강제)
+    - 부분 UNIQUE `(target_node_id, target_slot_index) WHERE target_slot_index IS NOT NULL`
+    - `CHECK (source_node_id <> target_node_id)`, FK 는 모두 `ON DELETE CASCADE`, 조회용 인덱스
+  - `outcome UNKNOWN` 은 두지 않는다 — PandaScore 원본 검증에서 winner/loser 외 값은 이미 REJECT
+  - `bracket_slots` 는 팀 줄 표시 문구(어드민 입력)만 보관 — 출처 컬럼 제거
+  - `bracket_nodes.match_id` 인덱스 추가
+- 동기화
+  - `previous_matches` → AUTO 간선, `target_slot_index` 는 항상 NULL
+  - 같은 (출처, 승/패) 의 ADMIN 간선이 있으면 ADMIN 유지, 응답에서 사라진 AUTO 간선은 삭제
+  - 저장 전 최종 그래프 검증 (B2 검증기, 간선 입력)
+- 어드민 API (기존 슬롯 출처 API 대체)
+  - `PUT /api/admin/bracket-edges` — (출처, 승/패, 대상, 대상 줄 선택) ADMIN 간선 생성·수정. AUTO 간선의 줄 확정도 이 API
+  - `DELETE /api/admin/bracket-edges/{id}` — ADMIN 보정 해제, 다음 동기화가 AUTO 로 복구
+  - `PUT /api/admin/bracket-nodes/{id}/slots/{slotIndex}` — 팀 줄 표시 문구만
+- 공개 화면
+  - 연결선: 줄 확정 간선 → 해당 팀 줄, 미확정 → 카드 중앙
+  - 팀 줄 텍스트: 연결 경기 팀 → 어드민 문구 → 그 줄로 확정된 간선 → 남은 빈 줄에 미확정 간선을 출처 경기 라운드·순번 순서로 채움 (표시 순서일 뿐 팀 위치 주장 아님, `previous_matches` 배열 순서는 쓰지 않음) → 미정
+- 로컬 DB: 이미 적용된 V27 은 브래킷 테이블 삭제 + `flyway_schema_history` V27 행 삭제 후 재적용 (실행 전 확인)
+
 ### 14.4 Swiss 데이터 완전성
 
 로컬에 들어온 경기만으로 전체 라운드 존재 여부를 증명할 수 없으므로 단계별 원본 경기 스냅샷을 둔다.

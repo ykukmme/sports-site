@@ -393,19 +393,26 @@ export interface SwissTeamStatusResponse {
   status: SwissTeamStatus
 }
 
-// 대진표 — 구역, 슬롯 출처
+// 대진표 — 구역, 진출 유형·출처
 export type BracketSection = 'UPPER' | 'LOWER' | 'FINAL'
-export type SlotSourceType = 'UNKNOWN' | 'WINNER_OF' | 'LOSER_OF' | 'LABEL'
-export type SlotOrigin = 'AUTO' | 'ADMIN'
+export type BracketOutcome = 'WINNER' | 'LOSER'
+export type EdgeOrigin = 'AUTO' | 'ADMIN'
 
+// 팀 줄 표시 문구 (어드민 입력)
 export interface BracketSlotResponse {
   slotIndex: number
-  sourceType: SlotSourceType
-  sourceNodeId: number | null
-  sourceRoundLabel: string | null
-  sourceSequence: number | null
-  label: string | null
-  origin: SlotOrigin
+  label: string
+}
+
+// 진출 간선 — targetSlotIndex 가 null 이면 팀 줄 미확정 (카드 중앙 연결)
+export interface BracketEdgeResponse {
+  id: number
+  sourceNodeId: number
+  targetNodeId: number
+  outcome: BracketOutcome
+  // 어드민 응답에만 값이 있음 (공개 응답은 null)
+  origin: EdgeOrigin | null
+  targetSlotIndex: number | null
 }
 
 export interface BracketNodeResponse {
@@ -427,6 +434,7 @@ export interface BracketResponse {
   stageName: string
   syncedAt: string | null
   nodes: BracketNodeResponse[]
+  edges: BracketEdgeResponse[]
 }
 
 export interface BracketSyncResponse {

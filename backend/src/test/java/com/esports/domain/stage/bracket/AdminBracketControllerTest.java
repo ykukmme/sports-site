@@ -47,7 +47,7 @@ class AdminBracketControllerTest {
     void slotUpdateWithoutAuthReturns401() throws Exception {
         mockMvc.perform(put("/api/admin/bracket-nodes/1/slots/0")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sourceType\":\"LABEL\",\"label\":\"레전드 1위\"}"))
+                        .content("{\"label\":\"레전드 1위\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -58,9 +58,49 @@ class AdminBracketControllerTest {
         mockMvc.perform(put("/api/admin/bracket-nodes/1/slots/0")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sourceType\":\"LABEL\",\"label\":\"" + label + "\"}"))
+                        .content("{\"label\":\"" + label + "\"}"))
                 .andExpect(status().isBadRequest());
-        verify(adminService, never()).updateSlot(anyLong(), anyInt(), any());
+        verify(adminService, never()).updateSlotLabel(anyLong(), anyInt(), any());
+    }
+
+    @Test
+    void edgeEndpointsWithoutAuthReturn401() throws Exception {
+        mockMvc.perform(put("/api/admin/bracket-edges")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sourceNodeId\":1,\"outcome\":\"WINNER\",\"targetNodeId\":2}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/admin/bracket-edges/1"))
+                .andExpect(status().isUnauthorized());
+        verify(adminService, never()).upsertEdge(any());
+        verify(adminService, never()).deleteEdge(anyLong());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void edgeUpsertValidatesBody() throws Exception {
+        // 진출 유형 누락
+        mockMvc.perform(put("/api/admin/bracket-edges")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sourceNodeId\":1,\"targetNodeId\":2}"))
+                .andExpect(status().isBadRequest());
+        // 팀 줄 범위 밖
+        mockMvc.perform(put("/api/admin/bracket-edges")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sourceNodeId\":1,\"outcome\":\"WINNER\",\"targetNodeId\":2,\"targetSlotIndex\":2}"))
+                .andExpect(status().isBadRequest());
+        verify(adminService, never()).upsertEdge(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void edgeUpsertReturns200() throws Exception {
+        mockMvc.perform(put("/api/admin/bracket-edges")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sourceNodeId\":1,\"outcome\":\"LOSER\",\"targetNodeId\":2,\"targetSlotIndex\":null}"))
+                .andExpect(status().isOk());
     }
 
     @Test

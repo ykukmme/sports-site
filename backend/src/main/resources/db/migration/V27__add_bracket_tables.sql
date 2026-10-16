@@ -24,20 +24,36 @@ CREATE TABLE bracket_nodes (
 );
 
 CREATE INDEX idx_bracket_nodes_stage_id ON bracket_nodes (stage_id);
+-- 경기 삭제 시 SET NULL 처리용
+CREATE INDEX idx_bracket_nodes_match_id ON bracket_nodes (match_id) WHERE match_id IS NOT NULL;
 
--- 노드 슬롯 — 노드당 2개(0, 1). 출처: 미상 / 선행 경기 승자 / 선행 경기 패자 / 어드민 라벨
+-- 팀 줄 표시 문구 — 어드민 입력만 (예: 레전드 1위). 진출 관계는 bracket_edges 가 담당
 CREATE TABLE bracket_slots (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT NOT NULL REFERENCES bracket_nodes(id) ON DELETE CASCADE,
     slot_index SMALLINT NOT NULL CHECK (slot_index IN (0, 1)),
-    source_type VARCHAR(20) NOT NULL
-        CHECK (source_type IN ('UNKNOWN', 'WINNER_OF', 'LOSER_OF', 'LABEL')),
-    source_node_id BIGINT REFERENCES bracket_nodes(id) ON DELETE SET NULL,
-    -- 어드민 입력 문구 (예: 레전드 1위)
-    label VARCHAR(100),
+    label VARCHAR(100) NOT NULL CHECK (length(trim(label)) > 0),
+    UNIQUE (node_id, slot_index)
+);
+
+-- 진출 간선 — source 경기의 승자/패자가 target 경기로 진출 (설계 §14.3)
+CREATE TABLE bracket_edges (
+    id BIGSERIAL PRIMARY KEY,
+    stage_id BIGINT NOT NULL REFERENCES competition_stages(id) ON DELETE CASCADE,
+    source_node_id BIGINT NOT NULL REFERENCES bracket_nodes(id) ON DELETE CASCADE,
+    target_node_id BIGINT NOT NULL REFERENCES bracket_nodes(id) ON DELETE CASCADE,
+    outcome VARCHAR(10) NOT NULL CHECK (outcome IN ('WINNER', 'LOSER')),
     -- AUTO: 동기화가 채움 / ADMIN: 어드민 보정 (재동기화로 덮어쓰지 않음)
     origin VARCHAR(10) NOT NULL CHECK (origin IN ('AUTO', 'ADMIN')),
-    UNIQUE (node_id, slot_index),
-    CHECK (source_type NOT IN ('WINNER_OF', 'LOSER_OF') OR source_node_id IS NOT NULL),
-    CHECK (source_type <> 'LABEL' OR label IS NOT NULL)
+    -- 대상 경기의 팀 줄 (0/1). 근거가 없으면 NULL — 자동 수집은 항상 NULL
+    target_slot_index SMALLINT CHECK (target_slot_index IS NULL OR target_slot_index IN (0, 1)),
+    CHECK (source_node_id <> target_node_id),
+    -- 한 경기의 승자(또는 패자)는 한 곳으로만 진출
+    UNIQUE (source_node_id, outcome)
 );
+
+CREATE INDEX idx_bracket_edges_stage_id ON bracket_edges (stage_id);
+CREATE INDEX idx_bracket_edges_target_node_id ON bracket_edges (target_node_id);
+-- 한 팀 줄에는 확정 간선 하나만
+CREATE UNIQUE INDEX uq_bracket_edges_target_slot ON bracket_edges (target_node_id, target_slot_index)
+    WHERE target_slot_index IS NOT NULL;

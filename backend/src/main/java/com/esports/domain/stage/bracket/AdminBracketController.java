@@ -47,11 +47,26 @@ public class AdminBracketController {
         return ApiResponse.ok(null);
     }
 
+    // 팀 줄 표시 문구 — 비우면 삭제
     @PutMapping("/bracket-nodes/{nodeId}/slots/{slotIndex}")
     public ApiResponse<Void> updateSlot(@PathVariable Long nodeId,
                                         @PathVariable int slotIndex,
                                         @Valid @RequestBody BracketSlotRequest request) {
-        adminService.updateSlot(nodeId, slotIndex, request);
+        adminService.updateSlotLabel(nodeId, slotIndex, request);
         return ApiResponse.ok(null);
+    }
+
+    // 진출 간선 생성·수정 — 팀 줄 확정 포함
+    @PutMapping("/bracket-edges")
+    public ApiResponse<Void> upsertEdge(@Valid @RequestBody BracketEdgeRequest request) {
+        adminService.upsertEdge(request);
+        return ApiResponse.ok(null);
+    }
+
+    // 어드민 보정 간선 해제
+    @DeleteMapping("/bracket-edges/{edgeId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteEdge(@PathVariable Long edgeId) {
+        adminService.deleteEdge(edgeId);
     }
 }

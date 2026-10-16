@@ -2,12 +2,14 @@ import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { BestOfBadge } from '../match/BestOfBadge'
-import { formatRoundLabel, slotDisplay, type SlotDisplay } from '../../lib/bracketLabel'
+import { formatRoundLabel, slotDisplays, type SlotContext, type SlotDisplay } from '../../lib/bracketLabel'
 import type { BracketNodeResponse } from '../../types/domain'
 
 // 대진표 노드 카드 — 라운드·일정·BO + 슬롯 2줄
 interface BracketNodeCardProps {
   node: BracketNodeResponse
+  // 팀 줄 문구 계산용 — 대진표 전체 간선·노드
+  context: SlotContext
   selected?: boolean
   highlightedTeamId?: number | null
   dimmed?: boolean
@@ -20,6 +22,7 @@ interface BracketNodeCardProps {
 
 export function BracketNodeCard({
   node,
+  context,
   selected,
   highlightedTeamId,
   dimmed,
@@ -28,6 +31,7 @@ export function BracketNodeCard({
   className,
   style,
 }: BracketNodeCardProps) {
+  const [firstSlot, secondSlot] = slotDisplays(node, context)
   const body = (
     <>
       <div className="flex min-h-8 items-center justify-between gap-2 border-b border-border px-3">
@@ -52,8 +56,8 @@ export function BracketNodeCard({
           <BestOfBadge bestOf={node.bestOf} className="h-5 px-2 text-[10px]" />
         </span>
       </div>
-      <SlotLine display={slotDisplay(node, 0)} highlightedTeamId={highlightedTeamId} onTeamSelect={onTeamSelect} />
-      <SlotLine display={slotDisplay(node, 1)} highlightedTeamId={highlightedTeamId} onTeamSelect={onTeamSelect} />
+      <SlotLine display={firstSlot} highlightedTeamId={highlightedTeamId} onTeamSelect={onTeamSelect} />
+      <SlotLine display={secondSlot} highlightedTeamId={highlightedTeamId} onTeamSelect={onTeamSelect} />
     </>
   )
 

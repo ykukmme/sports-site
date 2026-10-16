@@ -26,7 +26,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-// 브래킷 동기화 — PandaScore 구조를 자동 반영, 어드민 보정(슬롯·배치)은 보존 (설계 §5.2)
+// 브래킷 동기화 — PandaScore 구조를 자동 반영, 어드민 보정(간선·팀 줄 문구·배치)은 보존 (설계 §5.2, §14.2, §14.3)
 @Service
 public class BracketSyncService {
 
@@ -36,6 +36,7 @@ public class BracketSyncService {
     private final CompetitionStageService stageService;
     private final BracketNodeRepository nodeRepository;
     private final BracketSlotRepository slotRepository;
+    private final BracketEdgeRepository edgeRepository;
     private final MatchRepository matchRepository;
     private final SyncLogRepository syncLogRepository;
     private final PandaScoreApiClient apiClient;
@@ -45,6 +46,7 @@ public class BracketSyncService {
     public BracketSyncService(CompetitionStageService stageService,
                               BracketNodeRepository nodeRepository,
                               BracketSlotRepository slotRepository,
+                              BracketEdgeRepository edgeRepository,
                               MatchRepository matchRepository,
                               SyncLogRepository syncLogRepository,
                               PandaScoreApiClient apiClient,
@@ -54,11 +56,15 @@ public class BracketSyncService {
         this.stageService = stageService;
         this.nodeRepository = nodeRepository;
         this.slotRepository = slotRepository;
+        this.edgeRepository = edgeRepository;
         this.matchRepository = matchRepository;
         this.syncLogRepository = syncLogRepository;
         this.apiClient = apiClient;
         this.properties = properties;
     }
+
+    // (출처 경기 external id, 진출 유형) — 단계 전체에서 유일한 간선 키
+    private record EdgeKey(long sourceKey, BracketOutcome outcome) {}
 
     // 외부 조회는 트랜잭션 밖에서 — 네트워크 대기 중 DB 커넥션을 잡지 않는다. DB 반영만 트랜잭션으로 묶는다
     public BracketSyncResponse sync(Long stageId) {
@@ -102,7 +108,6 @@ public class BracketSyncService {
         return transactionTemplate.execute(status -> persist(stageId, validated));
     }
 
-    // 검증을 통과한 대진표를 DB 에 반영 — 트랜잭션 안에서 호출
     // 단계 잠금 → 최종 그래프 검증 → 저장. 검증 실패 시 아무것도 쓰지 않는다 (설계 §14.2)
     private BracketSyncResponse persist(Long stageId, List<PandaScoreBracketMatch> fetched) {
         CompetitionStage stage = stageService.lockStage(stageId);
@@ -110,7 +115,11 @@ public class BracketSyncService {
         String logId = String.valueOf(tournamentId);
 
         List<BracketNode> existingNodes = nodeRepository.findByStage_IdOrderByIdAsc(stage.getId());
-        List<String> graphReasons = validateFinalGraph(stage.getId(), fetched, existingNodes);
+        List<BracketEdge> existingEdges = existingNodes.isEmpty() ? List.of() : edgeRepository.findByStageId(stage.getId());
+        Set<Long> fetchedIds = fetched.stream().map(PandaScoreBracketMatch::id).collect(Collectors.toSet());
+        List<BracketGraphValidator.Edge> autoEdges = autoEdges(fetched);
+
+        List<String> graphReasons = validateFinalGraph(stage.getId(), fetched, existingNodes, existingEdges, autoEdges, fetchedIds);
         if (!graphReasons.isEmpty()) {
             syncLogRepository.save(SyncLog.rejected(LOG_RESOURCE, logId, String.join(" | ", graphReasons)));
             log.warn("[Bracket] final graph rejected: tournamentId={}, reasons={}", tournamentId, graphReasons);
@@ -159,30 +168,29 @@ public class BracketSyncService {
         }
         nodeRepository.saveAll(nodesByExternalId.values());
 
-        // 슬롯 갱신 — 선행 경기를 슬롯 0, 1 순서로, 나머지는 UNKNOWN (ADMIN 슬롯은 보존)
-        List<Long> nodeIds = nodesByExternalId.values().stream().map(BracketNode::getId).toList();
-        Map<String, BracketSlot> slots = slotRepository.findByNode_IdIn(nodeIds).stream()
-                .collect(Collectors.toMap(slot -> slotKey(slot.getNode().getId(), slot.getSlotIndex()), Function.identity()));
-        List<BracketSlot> toSave = new ArrayList<>();
-        for (PandaScoreBracketMatch source : fetched) {
-            BracketNode node = nodesByExternalId.get(source.id());
-            List<PandaScorePreviousMatch> previous = source.previousMatches() == null ? List.of() : source.previousMatches();
-            for (int index = 0; index < 2; index++) {
-                BracketSlot slot = slots.get(slotKey(node.getId(), index));
-                if (slot == null) {
-                    slot = new BracketSlot(node, index);
-                }
-                if (index < previous.size()) {
-                    PandaScorePreviousMatch prev = previous.get(index);
-                    SlotSourceType type = "winner".equals(prev.type()) ? SlotSourceType.WINNER_OF : SlotSourceType.LOSER_OF;
-                    slot.applyAuto(type, nodesByExternalId.get(prev.matchId()));
-                } else {
-                    slot.applyAuto(SlotSourceType.UNKNOWN, null);
-                }
-                toSave.add(slot);
+        // 간선 반영 — AUTO 는 응답대로 갱신(팀 줄 null), ADMIN 은 보존, 응답에서 사라진 AUTO 는 삭제
+        Map<Long, BracketNode> allNodes = new HashMap<>(existing);
+        allNodes.putAll(nodesByExternalId);
+        Map<EdgeKey, BracketEdge> edgesByKey = existingEdges.stream()
+                .collect(Collectors.toMap(this::keyOf, Function.identity()));
+        List<BracketEdge> toSave = new ArrayList<>();
+        Set<EdgeKey> autoKeys = new HashSet<>();
+        for (BracketGraphValidator.Edge auto : autoEdges) {
+            EdgeKey key = new EdgeKey(auto.sourceKey(), auto.outcome());
+            autoKeys.add(key);
+            BracketNode target = allNodes.get(auto.targetKey());
+            BracketEdge current = edgesByKey.get(key);
+            if (current == null) {
+                toSave.add(BracketEdge.auto(stage, allNodes.get(auto.sourceKey()), auto.outcome(), target));
+            } else {
+                current.applyAuto(target);
             }
         }
-        slotRepository.saveAll(toSave);
+        List<BracketEdge> stale = existingEdges.stream()
+                .filter(edge -> isStaleAuto(edge, autoKeys, fetchedIds))
+                .toList();
+        edgeRepository.deleteAll(stale);
+        edgeRepository.saveAll(toSave);
 
         // 응답에서 사라진 노드 — 삭제하지 않고 보고만 (어드민 보정 손실 방지)
         List<Long> missing = existing.keySet().stream()
@@ -195,23 +203,39 @@ public class BracketSyncService {
 
         stage.markBracketSynced(OffsetDateTime.now(), true);
         syncLogRepository.save(SyncLog.success(LOG_RESOURCE, logId));
-        log.info("[Bracket] synced: tournamentId={}, created={}, updated={}, missing={}", tournamentId, created, updated, missing.size());
+        log.info("[Bracket] synced: tournamentId={}, created={}, updated={}, missing={}, removedAutoEdges={}",
+                tournamentId, created, updated, missing.size(), stale.size());
         return new BracketSyncResponse(true, created, updated, missing, List.of());
     }
 
-    // 노드 초기화 — 어드민 명시 요청으로만 삭제
+    // 노드 초기화 — 어드민 명시 요청으로만 삭제 (간선·문구 → 노드 순)
     @Transactional
     public void reset(Long stageId) {
         CompetitionStage stage = stageService.lockStage(stageId);
+        edgeRepository.deleteByStageId(stage.getId());
         slotRepository.deleteByStageId(stage.getId());
         int deleted = nodeRepository.deleteByStageId(stage.getId());
         syncLogRepository.save(SyncLog.success("BRACKET_RESET", String.valueOf(stage.getExternalTournamentId())));
         log.info("[Bracket] reset: stageId={}, deletedNodes={}", stage.getId(), deleted);
     }
 
-    // 저장될 최종 그래프 구성 — 응답 노드는 ADMIN 슬롯 보존 + 나머지 AUTO, 응답에서 빠진 기존 노드는 현재 슬롯 그대로
+    // PandaScore previous_matches → AUTO 간선. 배열 순서로 팀 줄을 추정하지 않는다 (설계 §14.3)
+    private static List<BracketGraphValidator.Edge> autoEdges(List<PandaScoreBracketMatch> fetched) {
+        List<BracketGraphValidator.Edge> edges = new ArrayList<>();
+        for (PandaScoreBracketMatch target : fetched) {
+            List<PandaScorePreviousMatch> previous = target.previousMatches() == null ? List.of() : target.previousMatches();
+            for (PandaScorePreviousMatch prev : previous) {
+                BracketOutcome outcome = "winner".equals(prev.type()) ? BracketOutcome.WINNER : BracketOutcome.LOSER;
+                edges.add(new BracketGraphValidator.Edge(prev.matchId(), target.id(), outcome, EdgeOrigin.AUTO, null, false));
+            }
+        }
+        return edges;
+    }
+
+    // 저장될 최종 그래프 — ADMIN 간선 + (ADMIN 이 없는 키의) 응답 AUTO 간선 + 응답 밖 대상의 기존 AUTO 간선
     private List<String> validateFinalGraph(Long stageId, List<PandaScoreBracketMatch> fetched,
-                                            List<BracketNode> existingNodes) {
+                                            List<BracketNode> existingNodes, List<BracketEdge> existingEdges,
+                                            List<BracketGraphValidator.Edge> autoEdges, Set<Long> fetchedIds) {
         Map<Long, String> labels = new LinkedHashMap<>();
         for (BracketNode node : existingNodes) {
             labels.put(node.getExternalMatchId(),
@@ -222,43 +246,35 @@ public class BracketSyncService {
             labels.put(source.id(), BracketGraphValidator.nodeLabel(name.roundLabel(), name.sequence()));
         }
 
-        Map<String, BracketSlot> existingSlots = existingNodes.isEmpty() ? Map.of()
-                : slotRepository.findByNode_IdIn(existingNodes.stream().map(BracketNode::getId).toList()).stream()
-                .collect(Collectors.toMap(slot -> slotKey(slot.getNode().getExternalMatchId(), slot.getSlotIndex()),
-                        Function.identity()));
-
-        List<BracketGraphValidator.Edge> edges = new ArrayList<>();
-        Set<Long> fetchedIds = new HashSet<>();
-        for (PandaScoreBracketMatch source : fetched) {
-            fetchedIds.add(source.id());
-            List<PandaScorePreviousMatch> previous = source.previousMatches() == null ? List.of() : source.previousMatches();
-            for (int index = 0; index < 2; index++) {
-                BracketSlot current = existingSlots.get(slotKey(source.id(), index));
-                if (current != null && current.getOrigin() == SlotOrigin.ADMIN) {
-                    addIfPresent(edges, BracketGraphValidator.fromSlot(current, stageId));
-                } else if (index < previous.size()) {
-                    PandaScorePreviousMatch prev = previous.get(index);
-                    SlotSourceType type = "winner".equals(prev.type()) ? SlotSourceType.WINNER_OF : SlotSourceType.LOSER_OF;
-                    edges.add(new BracketGraphValidator.Edge(prev.matchId(), source.id(), type, SlotOrigin.AUTO, false));
-                }
+        Set<EdgeKey> adminKeys = new HashSet<>();
+        Set<EdgeKey> autoKeys = new HashSet<>();
+        autoEdges.forEach(edge -> autoKeys.add(new EdgeKey(edge.sourceKey(), edge.outcome())));
+        List<BracketGraphValidator.Edge> finalEdges = new ArrayList<>();
+        for (BracketEdge edge : existingEdges) {
+            if (edge.getOrigin() == EdgeOrigin.ADMIN) {
+                adminKeys.add(keyOf(edge));
+                finalEdges.add(BracketGraphValidator.fromEdge(edge, stageId));
+            } else if (!autoKeys.contains(keyOf(edge)) && !isStaleAuto(edge, autoKeys, fetchedIds)) {
+                finalEdges.add(BracketGraphValidator.fromEdge(edge, stageId));
             }
         }
-        for (BracketSlot slot : existingSlots.values()) {
-            if (!fetchedIds.contains(slot.getNode().getExternalMatchId())) {
-                addIfPresent(edges, BracketGraphValidator.fromSlot(slot, stageId));
+        for (BracketGraphValidator.Edge auto : autoEdges) {
+            if (!adminKeys.contains(new EdgeKey(auto.sourceKey(), auto.outcome()))) {
+                finalEdges.add(auto);
             }
         }
-        return BracketGraphValidator.validate(labels, edges);
+        return BracketGraphValidator.validate(labels, finalEdges);
     }
 
-    private static void addIfPresent(List<BracketGraphValidator.Edge> edges, BracketGraphValidator.Edge edge) {
-        if (edge != null) {
-            edges.add(edge);
-        }
+    // 응답에 대상 경기가 있는데 그 연결이 사라진 AUTO 간선 — 삭제 대상 (대상이 응답 밖이면 판단 근거가 없어 유지)
+    private boolean isStaleAuto(BracketEdge edge, Set<EdgeKey> autoKeys, Set<Long> fetchedIds) {
+        return edge.getOrigin() == EdgeOrigin.AUTO
+                && !autoKeys.contains(keyOf(edge))
+                && fetchedIds.contains(edge.getTargetNode().getExternalMatchId());
     }
 
-    private static String slotKey(Long nodeId, int index) {
-        return nodeId + ":" + index;
+    private EdgeKey keyOf(BracketEdge edge) {
+        return new EdgeKey(edge.getSourceNode().getExternalMatchId(), edge.getOutcome());
     }
 
     // 검증을 통과한 값만 들어온다 — null 은 미정 일정
