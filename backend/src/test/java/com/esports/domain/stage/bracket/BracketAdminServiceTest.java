@@ -2,6 +2,7 @@ package com.esports.domain.stage.bracket;
 
 import com.esports.common.exception.BusinessException;
 import com.esports.domain.stage.CompetitionStage;
+import com.esports.domain.stage.CompetitionStageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +17,12 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,6 +31,7 @@ class BracketAdminServiceTest {
 
     @Mock BracketNodeRepository nodeRepository;
     @Mock BracketSlotRepository slotRepository;
+    @Mock CompetitionStageService stageService;
 
     private BracketAdminService service;
     private CompetitionStage stage;
@@ -35,7 +42,7 @@ class BracketAdminServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BracketAdminService(nodeRepository, slotRepository);
+        service = new BracketAdminService(nodeRepository, slotRepository, stageService);
         stage = stage(100L);
         semifinal = node(1L, stage, "Semifinal");
         finalNode = node(2L, stage, "Grand final");
@@ -50,6 +57,42 @@ class BracketAdminServiceTest {
         when(slotRepository.findByNode_IdIn(anyCollection())).thenReturn(List.of(finalSlot0, semifinalSlot0));
         when(slotRepository.findByNode_IdAndSlotIndex(2L, 0)).thenReturn(Optional.of(finalSlot0));
         when(slotRepository.findByNode_IdAndSlotIndex(1L, 0)).thenReturn(Optional.of(semifinalSlot0));
+        when(slotRepository.save(any(BracketSlot.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(nodeRepository.findStageIdById(1L)).thenReturn(Optional.of(100L));
+        when(nodeRepository.findStageIdById(2L)).thenReturn(Optional.of(100L));
+    }
+
+    @Test
+    void rejectsDuplicateAdvanceCombinedWithAutoEdge() {
+        // 결승 슬롯 0 이 이미 4강 승자(자동) — 슬롯 1 에 같은 4강 승자를 넣으면 중복 진출
+        assertThatThrownBy(() -> service.updateSlot(2L, 1, new BracketSlotRequest(SlotSourceType.WINNER_OF, 1L, null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("같은 진출");
+    }
+
+    @Test
+    void replacingSameSlotIsNotDuplicate() {
+        // 결승 슬롯 0 을 같은 출처로 어드민 확정 — 자기 슬롯의 기존 값은 교체 대상이라 중복 아님
+        service.updateSlot(2L, 0, new BracketSlotRequest(SlotSourceType.WINNER_OF, 1L, null));
+
+        assertThat(finalSlot0.getOrigin()).isEqualTo(SlotOrigin.ADMIN);
+    }
+
+    @Test
+    void everyEditLocksStageFirst() {
+        service.updateLayout(1L, new BracketNodeLayoutRequest(3, 1, false));
+        service.updateSlot(1L, 0, new BracketSlotRequest(SlotSourceType.LABEL, null, "시드 1"));
+
+        verify(stageService, times(2)).lockStage(100L);
+    }
+
+    @Test
+    void unknownNodeReturns404BeforeLocking() {
+        when(nodeRepository.findStageIdById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateLayout(99L, new BracketNodeLayoutRequest(1, 1, false)))
+                .isInstanceOf(BusinessException.class);
+        verify(stageService, never()).lockStage(anyLong());
     }
 
     @Test

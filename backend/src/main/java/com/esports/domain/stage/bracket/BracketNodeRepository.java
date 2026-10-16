@@ -6,11 +6,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface BracketNodeRepository extends JpaRepository<BracketNode, Long> {
 
     // 단계의 전체 노드
     List<BracketNode> findByStage_IdOrderByIdAsc(Long stageId);
+
+    // 어드민 보정 전 단계 잠금용 — 노드가 속한 단계 id 만 조회
+    @Query("select n.stage.id from BracketNode n where n.id = :id")
+    Optional<Long> findStageIdById(@Param("id") Long id);
 
     // 공개/어드민 조회용 — 연결 경기·팀·종목까지 함께 로딩 (N+1 방지)
     @Query("select n from BracketNode n "

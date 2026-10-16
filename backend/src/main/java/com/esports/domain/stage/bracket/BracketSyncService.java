@@ -84,7 +84,7 @@ public class BracketSyncService {
 
         if (!hasBracket) {
             return transactionTemplate.execute(status -> {
-                stageService.getStage(stageId).markBracketSynced(OffsetDateTime.now(), false);
+                stageService.lockStage(stageId).markBracketSynced(OffsetDateTime.now(), false);
                 syncLogRepository.save(SyncLog.success(LOG_RESOURCE, logId));
                 return BracketSyncResponse.noBracket();
             });
@@ -103,10 +103,19 @@ public class BracketSyncService {
     }
 
     // 검증을 통과한 대진표를 DB 에 반영 — 트랜잭션 안에서 호출
+    // 단계 잠금 → 최종 그래프 검증 → 저장. 검증 실패 시 아무것도 쓰지 않는다 (설계 §14.2)
     private BracketSyncResponse persist(Long stageId, List<PandaScoreBracketMatch> fetched) {
-        CompetitionStage stage = stageService.getStage(stageId);
+        CompetitionStage stage = stageService.lockStage(stageId);
         Long tournamentId = stage.getExternalTournamentId();
         String logId = String.valueOf(tournamentId);
+
+        List<BracketNode> existingNodes = nodeRepository.findByStage_IdOrderByIdAsc(stage.getId());
+        List<String> graphReasons = validateFinalGraph(stage.getId(), fetched, existingNodes);
+        if (!graphReasons.isEmpty()) {
+            syncLogRepository.save(SyncLog.rejected(LOG_RESOURCE, logId, String.join(" | ", graphReasons)));
+            log.warn("[Bracket] final graph rejected: tournamentId={}, reasons={}", tournamentId, graphReasons);
+            return BracketSyncResponse.rejected(graphReasons);
+        }
 
         Map<Long, BracketNameParser.ParsedNodeName> parsed = new HashMap<>();
         List<BracketLayoutCalculator.LayoutInput> layoutInputs = new ArrayList<>();
@@ -119,7 +128,7 @@ public class BracketSyncService {
         Map<Long, BracketLayoutCalculator.Position> positions = BracketLayoutCalculator.layout(layoutInputs);
 
         // 노드 upsert
-        Map<Long, BracketNode> existing = nodeRepository.findByStage_IdOrderByIdAsc(stage.getId()).stream()
+        Map<Long, BracketNode> existing = existingNodes.stream()
                 .collect(Collectors.toMap(BracketNode::getExternalMatchId, Function.identity()));
         Map<String, Match> matchesByExternalId = matchRepository.findByExternalIdIn(
                         fetched.stream().map(node -> String.valueOf(node.id())).toList()).stream()
@@ -193,11 +202,59 @@ public class BracketSyncService {
     // 노드 초기화 — 어드민 명시 요청으로만 삭제
     @Transactional
     public void reset(Long stageId) {
-        CompetitionStage stage = stageService.getStage(stageId);
+        CompetitionStage stage = stageService.lockStage(stageId);
         slotRepository.deleteByStageId(stage.getId());
         int deleted = nodeRepository.deleteByStageId(stage.getId());
         syncLogRepository.save(SyncLog.success("BRACKET_RESET", String.valueOf(stage.getExternalTournamentId())));
         log.info("[Bracket] reset: stageId={}, deletedNodes={}", stage.getId(), deleted);
+    }
+
+    // 저장될 최종 그래프 구성 — 응답 노드는 ADMIN 슬롯 보존 + 나머지 AUTO, 응답에서 빠진 기존 노드는 현재 슬롯 그대로
+    private List<String> validateFinalGraph(Long stageId, List<PandaScoreBracketMatch> fetched,
+                                            List<BracketNode> existingNodes) {
+        Map<Long, String> labels = new LinkedHashMap<>();
+        for (BracketNode node : existingNodes) {
+            labels.put(node.getExternalMatchId(),
+                    BracketGraphValidator.nodeLabel(node.getRoundLabel(), node.getSequenceInRound()));
+        }
+        for (PandaScoreBracketMatch source : fetched) {
+            BracketNameParser.ParsedNodeName name = BracketNameParser.parse(source.name());
+            labels.put(source.id(), BracketGraphValidator.nodeLabel(name.roundLabel(), name.sequence()));
+        }
+
+        Map<String, BracketSlot> existingSlots = existingNodes.isEmpty() ? Map.of()
+                : slotRepository.findByNode_IdIn(existingNodes.stream().map(BracketNode::getId).toList()).stream()
+                .collect(Collectors.toMap(slot -> slotKey(slot.getNode().getExternalMatchId(), slot.getSlotIndex()),
+                        Function.identity()));
+
+        List<BracketGraphValidator.Edge> edges = new ArrayList<>();
+        Set<Long> fetchedIds = new HashSet<>();
+        for (PandaScoreBracketMatch source : fetched) {
+            fetchedIds.add(source.id());
+            List<PandaScorePreviousMatch> previous = source.previousMatches() == null ? List.of() : source.previousMatches();
+            for (int index = 0; index < 2; index++) {
+                BracketSlot current = existingSlots.get(slotKey(source.id(), index));
+                if (current != null && current.getOrigin() == SlotOrigin.ADMIN) {
+                    addIfPresent(edges, BracketGraphValidator.fromSlot(current, stageId));
+                } else if (index < previous.size()) {
+                    PandaScorePreviousMatch prev = previous.get(index);
+                    SlotSourceType type = "winner".equals(prev.type()) ? SlotSourceType.WINNER_OF : SlotSourceType.LOSER_OF;
+                    edges.add(new BracketGraphValidator.Edge(prev.matchId(), source.id(), type, SlotOrigin.AUTO, false));
+                }
+            }
+        }
+        for (BracketSlot slot : existingSlots.values()) {
+            if (!fetchedIds.contains(slot.getNode().getExternalMatchId())) {
+                addIfPresent(edges, BracketGraphValidator.fromSlot(slot, stageId));
+            }
+        }
+        return BracketGraphValidator.validate(labels, edges);
+    }
+
+    private static void addIfPresent(List<BracketGraphValidator.Edge> edges, BracketGraphValidator.Edge edge) {
+        if (edge != null) {
+            edges.add(edge);
+        }
     }
 
     private static String slotKey(Long nodeId, int index) {

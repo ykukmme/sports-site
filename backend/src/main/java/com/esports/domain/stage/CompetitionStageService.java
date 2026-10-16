@@ -169,6 +169,12 @@ public class CompetitionStageService {
         return StageResponse.from(stage);
     }
 
+    // 단계 행 잠금 — 호출 측 트랜잭션이 끝날 때까지 같은 단계의 동기화·보정·초기화가 대기한다
+    @Transactional(propagation = Propagation.MANDATORY)
+    public CompetitionStage lockStage(Long id) {
+        return stageRepository.findByIdForUpdate(id).orElseThrow(() -> stageNotFound(id));
+    }
+
     @Transactional(readOnly = true)
     public CompetitionStage getStage(Long id) {
         return stageRepository.findById(id).orElseThrow(() -> stageNotFound(id));

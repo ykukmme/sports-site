@@ -4,6 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.util.Collection;
 import java.util.List;
@@ -11,6 +15,11 @@ import java.util.Optional;
 
 public interface CompetitionStageRepository extends JpaRepository<CompetitionStage, Long>,
         JpaSpecificationExecutor<CompetitionStage> {
+
+    // 단계 행 비관적 쓰기 잠금 — 대진표 동기화·보정·초기화를 단계 단위로 직렬화 (설계 §14.2)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from CompetitionStage s where s.id = :id")
+    Optional<CompetitionStage> findByIdForUpdate(@Param("id") Long id);
 
     // 외부 tournament id 로 단계 조회 (가져오기 시 중복 생성 방지)
     Optional<CompetitionStage> findByExternalTournamentId(Long externalTournamentId);
