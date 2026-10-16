@@ -1,20 +1,26 @@
 package com.esports.domain.stage;
 
 import com.esports.common.exception.BusinessException;
+import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.MatchRepository;
+import com.esports.domain.team.TeamLeague;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 // 대회 단계 생성·조회·표시 방식 변경
 @Service
@@ -22,6 +28,8 @@ public class CompetitionStageService {
 
     private static final Logger log = LoggerFactory.getLogger(CompetitionStageService.class);
     private static final int MAX_PAGE_SIZE = 100;
+    // 공개 목록 시리즈 검색어 최대 길이 (series_name 컬럼 200자 기준으로 충분)
+    private static final int MAX_SERIES_QUERY_LENGTH = 100;
 
     private final CompetitionStageRepository stageRepository;
     private final MatchRepository matchRepository;
@@ -35,13 +43,20 @@ public class CompetitionStageService {
     // 별도 트랜잭션: 동시 생성으로 unique 충돌이 나도 호출 측(경기 가져오기) 트랜잭션은 롤백되지 않는다
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CompetitionStage ensureStage(Long externalTournamentId, String leagueName, String seriesName, String stageName) {
+        return ensureStage(externalTournamentId, leagueName, seriesName, stageName, null);
+    }
+
+    // hasBracket 이 null 이면 기존 값 유지 (경기 가져오기·결과 동기화는 대진표 여부를 모른다)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public CompetitionStage ensureStage(Long externalTournamentId, String leagueName, String seriesName, String stageName,
+                                        Boolean hasBracket) {
         if (externalTournamentId == null) {
             return null;
         }
-        return stageRepository.findByExternalTournamentId(externalTournamentId)
-                .map(stage -> {
-                    stage.refreshNames(leagueName, seriesName, stageName);
-                    return stage;
+        CompetitionStage stage = stageRepository.findByExternalTournamentId(externalTournamentId)
+                .map(existing -> {
+                    existing.refreshNames(leagueName, seriesName, stageName);
+                    return existing;
                 })
                 .orElseGet(() -> stageRepository.save(new CompetitionStage(
                         externalTournamentId,
@@ -49,6 +64,10 @@ public class CompetitionStageService {
                         blankToNull(seriesName),
                         fallback(stageName, "Unknown Stage")
                 )));
+        if (hasBracket != null) {
+            stage.updateHasBracket(hasBracket);
+        }
+        return stage;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +93,55 @@ public class CompetitionStageService {
             counts.put((Long) row[0], (Long) row[1]);
         }
         return counts;
+    }
+
+    // 공개 단계 목록 — 표시 방식이 켜진 단계만. league 는 경기 필터와 같은 리그 코드, series 는 부분 검색
+    @Transactional(readOnly = true)
+    public Page<StageResponse> listPublicStages(String league, String series, int page, int size) {
+        if (series != null && series.trim().length() > MAX_SERIES_QUERY_LENGTH) {
+            throw new BusinessException("STAGE_SERIES_QUERY_TOO_LONG",
+                    "시리즈 검색어는 " + MAX_SERIES_QUERY_LENGTH + "자 이하로 입력해주세요.", HttpStatus.BAD_REQUEST);
+        }
+        PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
+                Sort.by(Sort.Direction.DESC, "externalTournamentId"));
+        return stageRepository.findAll(publicStageSpec(resolveLeagueNames(league), series), pageRequest)
+                .map(StageResponse::from);
+    }
+
+    // 리그 코드 → 단계에 저장된 리그명. null 이면 리그 조건 없음
+    static List<String> resolveLeagueNames(String leagueCode) {
+        if (leagueCode == null || leagueCode.isBlank() || "ALL".equalsIgnoreCase(leagueCode.trim())) {
+            return null;
+        }
+        String code = leagueCode.trim().toUpperCase(Locale.ROOT);
+        if (TeamLeague.INTERNATIONAL_CODE.equals(code)) {
+            return Arrays.stream(InternationalCompetitionType.values()).map(InternationalCompetitionType::getLabel).toList();
+        }
+        Optional<InternationalCompetitionType> international = InternationalCompetitionType.fromLeagueCode(code);
+        if (international.isPresent()) {
+            return List.of(international.get().getLabel());
+        }
+        // 지원하지 않는 코드는 TeamLeague.fromCode 가 400 으로 거절
+        return List.of(TeamLeague.fromCode(code).getLabel());
+    }
+
+    // 공개 조건 — NONE 제외 + 리그명 일치 + 시리즈명 부분 일치 (모두 파라미터 바인딩)
+    static Specification<CompetitionStage> publicStageSpec(List<String> leagueNames, String series) {
+        Specification<CompetitionStage> spec = (root, query, cb) ->
+                cb.notEqual(root.get("displayType"), StageDisplayType.NONE);
+        if (leagueNames != null) {
+            spec = spec.and((root, query, cb) -> root.get("leagueName").in(leagueNames));
+        }
+        if (series != null && !series.isBlank()) {
+            // LIKE 특수문자(%, _, \)는 문자 그대로 검색되도록 이스케이프
+            String escaped = series.trim().toLowerCase(Locale.ROOT)
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
+            String pattern = "%" + escaped + "%";
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("seriesName")), pattern, '\\'));
+        }
+        return spec;
     }
 
     @Transactional

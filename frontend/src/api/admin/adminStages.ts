@@ -6,6 +6,8 @@ import type {
   BracketResponse,
   BracketSyncResponse,
   SlotSourceType,
+  StageBackfillResponse,
+  StageRegisterResponse,
   StageUpdateRequest,
 } from '../../types/domain'
 
@@ -25,6 +27,24 @@ export async function fetchAdminStages(league: string, page = 0): Promise<PageRe
     params: { league: league || undefined, page, size: 50 },
   })
   return res.data.data ?? EMPTY_PAGE
+}
+
+// tournament id 로 단계 직접 등록 (전 경기 TBD 단계 포함)
+export async function registerAdminStage(externalTournamentId: number): Promise<StageRegisterResponse> {
+  const res = await apiClient.post<ApiResponse<StageRegisterResponse>>('/api/admin/stages/register', {
+    externalTournamentId,
+  })
+  if (!res.data.data) throw new Error('단계 등록에 실패했습니다.')
+  return res.data.data
+}
+
+// 기존 경기의 누락 단계 복구 (최대 100개)
+export async function backfillAdminStages(externalTournamentIds: number[]): Promise<StageBackfillResponse> {
+  const res = await apiClient.post<ApiResponse<StageBackfillResponse>>('/api/admin/stages/backfill', {
+    externalTournamentIds,
+  })
+  if (!res.data.data) throw new Error('단계 복구에 실패했습니다.')
+  return res.data.data
 }
 
 // 표시 방식 변경

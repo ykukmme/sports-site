@@ -11,9 +11,23 @@ import org.springframework.web.bind.annotation.*;
 public class AdminStageController {
 
     private final CompetitionStageService stageService;
+    private final StageRegistrationService registrationService;
 
-    public AdminStageController(CompetitionStageService stageService) {
+    public AdminStageController(CompetitionStageService stageService, StageRegistrationService registrationService) {
         this.stageService = stageService;
+        this.registrationService = registrationService;
+    }
+
+    // tournament id 로 단계 직접 등록 — 경기가 없는(전 경기 TBD) 단계도 가능
+    @PostMapping("/register")
+    public ApiResponse<StageRegisterResponse> register(@Valid @RequestBody StageRegisterRequest request) {
+        return ApiResponse.ok(registrationService.register(request.externalTournamentId()));
+    }
+
+    // 기존 경기의 누락 단계 복구 — 최대 100개
+    @PostMapping("/backfill")
+    public ApiResponse<StageBackfillResponse> backfill(@Valid @RequestBody StageBackfillRequest request) {
+        return ApiResponse.ok(registrationService.backfill(request.externalTournamentIds()));
     }
 
     @GetMapping

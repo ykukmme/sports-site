@@ -6,6 +6,7 @@ import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.stage.StageRegistrationService;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamLeague;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,9 @@ class PandaScoreMatchResultSyncServiceTest {
     @Mock
     private MatchResultRepository matchResultRepository;
 
+    @Mock
+    private StageRegistrationService stageRegistrationService;
+
     private PandaScoreProperties properties;
     private PandaScoreMatchResultSyncService service;
 
@@ -46,7 +50,8 @@ class PandaScoreMatchResultSyncServiceTest {
                 apiClient,
                 properties,
                 matchRepository,
-                matchResultRepository
+                matchResultRepository,
+                stageRegistrationService
         );
     }
 
@@ -102,6 +107,32 @@ class PandaScoreMatchResultSyncServiceTest {
         assertThat(response.skippedCount()).isEqualTo(1);
         assertThat(response.items().get(0).message()).contains("이미 등록된 경기 결과");
         verify(matchResultRepository, never()).save(any());
+        // 결과가 이미 있어도 단계 등록은 수행 (설계 §14.1)
+        verify(stageRegistrationService).upsertFromMatch(any());
+    }
+
+    @Test
+    void ensuresStageOnlyForStoredMatches() {
+        Match stored = mock(Match.class);
+        when(stored.getId()).thenReturn(7L);
+        when(stored.getExternalId()).thenReturn("100");
+        when(matchRepository.findByExternalIdIn(anyList())).thenReturn(List.of(stored));
+        when(matchResultRepository.findByMatchId(7L)).thenReturn(Optional.of(mock(MatchResult.class)));
+        PandaScoreApiClient.PandaScoreMatch storedMatch = finishedMatch(100L, 2882L, 2883L, 2, 1);
+        // 다른 tournament 의 미등록 경기 — 단계 등록 대상 아님
+        PandaScoreApiClient.PandaScoreMatch base = finishedMatch(101L, 2882L, 2883L, 2, 0);
+        PandaScoreApiClient.PandaScoreMatch unstoredMatch = new PandaScoreApiClient.PandaScoreMatch(
+                base.id(), base.name(), base.status(), base.scheduledAt(), base.beginAt(), base.league(),
+                new PandaScoreApiClient.PandaScoreTournament(2L, "LCK Cup", "lck-cup"),
+                base.opponents(), base.winnerId(), base.endAt(), base.results(), base.games(),
+                base.matchType(), base.numberOfGames(), base.serie());
+        when(apiClient.getPastLolMatchesByLeagues(List.of(TeamLeague.LCK)))
+                .thenReturn(List.of(storedMatch, unstoredMatch));
+
+        service.syncCompletedLolMatchResults(List.of(TeamLeague.LCK));
+
+        verify(stageRegistrationService, times(1)).upsertFromMatch(any());
+        verify(stageRegistrationService, never()).upsertFromMatch(unstoredMatch);
     }
 
     @Test

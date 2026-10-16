@@ -8,11 +8,10 @@ import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchExternalSource;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
-import com.esports.domain.stage.CompetitionStageService;
+import com.esports.domain.stage.StageRegistrationService;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamLeague;
 import com.esports.domain.team.TeamRepository;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,18 +36,18 @@ public class PandaScoreMatchImportService {
     private final GameRepository gameRepository;
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
-    private final CompetitionStageService competitionStageService;
+    private final StageRegistrationService stageRegistrationService;
 
     public PandaScoreMatchImportService(PandaScoreMatchPreviewService previewService,
                                         GameRepository gameRepository,
                                         TeamRepository teamRepository,
                                         MatchRepository matchRepository,
-                                        CompetitionStageService competitionStageService) {
+                                        StageRegistrationService stageRegistrationService) {
         this.previewService = previewService;
         this.gameRepository = gameRepository;
         this.teamRepository = teamRepository;
         this.matchRepository = matchRepository;
-        this.competitionStageService = competitionStageService;
+        this.stageRegistrationService = stageRegistrationService;
     }
 
     public PandaScoreMatchImportResponse importLolMatches(PandaScoreMatchImportRequest request) {
@@ -256,17 +255,13 @@ public class PandaScoreMatchImportService {
         return "PandaScore Match " + preview.externalId();
     }
 
-    // 대회 단계 등록 — 같은 배치에서 tournament 당 한 번만. 동시 생성 충돌(unique 위반)은 한 번 재시도해 기존 행을 사용
+    // 대회 단계 등록 — 같은 배치에서 tournament 당 한 번만. 충돌 재시도는 공통 upsert 가 처리
     private void ensureStageOnce(PandaScoreMatchPreviewResponse preview, Set<Long> ensuredTournamentIds) {
         Long tournamentId = preview.externalTournamentId();
         if (tournamentId == null || !ensuredTournamentIds.add(tournamentId)) {
             return;
         }
-        try {
-            competitionStageService.ensureStage(tournamentId, safeTournamentName(preview), preview.seriesName(), preview.tournamentName());
-        } catch (DataIntegrityViolationException e) {
-            competitionStageService.ensureStage(tournamentId, safeTournamentName(preview), preview.seriesName(), preview.tournamentName());
-        }
+        stageRegistrationService.upsert(tournamentId, safeTournamentName(preview), preview.seriesName(), preview.tournamentName());
     }
 
     private String safeStage(PandaScoreMatchPreviewResponse preview) {

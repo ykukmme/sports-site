@@ -10,6 +10,7 @@ import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.stage.StageRegistrationService;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamLeague;
 import org.springframework.http.HttpStatus;
@@ -22,11 +23,13 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,15 +40,26 @@ public class PandaScoreMatchResultSyncService {
     private final PandaScoreProperties properties;
     private final MatchRepository matchRepository;
     private final MatchResultRepository matchResultRepository;
+    private final StageRegistrationService stageRegistrationService;
 
     public PandaScoreMatchResultSyncService(PandaScoreApiClient apiClient,
                                             PandaScoreProperties properties,
                                             MatchRepository matchRepository,
-                                            MatchResultRepository matchResultRepository) {
+                                            MatchResultRepository matchResultRepository,
+                                            StageRegistrationService stageRegistrationService) {
         this.apiClient = apiClient;
         this.properties = properties;
         this.matchRepository = matchRepository;
         this.matchResultRepository = matchResultRepository;
+        this.stageRegistrationService = stageRegistrationService;
+    }
+
+    private void ensureStageOnce(PandaScoreApiClient.PandaScoreMatch pandaMatch, Set<Long> ensuredTournamentIds) {
+        if (pandaMatch.tournament() == null || pandaMatch.tournament().id() == null
+                || !ensuredTournamentIds.add(pandaMatch.tournament().id())) {
+            return;
+        }
+        stageRegistrationService.upsertFromMatch(pandaMatch);
     }
 
     public PandaScoreMatchResultSyncResponse syncCompletedLolMatchResults(List<TeamLeague> leagues) {
@@ -86,6 +100,7 @@ public class PandaScoreMatchResultSyncService {
         List<PandaScoreMatchResultSyncItemResponse> items = new ArrayList<>();
         int createdCount = 0;
         int updatedCount = 0;
+        Set<Long> ensuredTournamentIds = new HashSet<>();
 
         for (PandaScoreApiClient.PandaScoreMatch pandaMatch : matches.stream()
                 .sorted(Comparator.comparing(
@@ -110,6 +125,11 @@ public class PandaScoreMatchResultSyncService {
                         "PandaScore 경기 ID가 없어 결과를 동기화할 수 없습니다."
                 ));
                 continue;
+            }
+
+            // 대회 단계 등록 — 결과 반영 여부와 무관하게 먼저 실행 (설계 §14.1). 저장된 경기만, 실행당 tournament 1회
+            if (matchByExternalId.containsKey(externalId)) {
+                ensureStageOnce(pandaMatch, ensuredTournamentIds);
             }
 
             if (rejectionReason != null) {

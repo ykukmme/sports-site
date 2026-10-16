@@ -3,12 +3,14 @@ package com.esports.domain.stage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface CompetitionStageRepository extends JpaRepository<CompetitionStage, Long> {
+public interface CompetitionStageRepository extends JpaRepository<CompetitionStage, Long>,
+        JpaSpecificationExecutor<CompetitionStage> {
 
     // 외부 tournament id 로 단계 조회 (가져오기 시 중복 생성 방지)
     Optional<CompetitionStage> findByExternalTournamentId(Long externalTournamentId);

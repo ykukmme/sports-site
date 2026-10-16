@@ -51,6 +51,10 @@ public interface MatchRepository extends JpaRepository<Match, Long>, JpaSpecific
             + "where m.externalTournamentId in :ids group by m.externalTournamentId")
     List<Object[]> countGroupedByExternalTournamentIds(@Param("ids") Collection<Long> ids);
 
+    // 단계 복구 대상 확인 — 요청 id 중 실제 경기에 존재하는 tournament id 만
+    @Query("select distinct m.externalTournamentId from Match m where m.externalTournamentId in :ids")
+    List<Long> findExistingExternalTournamentIds(@Param("ids") Collection<Long> ids);
+
     // 대회 단계 경기 전체 — 일정 오름차순 (스위스 전적 계산용)
     List<Match> findByExternalTournamentIdOrderByScheduledAtAscIdAsc(Long externalTournamentId);
 }

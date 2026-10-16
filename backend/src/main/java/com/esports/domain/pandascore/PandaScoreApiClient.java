@@ -198,14 +198,26 @@ public class PandaScoreApiClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreTournament(Long id, String name, String slug) {}
 
-    // 대회 단건 응답 — has_bracket 이 true 면 /brackets 사용 가능
+    // 대회 단건 응답 — has_bracket 이 true 면 /brackets 사용 가능. 단계 등록 시 리그·시리즈·게임 검증에 사용
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record PandaScoreTournamentDetail(
             Long id,
             String name,
             String slug,
-            @JsonProperty("has_bracket") Boolean hasBracket
-    ) {}
+            @JsonProperty("has_bracket") Boolean hasBracket,
+            PandaScoreLeague league,
+            PandaScoreSerie serie,
+            PandaScoreVideogame videogame
+    ) {
+        // 기존 호출부 호환용 — 리그·시리즈·게임 정보 없이 생성
+        public PandaScoreTournamentDetail(Long id, String name, String slug, Boolean hasBracket) {
+            this(id, name, slug, hasBracket, null, null, null);
+        }
+    }
+
+    // 게임 종류 (LoL: slug "league-of-legends")
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PandaScoreVideogame(Long id, String name, String slug) {}
 
     // 대진표 노드 — 미정(TBD) 경기도 포함된다
     @JsonIgnoreProperties(ignoreUnknown = true)

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { MatchList } from '../components/match/MatchList'
 import { FilterChips } from '../components/common/FilterChips'
 import { SectionHeader } from '../components/common/SectionHeader'
+import { StageLinkList } from '../components/stage/StageLinkList'
 import { Button } from '../components/ui/button'
 import { cn } from '@/lib/utils'
 import { MATCH_LEAGUE_FILTERS } from '../constants/teamLeagues'
@@ -77,6 +78,8 @@ export function UpcomingMatchesPage() {
           </Button>
         </div>
       </div>
+
+      <StageLinkList league={league} />
 
       {live.length > 0 && (
         <section className="mb-10">

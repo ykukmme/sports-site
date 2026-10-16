@@ -11,6 +11,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -19,6 +22,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AdminStageController.class)
@@ -27,7 +31,74 @@ class AdminStageControllerTest {
 
     @Autowired MockMvc mockMvc;
     @MockBean CompetitionStageService stageService;
+    @MockBean StageRegistrationService registrationService;
     @MockBean JwtTokenProvider jwtTokenProvider;
+
+    @Test
+    void registerWithoutAuthReturns401() throws Exception {
+        mockMvc.perform(post("/api/admin/stages/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"externalTournamentId\":22046}"))
+                .andExpect(status().isUnauthorized());
+        verify(registrationService, never()).register(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void registerRejectsMissingOrNegativeId() throws Exception {
+        mockMvc.perform(post("/api/admin/stages/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/admin/stages/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"externalTournamentId\":-1}"))
+                .andExpect(status().isBadRequest());
+        verify(registrationService, never()).register(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void registerReturns200() throws Exception {
+        when(registrationService.register(22046L)).thenReturn(new StageRegisterResponse(
+                StageRegistrationStatus.CREATED,
+                new AdminStageResponse(9L, 22046L, "WORLDS", "Worlds 2026", "Play-In", true,
+                        StageDisplayType.NONE, null, null, null, 0)));
+
+        mockMvc.perform(post("/api/admin/stages/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"externalTournamentId\":22046}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void backfillWithoutAuthReturns401() throws Exception {
+        mockMvc.perform(post("/api/admin/stages/backfill")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"externalTournamentIds\":[1]}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void backfillRejectsEmptyOrOver100Ids() throws Exception {
+        mockMvc.perform(post("/api/admin/stages/backfill")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"externalTournamentIds\":[]}"))
+                .andExpect(status().isBadRequest());
+
+        String over100 = IntStream.rangeClosed(1, 101).mapToObj(String::valueOf).collect(Collectors.joining(","));
+        mockMvc.perform(post("/api/admin/stages/backfill")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"externalTournamentIds\":[" + over100 + "]}"))
+                .andExpect(status().isBadRequest());
+        verify(registrationService, never()).backfill(any());
+    }
 
     @Test
     void listWithoutAuthReturns401() throws Exception {

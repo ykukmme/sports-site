@@ -347,6 +347,27 @@ export interface StageUpdateRequest {
   swissLossTarget?: number
 }
 
+// 단계 등록·복구 결과
+export type StageRegistrationStatus = 'CREATED' | 'UPDATED' | 'SKIPPED' | 'REJECTED' | 'FAILED'
+
+export interface StageRegisterResponse {
+  status: StageRegistrationStatus
+  stage: AdminStageResponse
+}
+
+export interface StageBackfillResponse {
+  createdCount: number
+  updatedCount: number
+  skippedCount: number
+  failedCount: number
+  items: {
+    externalTournamentId: number
+    status: StageRegistrationStatus
+    stageId: number | null
+    message: string | null
+  }[]
+}
+
 // 공개 대회 단계 메타
 export interface StageResponse {
   id: number

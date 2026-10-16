@@ -5,7 +5,7 @@ import com.esports.domain.game.GameRepository;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
-import com.esports.domain.stage.CompetitionStageService;
+import com.esports.domain.stage.StageRegistrationService;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +45,7 @@ class PandaScoreMatchImportServiceTest {
     private MatchRepository matchRepository;
 
     @Mock
-    private CompetitionStageService competitionStageService;
+    private StageRegistrationService stageRegistrationService;
 
     private PandaScoreMatchImportService service;
 
@@ -56,7 +56,7 @@ class PandaScoreMatchImportServiceTest {
                 gameRepository,
                 teamRepository,
                 matchRepository,
-                competitionStageService
+                stageRegistrationService
         );
     }
 
@@ -199,7 +199,7 @@ class PandaScoreMatchImportServiceTest {
         verify(matchRepository).save(captor.capture());
         assertThat(captor.getValue().getBestOf()).isEqualTo(5);
         assertThat(captor.getValue().getExternalTournamentId()).isEqualTo(21722L);
-        verify(competitionStageService).ensureStage(21722L, "LCK", "LCK 2026", "LCK Spring");
+        verify(stageRegistrationService).upsert(21722L, "LCK", "LCK 2026", "LCK Spring");
     }
 
     @Test

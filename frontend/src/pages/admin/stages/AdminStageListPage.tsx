@@ -2,7 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../../../api/client'
-import { fetchAdminStages, updateAdminStage } from '../../../api/admin/adminStages'
+import {
+  backfillAdminStages,
+  fetchAdminStages,
+  registerAdminStage,
+  updateAdminStage,
+} from '../../../api/admin/adminStages'
+import { MAX_BACKFILL_IDS, parseTournamentIds } from '../../../lib/stageIds'
 import { Button, buttonVariants } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import {
@@ -46,8 +52,11 @@ export function AdminStageListPage() {
         <h1 className="text-xl font-bold text-foreground">대회 단계</h1>
       </div>
       <p className="text-xs text-muted-foreground">
-        PandaScore 경기를 가져오면 단계가 자동 등록됩니다. 표시 방식을 켠 단계만 팬 사이트에 노출됩니다.
+        PandaScore 경기를 가져오거나 결과를 동기화하면 단계가 자동 등록됩니다. 경기가 아직 전부 미정인 단계는
+        tournament id 로 직접 등록하세요. 표시 방식을 켠 단계만 팬 사이트에 노출됩니다.
       </p>
+
+      <StageRegisterPanel />
 
       <form onSubmit={handleSearch} className="flex items-center gap-2">
         <Input
@@ -103,6 +112,130 @@ export function AdminStageListPage() {
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+// 단계 직접 등록 + 기존 경기의 누락 단계 복구
+function StageRegisterPanel() {
+  const queryClient = useQueryClient()
+  const [registerInput, setRegisterInput] = useState('')
+  const [backfillInput, setBackfillInput] = useState('')
+  const [backfillInputError, setBackfillInputError] = useState<string | null>(null)
+
+  const refreshList = () => queryClient.invalidateQueries({ queryKey: ['admin', 'stages'] })
+
+  const registerMutation = useMutation({
+    mutationFn: (id: number) => registerAdminStage(id),
+    onSuccess: () => {
+      setRegisterInput('')
+      refreshList()
+    },
+  })
+
+  const backfillMutation = useMutation({
+    mutationFn: (ids: number[]) => backfillAdminStages(ids),
+    onSuccess: refreshList,
+  })
+
+  const parsedRegisterId = parseTournamentIds(registerInput)
+  const registerId =
+    parsedRegisterId.invalid.length === 0 && parsedRegisterId.ids.length === 1 ? parsedRegisterId.ids[0] : null
+
+  function handleRegister(event: React.FormEvent) {
+    event.preventDefault()
+    if (registerId != null) registerMutation.mutate(registerId)
+  }
+
+  function handleBackfill(event: React.FormEvent) {
+    event.preventDefault()
+    const { ids, invalid } = parseTournamentIds(backfillInput)
+    if (invalid.length > 0) {
+      setBackfillInputError(`숫자가 아닌 값이 있습니다: ${invalid.slice(0, 5).join(', ')}`)
+      return
+    }
+    if (ids.length === 0) {
+      setBackfillInputError('복구할 tournament id 를 입력해주세요.')
+      return
+    }
+    if (ids.length > MAX_BACKFILL_IDS) {
+      setBackfillInputError(`한 번에 최대 ${MAX_BACKFILL_IDS}개까지 복구할 수 있습니다.`)
+      return
+    }
+    setBackfillInputError(null)
+    backfillMutation.mutate(ids)
+  }
+
+  const registerError = registerMutation.error?.message
+  const registered = registerMutation.data
+  const backfillError = backfillMutation.error?.message
+  const backfill = backfillMutation.data
+  const backfillProblems = backfill?.items.filter((item) => item.status !== 'CREATED' && item.status !== 'UPDATED') ?? []
+
+  return (
+    <div className="grid gap-4 rounded-lg border border-border bg-card p-4 md:grid-cols-2">
+      <form onSubmit={handleRegister} className="flex flex-col gap-2">
+        <label htmlFor="stage-register-id" className="text-sm font-medium text-foreground">
+          tournament id 로 단계 등록
+        </label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="stage-register-id"
+            inputMode="numeric"
+            value={registerInput}
+            onChange={(event) => setRegisterInput(event.target.value)}
+            placeholder="예: 22046"
+            className="max-w-48"
+          />
+          <Button type="submit" size="sm" disabled={registerId == null || registerMutation.isPending}>
+            {registerMutation.isPending ? '등록 중...' : '등록'}
+          </Button>
+        </div>
+        {registerError && <div className="text-xs text-destructive">{registerError}</div>}
+        {registered && !registerError && (
+          <div className="text-xs text-muted-foreground">
+            {registered.status === 'CREATED' ? '새로 등록됨' : '이미 있는 단계 — 정보만 갱신됨'}: {registered.stage.leagueName} ·{' '}
+            {registered.stage.stageName} (경기 {registered.stage.matchCount}개)
+          </div>
+        )}
+      </form>
+
+      <form onSubmit={handleBackfill} className="flex flex-col gap-2">
+        <label htmlFor="stage-backfill-ids" className="text-sm font-medium text-foreground">
+          기존 경기의 누락 단계 복구 (최대 {MAX_BACKFILL_IDS}개)
+        </label>
+        <textarea
+          id="stage-backfill-ids"
+          value={backfillInput}
+          onChange={(event) => setBackfillInput(event.target.value)}
+          placeholder="tournament id 를 쉼표나 줄바꿈으로 구분"
+          rows={2}
+          className="rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground"
+        />
+        <div>
+          <Button type="submit" size="sm" variant="outline" disabled={backfillMutation.isPending}>
+            {backfillMutation.isPending ? '복구 중...' : '복구'}
+          </Button>
+        </div>
+        {(backfillInputError || backfillError) && (
+          <div className="text-xs text-destructive">{backfillInputError ?? backfillError}</div>
+        )}
+        {backfill && !backfillError && !backfillInputError && (
+          <div className="text-xs text-muted-foreground">
+            신규 {backfill.createdCount} · 갱신 {backfill.updatedCount} · 건너뜀 {backfill.skippedCount} · 실패{' '}
+            {backfill.failedCount}
+            {backfillProblems.length > 0 && (
+              <ul className="mt-1 list-disc pl-4">
+                {backfillProblems.map((item) => (
+                  <li key={item.externalTournamentId}>
+                    #{item.externalTournamentId}: {item.message ?? item.status}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </form>
     </div>
   )
 }

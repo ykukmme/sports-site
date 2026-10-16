@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -28,6 +29,17 @@ class StageControllerTest {
     @MockBean SwissStandingService swissStandingService;
     @MockBean BracketQueryService bracketQueryService;
     @MockBean JwtTokenProvider jwtTokenProvider;
+
+    @Test
+    void stageListIsPublicWithoutAuth() throws Exception {
+        when(stageService.listPublicStages("INTERNATIONAL_WORLDS", null, 0, 20)).thenReturn(new PageImpl<>(List.of(
+                new StageResponse(5L, "WORLDS", "Worlds 2026", "Play-In", StageDisplayType.BRACKET))));
+
+        mockMvc.perform(get("/api/v1/stages").param("league", "INTERNATIONAL_WORLDS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].stageName").value("Play-In"))
+                .andExpect(jsonPath("$.data.content[0].displayType").value("BRACKET"));
+    }
 
     @Test
     void hiddenStageReturns404() throws Exception {

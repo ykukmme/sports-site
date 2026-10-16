@@ -1,7 +1,15 @@
 // 공개 대회 단계 API — 단계 메타, 스위스 전적표
 import apiClient from './client'
-import type { ApiResponse } from '../types/api'
+import type { ApiResponse, PageResponse } from '../types/api'
 import type { BracketResponse, StageResponse, SwissStandingResponse } from '../types/domain'
+
+// 공개 단계 목록 — 표시 방식이 켜진 단계만. league 는 경기 필터와 같은 리그 코드
+export async function fetchStages(league: string, size = 12): Promise<StageResponse[]> {
+  const res = await apiClient.get<ApiResponse<PageResponse<StageResponse>>>('/api/v1/stages', {
+    params: { league: league === 'ALL' ? undefined : league, page: 0, size },
+  })
+  return res.data.data?.content ?? []
+}
 
 export async function fetchStage(id: number): Promise<StageResponse> {
   const res = await apiClient.get<ApiResponse<StageResponse>>(`/api/v1/stages/${id}`)
