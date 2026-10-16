@@ -1,10 +1,12 @@
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { MatchStatusBadge } from '../match/MatchStatusBadge'
+import { BestOfBadge } from '../match/BestOfBadge'
 import { TeamLogo } from '../team/TeamLogo'
 import type { MatchExternalDetailPublicResponse, MatchResponse, TeamResponse, TeamSummary } from '../../types/domain'
 
@@ -51,8 +53,14 @@ export function MatchScoreboard({ match, detail, teamA, teamB, colorA, colorB, o
             <MatchStatusBadge status={match.status} />
             <span className="whitespace-nowrap">{match.tournamentName}</span>
             {match.stage && <span className="whitespace-nowrap">· {match.stage}</span>}
+            <BestOfBadge bestOf={match.bestOf} />
             <span className="whitespace-nowrap">· {formatDate(match.scheduledAt)}</span>
             {detail?.patchVersion && <span className="whitespace-nowrap">· 패치 {detail.patchVersion}</span>}
+            {match.stageId != null && (
+              <Link to={`/stages/${match.stageId}`} className="whitespace-nowrap font-medium text-primary hover:underline">
+                대진표 보기
+              </Link>
+            )}
           </div>
 
           <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-6">

@@ -5,6 +5,7 @@ import com.esports.domain.game.GameRepository;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
+import com.esports.domain.stage.CompetitionStageService;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,9 @@ class PandaScoreMatchImportServiceTest {
     @Mock
     private MatchRepository matchRepository;
 
+    @Mock
+    private CompetitionStageService competitionStageService;
+
     private PandaScoreMatchImportService service;
 
     @BeforeEach
@@ -51,7 +55,8 @@ class PandaScoreMatchImportServiceTest {
                 previewService,
                 gameRepository,
                 teamRepository,
-                matchRepository
+                matchRepository,
+                competitionStageService
         );
     }
 
@@ -166,6 +171,57 @@ class PandaScoreMatchImportServiceTest {
         // 매핑 정정: tournament_name = leagueName(리그/대회명), stage = tournamentName(단계).
         assertThat(captor.getValue().getTournamentName()).isEqualTo("FIRST STAND");
         assertThat(captor.getValue().getStage()).isEqualTo("LCK Spring");
+    }
+
+    @Test
+    void storesBestOfAndTournamentIdOnCreate() {
+        Game game = mock(Game.class);
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+        Match saved = mock(Match.class);
+
+        when(gameRepository.findByName("League of Legends")).thenReturn(Optional.of(game));
+        when(previewService.previewCompletedLolMatches(anyList(), anyList(), isNull(), anyBoolean())).thenReturn(List.of(
+                preview("2026003", PandaScorePreviewStatus.NEW, 11L, 22L, null, "finished")
+                        .withSourceMeta(21722L, 5, "LCK 2026")
+        ));
+        when(teamA.getId()).thenReturn(11L);
+        when(teamB.getId()).thenReturn(22L);
+        when(teamRepository.findById(11L)).thenReturn(Optional.of(teamA));
+        when(teamRepository.findById(22L)).thenReturn(Optional.of(teamB));
+        when(matchRepository.findByExternalId("2026003")).thenReturn(Optional.empty());
+        when(matchRepository.save(any(Match.class))).thenReturn(saved);
+        when(saved.getId()).thenReturn(90L);
+
+        service.importLolMatches(new PandaScoreMatchImportRequest(List.of("2026003"), List.of("LCK"), "completed"));
+
+        ArgumentCaptor<Match> captor = ArgumentCaptor.forClass(Match.class);
+        verify(matchRepository).save(captor.capture());
+        assertThat(captor.getValue().getBestOf()).isEqualTo(5);
+        assertThat(captor.getValue().getExternalTournamentId()).isEqualTo(21722L);
+        verify(competitionStageService).ensureStage(21722L, "LCK", "LCK 2026", "LCK Spring");
+    }
+
+    @Test
+    void keepsExistingBestOfAndTournamentIdWhenPreviewHasNone() {
+        Game game = mock(Game.class);
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+        Match existing = mock(Match.class);
+
+        when(gameRepository.findByName("League of Legends")).thenReturn(Optional.of(game));
+        when(previewService.previewUpcomingLolMatches(anyList())).thenReturn(List.of(
+                preview("102", PandaScorePreviewStatus.UPDATE, 11L, 22L, 78L, "not_started")
+        ));
+        when(teamRepository.findById(11L)).thenReturn(Optional.of(teamA));
+        when(teamRepository.findById(22L)).thenReturn(Optional.of(teamB));
+        when(matchRepository.findByExternalId("102")).thenReturn(Optional.of(existing));
+        when(existing.getId()).thenReturn(78L);
+
+        service.importUpcomingLolMatches(new PandaScoreMatchImportRequest(List.of("102"), List.of()));
+
+        verify(existing, never()).setBestOf(any());
+        verify(existing, never()).setExternalTournamentId(any());
     }
 
     private PandaScoreMatchPreviewResponse preview(String externalId,

@@ -64,6 +64,46 @@ class MatchCommandServiceTest {
     }
 
     @Test
+    void createRejectsUnsupportedBestOf() {
+        // given
+        Game game = mock(Game.class);
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+        when(teamA.getId()).thenReturn(1L);
+        when(teamB.getId()).thenReturn(2L);
+        when(gameRepository.findById(1L)).thenReturn(Optional.of(game));
+        when(teamRepository.findById(1L)).thenReturn(Optional.of(teamA));
+        when(teamRepository.findById(2L)).thenReturn(Optional.of(teamB));
+
+        MatchCreateRequest request = new MatchCreateRequest(
+                1L, 1L, 2L, "LCK", null, OffsetDateTime.now().plusDays(1), 4);
+
+        // when & then
+        assertThatThrownBy(() -> matchCommandService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode()).isEqualTo("INVALID_BEST_OF"));
+        verify(matchRepository, never()).save(any(Match.class));
+    }
+
+    @Test
+    void updateStoresAllowedBestOf() {
+        // given
+        Game game = mock(Game.class);
+        Team teamA = mock(Team.class);
+        Team teamB = mock(Team.class);
+        when(teamA.getId()).thenReturn(1L);
+        when(teamB.getId()).thenReturn(2L);
+        Match match = new Match(game, teamA, teamB, "LCK", OffsetDateTime.now().plusDays(1));
+        when(matchRepository.findById(5L)).thenReturn(Optional.of(match));
+
+        // when
+        matchCommandService.update(5L, new MatchUpdateRequest(null, null, null, null, 5));
+
+        // then
+        assertThat(match.getBestOf()).isEqualTo(5);
+    }
+
+    @Test
     void deleteThrowsWhenNotFound() {
         // given
         when(matchRepository.findById(999L)).thenReturn(Optional.empty());

@@ -13,6 +13,7 @@ import { TeamsPage } from './pages/TeamsPage'
 import { TeamDetailPage } from './pages/TeamDetailPage'
 import { PlayerDetailPage } from './pages/PlayerDetailPage'
 import { CheerPage } from './pages/CheerPage'
+import { StagePage } from './pages/StagePage'
 // 어드민 라우팅
 import { AdminRoute } from './components/admin/AdminRoute'
 import { AdminLayout } from './components/admin/AdminLayout'
@@ -21,6 +22,8 @@ import { AdminMatchListPage } from './pages/admin/matches/AdminMatchListPage'
 import { AdminMatchFormPage } from './pages/admin/matches/AdminMatchFormPage'
 import { AdminMatchResultPage } from './pages/admin/matches/AdminMatchResultPage'
 import { AdminMatchOverridePage } from './pages/admin/matches/AdminMatchOverridePage'
+import { AdminStageListPage } from './pages/admin/stages/AdminStageListPage'
+import { AdminStageBracketPage } from './pages/admin/stages/AdminStageBracketPage'
 import { AdminTeamListPage } from './pages/admin/teams/AdminTeamListPage'
 import { AdminTeamFormPage } from './pages/admin/teams/AdminTeamFormPage'
 import { AdminPlayerListPage } from './pages/admin/players/AdminPlayerListPage'
@@ -59,6 +62,8 @@ function App() {
             <Route path="players/:id" element={<PlayerDetailPage />} />
             {/* 응원하기 — 응원팀 선택(브라우저 저장), 백엔드 API 불필요 */}
             <Route path="cheer" element={<CheerPage />} />
+            {/* 대회 단계 — 스위스 전적표 / 대진표 */}
+            <Route path="stages/:id" element={<StagePage />} />
             <Route path="*" element={<ErrorMessage message="페이지를 찾을 수 없습니다." />} />
           </Route>
 
@@ -74,6 +79,8 @@ function App() {
               <Route path="/admin/matches/:id/edit" element={<AdminMatchFormPage />} />
               <Route path="/admin/matches/:id/result" element={<AdminMatchResultPage />} />
               <Route path="/admin/matches/:id/override" element={<AdminMatchOverridePage />} />
+              <Route path="/admin/stages" element={<AdminStageListPage />} />
+              <Route path="/admin/stages/:id/bracket" element={<AdminStageBracketPage />} />
               <Route path="/admin/teams" element={<AdminTeamListPage />} />
               <Route path="/admin/teams/new" element={<AdminTeamFormPage />} />
               <Route path="/admin/teams/:id/edit" element={<AdminTeamFormPage />} />

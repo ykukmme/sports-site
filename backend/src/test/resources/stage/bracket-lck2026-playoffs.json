@@ -1,0 +1,294 @@
+[
+ {
+  "id": 1642162,
+  "name": "Lower bracket round 1: BFX vs DK",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-03T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 132531,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 134115,
+     "acronym": "BFX"
+    }
+   },
+   {
+    "opponent": {
+     "id": 132531,
+     "acronym": "DK"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1642153,
+    "type": "loser"
+   },
+   {
+    "match_id": 1642154,
+    "type": "loser"
+   }
+  ]
+ },
+ {
+  "id": 1642161,
+  "name": "Lower bracket round 2: KT vs DK",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-04T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 132531,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   },
+   {
+    "opponent": {
+     "id": 132531,
+     "acronym": "DK"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1642162,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1642160,
+  "name": "Lower bracket semifinal: T1 vs DK",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-06T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 126061,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   },
+   {
+    "opponent": {
+     "id": 132531,
+     "acronym": "DK"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1642161,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1642159,
+  "name": "Lower bracket final: HLE vs T1",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-12T05:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2883,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1642160,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1642158,
+  "name": "Grand final: GEN vs HLE",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-13T05:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1642157,
+    "type": "winner"
+   },
+   {
+    "match_id": 1642159,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1642157,
+  "name": "Upper bracket final: GEN vs HLE",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-05T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1642156,
+    "type": "winner"
+   },
+   {
+    "match_id": 1642155,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1642156,
+  "name": "Upper bracket semifinal 2: HLE vs T1",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-02T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2883,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   }
+  ],
+  "previous_matches": []
+ },
+ {
+  "id": 1642155,
+  "name": "Upper bracket semifinal 1: GEN vs KT",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-09-01T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   }
+  ],
+  "previous_matches": []
+ },
+ {
+  "id": 1642154,
+  "name": "Upper bracket quarterfinal 2: DK vs KT",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-08-30T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 63,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 132531,
+     "acronym": "DK"
+    }
+   },
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   }
+  ],
+  "previous_matches": []
+ },
+ {
+  "id": 1642153,
+  "name": "Upper bracket quarterfinal 1: T1 vs BFX",
+  "tournament_id": 21722,
+  "scheduled_at": "2026-08-29T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 126061,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   },
+   {
+    "opponent": {
+     "id": 134115,
+     "acronym": "BFX"
+    }
+   }
+  ],
+  "previous_matches": []
+ }
+]

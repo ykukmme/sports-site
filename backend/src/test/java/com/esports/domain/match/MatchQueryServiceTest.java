@@ -5,6 +5,7 @@ import com.esports.domain.game.Game;
 import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.stage.CompetitionStageRepository;
 import com.esports.domain.team.Team;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,9 @@ class MatchQueryServiceTest {
 
     @Mock
     private MatchExternalDetailRepository matchExternalDetailRepository;
+
+    @Mock
+    private CompetitionStageRepository competitionStageRepository;
 
     @InjectMocks
     private MatchQueryService matchQueryService;

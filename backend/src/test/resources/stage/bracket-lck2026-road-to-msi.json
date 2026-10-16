@@ -1,0 +1,146 @@
+[
+ {
+  "id": 1505700,
+  "name": "Lower bracket final: T1 vs GEN",
+  "tournament_id": 21102,
+  "scheduled_at": "2026-06-14T06:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 126061,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   },
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1505698,
+    "type": "loser"
+   },
+   {
+    "match_id": 1505699,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1505699,
+  "name": "Lower bracket semifinal: GEN vs KT",
+  "tournament_id": 21102,
+  "scheduled_at": "2026-06-13T06:15:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1505697,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1505698,
+  "name": "Upper bracket final: HLE vs T1",
+  "tournament_id": 21102,
+  "scheduled_at": "2026-06-12T08:15:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 2883,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   }
+  ],
+  "previous_matches": []
+ },
+ {
+  "id": 1505697,
+  "name": "Lower bracket quarterfinal: KT vs DK",
+  "tournament_id": 21102,
+  "scheduled_at": "2026-06-07T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 63,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   },
+   {
+    "opponent": {
+     "id": 132531,
+     "acronym": "DK"
+    }
+   }
+  ],
+  "previous_matches": [
+   {
+    "match_id": 1505696,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1505696,
+  "name": "Lower bracket round 1: DK vs BRO",
+  "tournament_id": 21102,
+  "scheduled_at": "2026-06-06T08:00:00Z",
+  "status": "finished",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": 132531,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 132531,
+     "acronym": "DK"
+    }
+   },
+   {
+    "opponent": {
+     "id": 128218,
+     "acronym": "BRO"
+    }
+   }
+  ],
+  "previous_matches": []
+ }
+]

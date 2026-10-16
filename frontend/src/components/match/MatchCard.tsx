@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { MatchStatusBadge } from './MatchStatusBadge'
+import { BestOfBadge } from './BestOfBadge'
 import { TeamLogo } from '../team/TeamLogo'
 import { useTeamLookup } from '../../hooks/useTeamLookup'
 import { useTeamTheme } from '../../context/TeamThemeContext'
@@ -53,6 +54,7 @@ export function MatchCard({ match }: MatchCardProps) {
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <span className="truncate text-xs text-muted-foreground">{meta || match.game.name}</span>
+              <BestOfBadge bestOf={match.bestOf} />
               {isMyTeam && <Badge className="shrink-0">내 팀</Badge>}
             </div>
             <MatchStatusBadge status={match.status} />

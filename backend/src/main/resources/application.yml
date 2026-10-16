@@ -67,6 +67,10 @@ pandascore:
   completed-global-page-limit: ${PANDASCORE_COMPLETED_GLOBAL_PAGE_LIMIT:10}
   match-lookup-batch-size: ${PANDASCORE_MATCH_LOOKUP_BATCH_SIZE:500}
 
+# 대진표 자동 동기화 스케줄러 — 기본 OFF (표시 방식 BRACKET 단계만 30분 간격)
+bracket:
+  sync-scheduler-enabled: ${BRACKET_SYNC_SCHEDULER_ENABLED:false}
+
 golgg:
   enabled: ${GOLGG_ENABLED:true}
   base-url: ${GOLGG_BASE_URL:https://gol.gg}

@@ -1,0 +1,113 @@
+[
+ {
+  "id": 1711021,
+  "name": "Grand Final: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-14T19:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": [
+   {
+    "match_id": 1711019,
+    "type": "winner"
+   },
+   {
+    "match_id": 1711020,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1711020,
+  "name": "Semifinal 2: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-08T22:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": [
+   {
+    "match_id": 1711017,
+    "type": "winner"
+   },
+   {
+    "match_id": 1711018,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1711019,
+  "name": "Semifinal 1: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-07T22:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": [
+   {
+    "match_id": 1711013,
+    "type": "winner"
+   },
+   {
+    "match_id": 1711016,
+    "type": "winner"
+   }
+  ]
+ },
+ {
+  "id": 1711018,
+  "name": "Quarterfinal 4: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-06T22:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": []
+ },
+ {
+  "id": 1711017,
+  "name": "Quarterfinal 3: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-05T22:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": []
+ },
+ {
+  "id": 1711016,
+  "name": "Quarterfinal 2: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-04T22:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": []
+ },
+ {
+  "id": 1711013,
+  "name": "Quarterfinal 1: TBD vs TBD",
+  "tournament_id": 22048,
+  "scheduled_at": "2026-11-03T22:00:00Z",
+  "status": "not_started",
+  "match_type": "best_of",
+  "number_of_games": 5,
+  "winner_id": null,
+  "opponents": [],
+  "previous_matches": []
+ }
+]

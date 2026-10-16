@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, type UseFormRegisterReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { matchCreateSchema, matchUpdateSchema } from '../../../types/adminForms'
@@ -13,6 +13,34 @@ import { ApiError } from '../../../api/client'
 
 function toDateTimeLocal(iso: string): string {
   return new Date(iso).toISOString().slice(0, 16)
+}
+
+type BestOfValue = 1 | 3 | 5 | 7
+const BEST_OF_OPTIONS: BestOfValue[] = [1, 3, 5, 7]
+
+// select 값 → BO 숫자 (빈 값은 미입력)
+function parseBestOf(value: string): number | undefined {
+  return value === '' ? undefined : Number(value)
+}
+
+// 서버 BO 값 → 폼 값 (허용값이 아니면 미입력)
+function toBestOfValue(bestOf: number | null | undefined): BestOfValue | undefined {
+  return BEST_OF_OPTIONS.find((option) => option === bestOf)
+}
+
+// BO 선택 박스 — 미입력/1/3/5/7
+function BestOfSelect({ registration }: { registration: UseFormRegisterReturn }) {
+  return (
+    <select
+      {...registration}
+      className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
+    >
+      <option value="">미입력</option>
+      {BEST_OF_OPTIONS.map((option) => (
+        <option key={option} value={option}>BO{option}</option>
+      ))}
+    </select>
+  )
 }
 
 export function AdminMatchFormPage() {
@@ -54,6 +82,7 @@ export function AdminMatchFormPage() {
         stage: existingMatch.stage ?? '',
         scheduledAt: toDateTimeLocal(existingMatch.scheduledAt),
         status: existingMatch.status,
+        bestOf: toBestOfValue(existingMatch.bestOf),
       })
     }
   }, [existingMatch, isEditMode, updateForm])
@@ -112,6 +141,9 @@ export function AdminMatchFormPage() {
               <option value="CANCELLED">취소</option>
             </select>
           </Field>
+          <Field label="BO" error={updateForm.formState.errors.bestOf?.message}>
+            <BestOfSelect registration={updateForm.register('bestOf', { setValueAs: parseBestOf })} />
+          </Field>
 
           {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
           <FormActions onCancel={() => navigate('/admin/matches')} isPending={isPending} />
@@ -163,6 +195,9 @@ export function AdminMatchFormPage() {
           </Field>
           <Field label="예정 시각 *" error={createForm.formState.errors.scheduledAt?.message}>
             <Input {...createForm.register('scheduledAt')} type="datetime-local" />
+          </Field>
+          <Field label="BO" error={createForm.formState.errors.bestOf?.message}>
+            <BestOfSelect registration={createForm.register('bestOf', { setValueAs: parseBestOf })} />
           </Field>
 
           {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}

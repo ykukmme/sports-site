@@ -3,6 +3,8 @@ package com.esports.domain.match;
 import com.esports.domain.game.Game;
 import com.esports.domain.team.Team;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 
 // E-sports 경기 — 두 팀 간의 매치
@@ -38,6 +40,15 @@ public class Match {
 
     @Column(name = "international_competition_code", length = 50)
     private String internationalCompetitionCode;
+
+    // BO(Best-of) 수 — 1/3/5/7 또는 미상(null)
+    @JdbcTypeCode(SqlTypes.SMALLINT)
+    @Column(name = "best_of")
+    private Integer bestOf;
+
+    // PandaScore tournament id — 대회 단계 식별 키 (수동 등록 경기는 null)
+    @Column(name = "external_tournament_id")
+    private Long externalTournamentId;
 
     @Column(name = "scheduled_at", nullable = false)
     private OffsetDateTime scheduledAt;
@@ -110,6 +121,8 @@ public class Match {
     public String getTournamentName() { return tournamentName; }
     public String getStage() { return stage; }
     public String getInternationalCompetitionCode() { return internationalCompetitionCode; }
+    public Integer getBestOf() { return bestOf; }
+    public Long getExternalTournamentId() { return externalTournamentId; }
     public OffsetDateTime getScheduledAt() { return scheduledAt; }
     public MatchStatus getStatus() { return status; }
     public String getExternalId() { return externalId; }
@@ -121,6 +134,15 @@ public class Match {
     public void setTournamentName(String tournamentName) { this.tournamentName = tournamentName; }
     public void setStage(String stage) { this.stage = stage; }
     public void setInternationalCompetitionCode(String internationalCompetitionCode) { this.internationalCompetitionCode = internationalCompetitionCode; }
+    public void setExternalTournamentId(Long externalTournamentId) { this.externalTournamentId = externalTournamentId; }
+
+    // BO 값 설정 — null(미상) 허용, 그 외에는 1/3/5/7 만 허용 (DB CHECK 외 애플리케이션 레벨 방어)
+    public void setBestOf(Integer bestOf) {
+        if (bestOf != null && !BestOf.isAllowed(bestOf)) {
+            throw new IllegalArgumentException("BO 값은 1, 3, 5, 7 중 하나여야 합니다.");
+        }
+        this.bestOf = bestOf;
+    }
     public void setScheduledAt(OffsetDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
     public void setStatus(MatchStatus status) { this.status = status; }
     public void setExternalId(String externalId) { this.externalId = externalId; }

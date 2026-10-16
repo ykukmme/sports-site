@@ -4,6 +4,7 @@ import com.esports.common.exception.BusinessException;
 import com.esports.config.PandaScoreProperties;
 import com.esports.domain.game.Game;
 import com.esports.domain.game.GameRepository;
+import com.esports.domain.match.BestOf;
 import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchRepository;
@@ -173,10 +174,25 @@ public class PandaScoreMatchPreviewService {
         return Math.max(1, properties.getCompletedGlobalPageLimit());
     }
 
+    // 미리보기 생성 후 단계 식별 키·BO·시리즈 정보를 덧붙인다
     private PandaScoreMatchPreviewResponse toPreview(Game game,
                                                      PandaScoreApiClient.PandaScoreMatch pandaMatch,
                                                      List<Match> conflictCandidates,
                                                      boolean excludeExisting) {
+        PandaScoreMatchPreviewResponse preview = buildPreview(game, pandaMatch, conflictCandidates, excludeExisting);
+        if (preview == null) {
+            return null;
+        }
+        Long externalTournamentId = pandaMatch.tournament() != null ? pandaMatch.tournament().id() : null;
+        Integer bestOf = BestOf.fromPandaScore(pandaMatch.matchType(), pandaMatch.numberOfGames());
+        String seriesName = pandaMatch.serie() != null ? pandaMatch.serie().fullName() : null;
+        return preview.withSourceMeta(externalTournamentId, bestOf, seriesName);
+    }
+
+    private PandaScoreMatchPreviewResponse buildPreview(Game game,
+                                                        PandaScoreApiClient.PandaScoreMatch pandaMatch,
+                                                        List<Match> conflictCandidates,
+                                                        boolean excludeExisting) {
         String externalId = pandaMatch.id() != null ? String.valueOf(pandaMatch.id()) : null;
         List<String> rejectionReasons = validate(pandaMatch);
 

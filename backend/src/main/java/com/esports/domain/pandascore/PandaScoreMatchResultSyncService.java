@@ -2,6 +2,7 @@ package com.esports.domain.pandascore;
 
 import com.esports.common.exception.BusinessException;
 import com.esports.config.PandaScoreProperties;
+import com.esports.domain.match.BestOf;
 import com.esports.domain.match.InternationalCompetitionType;
 import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchExternalSource;
@@ -130,6 +131,15 @@ public class PandaScoreMatchResultSyncService {
                         "먼저 경기 등록을 해야 결과를 연결할 수 있습니다."
                 ));
                 continue;
+            }
+
+            // BO·대회 식별 키 보강 — 외부 응답에 값이 없으면 기존 값 유지
+            Integer bestOf = BestOf.fromPandaScore(pandaMatch.matchType(), pandaMatch.numberOfGames());
+            if (bestOf != null) {
+                match.setBestOf(bestOf);
+            }
+            if (pandaMatch.tournament() != null && pandaMatch.tournament().id() != null) {
+                match.setExternalTournamentId(pandaMatch.tournament().id());
             }
 
             InternationalCompetitionType competitionType = detectInternationalCompetitionType(pandaMatch).orElse(null);

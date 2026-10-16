@@ -4,7 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,4 +42,15 @@ public interface MatchRepository extends JpaRepository<Match, Long>, JpaSpecific
     List<Match> findByExternalIdIn(List<String> externalIds);
 
     boolean existsByTeamAIdOrTeamBId(Long teamAId, Long teamBId);
+
+    // 대회 단계(PandaScore tournament)별 경기 수
+    long countByExternalTournamentId(Long externalTournamentId);
+
+    // 대회 단계별 경기 수 일괄 집계 — 어드민 목록 N+1 방지. 결과: [externalTournamentId, count]
+    @Query("select m.externalTournamentId, count(m) from Match m "
+            + "where m.externalTournamentId in :ids group by m.externalTournamentId")
+    List<Object[]> countGroupedByExternalTournamentIds(@Param("ids") Collection<Long> ids);
+
+    // 대회 단계 경기 전체 — 일정 오름차순 (스위스 전적 계산용)
+    List<Match> findByExternalTournamentIdOrderByScheduledAtAscIdAsc(Long externalTournamentId);
 }

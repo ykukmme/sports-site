@@ -49,6 +49,9 @@ public class MatchCommandService {
 
         Match match = new Match(game, teamA, teamB, request.tournamentName(), request.scheduledAt());
         match.setStage(request.stage());
+        if (request.bestOf() != null) {
+            match.setBestOf(validateBestOf(request.bestOf()));
+        }
 
         return MatchResponse.from(matchRepository.save(match));
     }
@@ -61,6 +64,7 @@ public class MatchCommandService {
         if (request.tournamentName() != null) match.setTournamentName(request.tournamentName());
         if (request.stage() != null) match.setStage(request.stage());
         if (request.scheduledAt() != null) match.setScheduledAt(request.scheduledAt());
+        if (request.bestOf() != null) match.setBestOf(validateBestOf(request.bestOf()));
 
         if (request.status() != null) {
             if (request.status() == MatchStatus.COMPLETED
@@ -85,5 +89,14 @@ public class MatchCommandService {
                 .orElseThrow(() -> new BusinessException(
                         "MATCH_NOT_FOUND", "경기를 찾을 수 없습니다. id=" + id, HttpStatus.NOT_FOUND));
         matchRepository.delete(match);
+    }
+
+    // BO 값 검증 — 1/3/5/7 외에는 400
+    private Integer validateBestOf(Integer bestOf) {
+        if (!BestOf.isAllowed(bestOf)) {
+            throw new BusinessException(
+                    "INVALID_BEST_OF", "BO 값은 1, 3, 5, 7 중 하나여야 합니다.", HttpStatus.BAD_REQUEST);
+        }
+        return bestOf;
     }
 }

@@ -16,13 +16,17 @@ public record MatchResponse(
         TeamSummary teamB,
         String tournamentName,
         String stage,
+        // BO 수 (미상이면 응답에서 생략)
+        Integer bestOf,
         OffsetDateTime scheduledAt,
         String status,
         String externalId,
         String externalSource,
         OffsetDateTime lastSyncedAt,
         MatchExternalDetailSummaryResponse detailSummary,
-        MatchResultResponse result
+        MatchResultResponse result,
+        // 대진표/스위스 표시가 켜진 단계 id (표시 안 하면 생략)
+        Long stageId
 ) {
     public static MatchResponse from(Match match) {
         return from(match, null);
@@ -36,12 +40,14 @@ public record MatchResponse(
                 TeamSummary.from(match.getTeamB()),
                 match.getTournamentName(),
                 match.getStage(),
+                match.getBestOf(),
                 match.getScheduledAt(),
                 match.getStatus().name(),
                 match.getExternalId(),
                 externalSourceName(match),
                 match.getLastSyncedAt(),
                 detailSummary,
+                null,
                 null
         );
     }
@@ -60,14 +66,22 @@ public record MatchResponse(
                 TeamSummary.from(match.getTeamB()),
                 match.getTournamentName(),
                 match.getStage(),
+                match.getBestOf(),
                 match.getScheduledAt(),
                 match.getStatus().name(),
                 match.getExternalId(),
                 externalSourceName(match),
                 match.getLastSyncedAt(),
                 detailSummary,
-                matchResult != null ? MatchResultResponse.from(matchResult) : null
+                matchResult != null ? MatchResultResponse.from(matchResult) : null,
+                null
         );
+    }
+
+    // 단계 id 를 채운 사본 반환
+    public MatchResponse withStageId(Long stageId) {
+        return new MatchResponse(id, game, teamA, teamB, tournamentName, stage, bestOf, scheduledAt, status,
+                externalId, externalSource, lastSyncedAt, detailSummary, result, stageId);
     }
 
     public record TeamSummary(Long id, String name, String shortName) {

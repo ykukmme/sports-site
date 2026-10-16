@@ -8,20 +8,24 @@ import com.esports.domain.match.Match;
 import com.esports.domain.match.MatchExternalSource;
 import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
+import com.esports.domain.stage.CompetitionStageService;
 import com.esports.domain.team.Team;
 import com.esports.domain.team.TeamLeague;
 import com.esports.domain.team.TeamRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,15 +37,18 @@ public class PandaScoreMatchImportService {
     private final GameRepository gameRepository;
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
+    private final CompetitionStageService competitionStageService;
 
     public PandaScoreMatchImportService(PandaScoreMatchPreviewService previewService,
                                         GameRepository gameRepository,
                                         TeamRepository teamRepository,
-                                        MatchRepository matchRepository) {
+                                        MatchRepository matchRepository,
+                                        CompetitionStageService competitionStageService) {
         this.previewService = previewService;
         this.gameRepository = gameRepository;
         this.teamRepository = teamRepository;
         this.matchRepository = matchRepository;
+        this.competitionStageService = competitionStageService;
     }
 
     public PandaScoreMatchImportResponse importLolMatches(PandaScoreMatchImportRequest request) {
@@ -86,6 +93,7 @@ public class PandaScoreMatchImportService {
         List<PandaScoreMatchImportItemResponse> items = new ArrayList<>();
         int createdCount = 0;
         int updatedCount = 0;
+        Set<Long> ensuredTournamentIds = new HashSet<>();
 
         for (String externalId : requestedExternalIds) {
             PandaScoreMatchPreviewResponse preview = previewByExternalId.get(externalId);
@@ -113,6 +121,8 @@ public class PandaScoreMatchImportService {
             Team teamB = findMatchedTeam(preview.teamB().matchedTeamId());
             Match match = matchRepository.findByExternalId(externalId).orElse(null);
             OffsetDateTime now = OffsetDateTime.now();
+            // 대회 단계 자동 등록 (표시 방식 기본 NONE — 어드민이 켜야 노출). 배치 내 tournament 당 1회
+            ensureStageOnce(preview, ensuredTournamentIds);
             MatchStatus status = toMatchStatus(preview.pandaStatus());
             String internationalCompetitionCode = resolveInternationalCompetitionCode(preview);
 
@@ -125,6 +135,8 @@ public class PandaScoreMatchImportService {
                         preview.scheduledAt()
                 );
                 createdMatch.setStage(safeStage(preview));
+                createdMatch.setBestOf(preview.bestOf());
+                createdMatch.setExternalTournamentId(preview.externalTournamentId());
                 createdMatch.setInternationalCompetitionCode(internationalCompetitionCode);
                 createdMatch.setStatus(status);
                 createdMatch.setExternalId(externalId);
@@ -144,6 +156,13 @@ public class PandaScoreMatchImportService {
 
             match.setTournamentName(safeTournamentName(preview));
             match.setStage(safeStage(preview));
+            // 외부 응답에 값이 없으면 기존 값 유지 (누락으로 덮어쓰지 않음)
+            if (preview.bestOf() != null) {
+                match.setBestOf(preview.bestOf());
+            }
+            if (preview.externalTournamentId() != null) {
+                match.setExternalTournamentId(preview.externalTournamentId());
+            }
             match.setInternationalCompetitionCode(internationalCompetitionCode);
             match.setScheduledAt(preview.scheduledAt());
             match.setStatus(status);
@@ -235,6 +254,19 @@ public class PandaScoreMatchImportService {
             return preview.tournamentName().trim();
         }
         return "PandaScore Match " + preview.externalId();
+    }
+
+    // 대회 단계 등록 — 같은 배치에서 tournament 당 한 번만. 동시 생성 충돌(unique 위반)은 한 번 재시도해 기존 행을 사용
+    private void ensureStageOnce(PandaScoreMatchPreviewResponse preview, Set<Long> ensuredTournamentIds) {
+        Long tournamentId = preview.externalTournamentId();
+        if (tournamentId == null || !ensuredTournamentIds.add(tournamentId)) {
+            return;
+        }
+        try {
+            competitionStageService.ensureStage(tournamentId, safeTournamentName(preview), preview.seriesName(), preview.tournamentName());
+        } catch (DataIntegrityViolationException e) {
+            competitionStageService.ensureStage(tournamentId, safeTournamentName(preview), preview.seriesName(), preview.tournamentName());
+        }
     }
 
     private String safeStage(PandaScoreMatchPreviewResponse preview) {

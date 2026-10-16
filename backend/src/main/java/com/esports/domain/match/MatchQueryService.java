@@ -7,6 +7,9 @@ import com.esports.domain.matchexternal.MatchExternalDetailRepository;
 import com.esports.domain.matchexternal.MatchExternalDetailSummaryResponse;
 import com.esports.domain.matchresult.MatchResult;
 import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.stage.CompetitionStage;
+import com.esports.domain.stage.CompetitionStageRepository;
+import com.esports.domain.stage.StageDisplayType;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import org.springframework.data.domain.Page;
@@ -24,7 +27,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,13 +39,16 @@ public class MatchQueryService {
     private final MatchRepository matchRepository;
     private final MatchResultRepository matchResultRepository;
     private final MatchExternalDetailRepository matchExternalDetailRepository;
+    private final CompetitionStageRepository competitionStageRepository;
 
     public MatchQueryService(MatchRepository matchRepository,
                              MatchResultRepository matchResultRepository,
-                             MatchExternalDetailRepository matchExternalDetailRepository) {
+                             MatchExternalDetailRepository matchExternalDetailRepository,
+                             CompetitionStageRepository competitionStageRepository) {
         this.matchRepository = matchRepository;
         this.matchResultRepository = matchResultRepository;
         this.matchExternalDetailRepository = matchExternalDetailRepository;
+        this.competitionStageRepository = competitionStageRepository;
     }
 
     public Page<MatchResponse> findMatches(MatchStatus status,
@@ -143,9 +151,10 @@ public class MatchQueryService {
         List<Long> matchIds = matchPage.getContent().stream().map(Match::getId).toList();
         Map<Long, MatchResult> resultMap = buildResultMap(matchIds);
         Map<Long, MatchExternalDetailSummaryResponse> detailMap = buildExternalDetailSummaryMap(matchIds);
+        Map<Long, Long> stageIdMap = buildStageIdMap(matchPage.getContent());
 
         List<MatchResponse> responses = matchPage.getContent().stream()
-                .map(match -> toResponse(match, resultMap, detailMap))
+                .map(match -> withStageId(toResponse(match, resultMap, detailMap), match, stageIdMap))
                 .toList();
 
         return new PageImpl<>(responses, pageable, matchPage.getTotalElements());
@@ -163,17 +172,19 @@ public class MatchQueryService {
                 .orElse(null);
 
         Optional<MatchResult> result = matchResultRepository.findByMatchId(id);
-        return result.map(r -> MatchResponse.withResult(match, r, detailSummary))
+        MatchResponse response = result.map(r -> MatchResponse.withResult(match, r, detailSummary))
                 .orElseGet(() -> MatchResponse.from(match, detailSummary));
+        return withStageId(response, match, buildStageIdMap(List.of(match)));
     }
 
     public List<MatchResponse> findUpcoming() {
         Pageable pageable = PageRequest.of(0, 50, Sort.by("scheduledAt").ascending());
-        return matchRepository
+        List<Match> matches = matchRepository
                 .findByStatusAndScheduledAtAfter(MatchStatus.SCHEDULED, OffsetDateTime.now(), pageable)
-                .getContent()
-                .stream()
-                .map(MatchResponse::from)
+                .getContent();
+        Map<Long, Long> stageIdMap = buildStageIdMap(matches);
+        return matches.stream()
+                .map(match -> withStageId(MatchResponse.from(match), match, stageIdMap))
                 .toList();
     }
 
@@ -186,11 +197,33 @@ public class MatchQueryService {
         List<Long> matchIds = matches.stream().map(Match::getId).toList();
         Map<Long, MatchResult> resultMap = buildResultMap(matchIds);
         Map<Long, MatchExternalDetailSummaryResponse> detailMap = buildExternalDetailSummaryMap(matchIds);
+        Map<Long, Long> stageIdMap = buildStageIdMap(matches);
 
         return matches.stream()
                 .filter(match -> resultMap.containsKey(match.getId()))
-                .map(match -> toResponse(match, resultMap, detailMap))
+                .map(match -> withStageId(toResponse(match, resultMap, detailMap), match, stageIdMap))
                 .toList();
+    }
+
+    // 표시 방식이 켜진 단계만 externalTournamentId → stageId 로 매핑 (한 번의 조회, N+1 방지)
+    private Map<Long, Long> buildStageIdMap(List<Match> matches) {
+        Set<Long> tournamentIds = matches.stream()
+                .map(Match::getExternalTournamentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (tournamentIds.isEmpty()) {
+            return Map.of();
+        }
+        return competitionStageRepository
+                .findByExternalTournamentIdInAndDisplayTypeNot(tournamentIds, StageDisplayType.NONE)
+                .stream()
+                .collect(Collectors.toMap(CompetitionStage::getExternalTournamentId, CompetitionStage::getId));
+    }
+
+    private static MatchResponse withStageId(MatchResponse response, Match match, Map<Long, Long> stageIdMap) {
+        Long tournamentId = match.getExternalTournamentId();
+        Long stageId = tournamentId != null ? stageIdMap.get(tournamentId) : null;
+        return stageId != null ? response.withStageId(stageId) : response;
     }
 
     private Map<Long, MatchResult> buildResultMap(List<Long> matchIds) {

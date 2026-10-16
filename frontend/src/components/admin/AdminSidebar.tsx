@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 const NAV_ITEMS = [
   { to: '/admin/matches', label: '경기 관리' },
+  { to: '/admin/stages', label: '대회 단계' },
   { to: '/admin/teams', label: '팀 관리' },
   { to: '/admin/players', label: '로스터 관리' },
   { to: '/admin/players/quality', label: '로스터 매칭' },

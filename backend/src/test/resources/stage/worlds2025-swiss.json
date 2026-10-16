@@ -1,0 +1,695 @@
+[
+ {
+  "id": 1244373,
+  "scheduled_at": "2025-10-25T10:15:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 126061,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126536,
+     "acronym": "MKOI"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244372,
+  "scheduled_at": "2025-10-25T05:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 130355,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 130355,
+     "acronym": "CFO"
+    }
+   },
+   {
+    "opponent": {
+     "id": 311,
+     "acronym": "FLY"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244371,
+  "scheduled_at": "2025-10-25T07:30:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 126059,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126059,
+     "acronym": "TES"
+    }
+   },
+   {
+    "opponent": {
+     "id": 1566,
+     "acronym": "BLG"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244370,
+  "scheduled_at": "2025-10-24T10:10:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 126061,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 1537,
+     "acronym": "100"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244369,
+  "scheduled_at": "2025-10-23T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 126536,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126536,
+     "acronym": "MKOI"
+    }
+   },
+   {
+    "opponent": {
+     "id": 136073,
+     "acronym": "TSW"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244368,
+  "scheduled_at": "2025-10-24T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 1566,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 1566,
+     "acronym": "BLG"
+    }
+   },
+   {
+    "opponent": {
+     "id": 132315,
+     "acronym": "VKS"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244367,
+  "scheduled_at": "2025-10-22T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 2883,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   },
+   {
+    "opponent": {
+     "id": 130355,
+     "acronym": "CFO"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244366,
+  "scheduled_at": "2025-10-23T11:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126059,
+     "acronym": "TES"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244365,
+  "scheduled_at": "2025-10-22T10:15:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 88,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 88,
+     "acronym": "G2"
+    }
+   },
+   {
+    "opponent": {
+     "id": 311,
+     "acronym": "FLY"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244357,
+  "scheduled_at": "2025-10-19T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 126536,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126536,
+     "acronym": "MKOI"
+    }
+   },
+   {
+    "opponent": {
+     "id": 394,
+     "acronym": "FNC"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244356,
+  "scheduled_at": "2025-10-19T10:30:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 132315,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 132315,
+     "acronym": "VKS"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126702,
+     "acronym": "TLN"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244355,
+  "scheduled_at": "2025-10-18T11:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 2883,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 1537,
+     "acronym": "100"
+    }
+   },
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244354,
+  "scheduled_at": "2025-10-18T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 311,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 136073,
+     "acronym": "TSW"
+    }
+   },
+   {
+    "opponent": {
+     "id": 311,
+     "acronym": "FLY"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244353,
+  "scheduled_at": "2025-10-18T09:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244352,
+  "scheduled_at": "2025-10-18T10:15:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 88,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 88,
+     "acronym": "G2"
+    }
+   },
+   {
+    "opponent": {
+     "id": 1566,
+     "acronym": "BLG"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244350,
+  "scheduled_at": "2025-10-17T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 63,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126059,
+     "acronym": "TES"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244349,
+  "scheduled_at": "2025-10-17T09:50:00Z",
+  "status": "finished",
+  "number_of_games": 3,
+  "winner_id": 129971,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 130355,
+     "acronym": "CFO"
+    }
+   },
+   {
+    "opponent": {
+     "id": 129971,
+     "acronym": "AL"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244348,
+  "scheduled_at": "2025-10-16T05:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 311,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 311,
+     "acronym": "FLY"
+    }
+   },
+   {
+    "opponent": {
+     "id": 132315,
+     "acronym": "VKS"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244347,
+  "scheduled_at": "2025-10-16T12:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 2883,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126702,
+     "acronym": "TLN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244346,
+  "scheduled_at": "2025-10-16T07:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 88,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126536,
+     "acronym": "MKOI"
+    }
+   },
+   {
+    "opponent": {
+     "id": 88,
+     "acronym": "G2"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244345,
+  "scheduled_at": "2025-10-16T11:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 1566,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 1566,
+     "acronym": "BLG"
+    }
+   },
+   {
+    "opponent": {
+     "id": 394,
+     "acronym": "FNC"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244344,
+  "scheduled_at": "2025-10-16T08:40:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 130355,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   },
+   {
+    "opponent": {
+     "id": 130355,
+     "acronym": "CFO"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244342,
+  "scheduled_at": "2025-10-16T06:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 63,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   },
+   {
+    "opponent": {
+     "id": 136073,
+     "acronym": "TSW"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244341,
+  "scheduled_at": "2025-10-16T10:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 129971,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 129971,
+     "acronym": "AL"
+    }
+   },
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244340,
+  "scheduled_at": "2025-10-16T07:50:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 126059,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 126059,
+     "acronym": "TES"
+    }
+   },
+   {
+    "opponent": {
+     "id": 1537,
+     "acronym": "100"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244339,
+  "scheduled_at": "2025-10-15T07:10:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 63,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 63,
+     "acronym": "KT"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126536,
+     "acronym": "MKOI"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244338,
+  "scheduled_at": "2025-10-15T05:15:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 136073,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 132315,
+     "acronym": "VKS"
+    }
+   },
+   {
+    "opponent": {
+     "id": 136073,
+     "acronym": "TSW"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244337,
+  "scheduled_at": "2025-10-15T10:15:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 129971,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2883,
+     "acronym": "HLE"
+    }
+   },
+   {
+    "opponent": {
+     "id": 129971,
+     "acronym": "AL"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244336,
+  "scheduled_at": "2025-10-15T08:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 1537,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 1566,
+     "acronym": "BLG"
+    }
+   },
+   {
+    "opponent": {
+     "id": 1537,
+     "acronym": "100"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244335,
+  "scheduled_at": "2025-10-15T06:15:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 130355,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 130355,
+     "acronym": "CFO"
+    }
+   },
+   {
+    "opponent": {
+     "id": 394,
+     "acronym": "FNC"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244333,
+  "scheduled_at": "2025-10-15T11:20:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 126059,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 88,
+     "acronym": "G2"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126059,
+     "acronym": "TES"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244332,
+  "scheduled_at": "2025-10-15T09:00:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 126061,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 311,
+     "acronym": "FLY"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126061,
+     "acronym": "T1"
+    }
+   }
+  ]
+ },
+ {
+  "id": 1244331,
+  "scheduled_at": "2025-10-15T12:20:00Z",
+  "status": "finished",
+  "number_of_games": 1,
+  "winner_id": 2882,
+  "opponents": [
+   {
+    "opponent": {
+     "id": 2882,
+     "acronym": "GEN"
+    }
+   },
+   {
+    "opponent": {
+     "id": 126702,
+     "acronym": "TLN"
+    }
+   }
+  ]
+ }
+]

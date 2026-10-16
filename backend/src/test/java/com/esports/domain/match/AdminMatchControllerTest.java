@@ -40,6 +40,21 @@ class AdminMatchControllerTest {
     @MockBean JwtTokenProvider jwtTokenProvider;
 
     @Test
+    @WithMockUser(roles = "ADMIN")
+    void createRejectsEvenBestOf() throws Exception {
+        // BO 는 1/3/5/7 만 허용 — Bean Validation 단계에서 400
+        MatchCreateRequest request = new MatchCreateRequest(
+                1L, 1L, 2L, "LCK", null, OffsetDateTime.now().plusDays(1), 4);
+
+        mockMvc.perform(post("/api/admin/matches")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        verify(matchCommandService, never()).create(any());
+    }
+
+    @Test
     void createWithoutAuthReturns401() throws Exception {
         // 인증 없이 /api/admin/** 접근 시 401 반환 (Hard Rule #7)
         mockMvc.perform(post("/api/admin/matches")

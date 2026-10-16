@@ -24,6 +24,11 @@ const profileImageUrlSchema = z
   )
   .optional()
 
+// BO 입력 — 선택, 1/3/5/7 만 허용
+const bestOfSchema = z
+  .union([z.literal(1), z.literal(3), z.literal(5), z.literal(7)], { message: 'BO 값이 올바르지 않습니다.' })
+  .optional()
+
 export const matchCreateSchema = z.object({
   gameId: z.number({ message: '종목을 선택해주세요.' }).int().positive('종목을 선택해주세요.'),
   teamAId: z.number({ message: '팀 A를 선택해주세요.' }).int().positive('팀 A를 선택해주세요.'),
@@ -31,6 +36,7 @@ export const matchCreateSchema = z.object({
   tournamentName: z.string().min(1, '대회명을 입력해주세요.'),
   stage: z.string().optional(),
   scheduledAt: z.string().min(1, '예정 시각을 입력해주세요.'),
+  bestOf: bestOfSchema,
 })
 
 export type MatchCreateFormValues = z.infer<typeof matchCreateSchema>
@@ -40,6 +46,7 @@ export const matchUpdateSchema = z.object({
   stage: z.string().optional(),
   scheduledAt: z.string().optional(),
   status: z.enum(['SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED']).optional(),
+  bestOf: bestOfSchema,
 })
 
 export type MatchUpdateFormValues = z.infer<typeof matchUpdateSchema>

@@ -310,6 +310,8 @@ export interface MatchResponse {
   teamB: TeamSummary
   tournamentName: string
   stage: string
+  // BO 수 — 미상이면 응답에서 생략
+  bestOf?: number | null
   scheduledAt: string
   status: MatchStatus
   externalId: string | null
@@ -317,6 +319,113 @@ export interface MatchResponse {
   lastSyncedAt: string | null
   detailSummary: MatchExternalDetailSummaryResponse | null
   result: MatchResultResponse | null
+  // 대진표/스위스 표시가 켜진 단계 id — 표시 안 하면 생략
+  stageId?: number | null
+}
+
+// 대회 단계 표시 방식
+export type StageDisplayType = 'NONE' | 'SWISS' | 'BRACKET'
+
+// 어드민 대회 단계 목록 행
+export interface AdminStageResponse {
+  id: number
+  externalTournamentId: number
+  leagueName: string
+  seriesName: string | null
+  stageName: string
+  hasBracket: boolean
+  displayType: StageDisplayType
+  swissWinTarget: number | null
+  swissLossTarget: number | null
+  bracketSyncedAt: string | null
+  matchCount: number
+}
+
+export interface StageUpdateRequest {
+  displayType: StageDisplayType
+  swissWinTarget?: number
+  swissLossTarget?: number
+}
+
+// 공개 대회 단계 메타
+export interface StageResponse {
+  id: number
+  leagueName: string
+  seriesName: string | null
+  stageName: string
+  displayType: StageDisplayType
+}
+
+// 스위스 전적 칸 — 경기 전 전적이 wins-losses 인 경기들
+export interface SwissBucketResponse {
+  wins: number
+  losses: number
+  matches: MatchResponse[]
+}
+
+export type SwissTeamStatus = 'QUALIFIED' | 'ELIMINATED' | 'ALIVE'
+
+export interface SwissTeamStatusResponse {
+  team: TeamSummary
+  wins: number
+  losses: number
+  status: SwissTeamStatus
+}
+
+// 대진표 — 구역, 슬롯 출처
+export type BracketSection = 'UPPER' | 'LOWER' | 'FINAL'
+export type SlotSourceType = 'UNKNOWN' | 'WINNER_OF' | 'LOSER_OF' | 'LABEL'
+export type SlotOrigin = 'AUTO' | 'ADMIN'
+
+export interface BracketSlotResponse {
+  slotIndex: number
+  sourceType: SlotSourceType
+  sourceNodeId: number | null
+  sourceRoundLabel: string | null
+  sourceSequence: number | null
+  label: string | null
+  origin: SlotOrigin
+}
+
+export interface BracketNodeResponse {
+  id: number
+  roundLabel: string
+  sequence: number | null
+  section: BracketSection
+  column: number
+  row: number
+  bestOf: number | null
+  scheduledAt: string | null
+  // 가져온 경기가 있을 때만 (미정 TBD 노드는 null)
+  match: MatchResponse | null
+  slots: BracketSlotResponse[]
+}
+
+export interface BracketResponse {
+  stageId: number
+  stageName: string
+  syncedAt: string | null
+  nodes: BracketNodeResponse[]
+}
+
+export interface BracketSyncResponse {
+  hasBracket: boolean
+  created: number
+  updated: number
+  missingExternalIds: number[]
+  rejectedReasons: string[]
+}
+
+export interface SwissStandingResponse {
+  stageId: number
+  leagueName: string
+  seriesName: string | null
+  stageName: string
+  winTarget: number
+  lossTarget: number
+  buckets: SwissBucketResponse[]
+  teams: SwissTeamStatusResponse[]
+  warnings: string[]
 }
 
 export type PandaScorePreviewStatus =
