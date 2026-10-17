@@ -400,6 +400,21 @@ CREATE TABLE bracket_slots (
 - 완전성이 `COMPLETE`가 아니면 진출/탈락을 확정하지 않고 팀 상태를 `UNKNOWN`으로 반환한다.
 - `CANCELLED` 경기는 진척 계산에서 제외하고 대체 경기 연결이 확인될 때까지 관련 팀 상태를 `UNKNOWN`으로 둔다.
 
+#### 14.4.1 B4 세부안 (2026-10-17 승인)
+
+위 초안 중 "검증 상태를 단계에 저장"과 `local_match_id`는 아래로 대체한다.
+
+- 원본 수집: `GET /tournaments/{id}/matches?per_page=100&page=n`, 최대 3페이지. 어드민 수동(`POST /api/admin/stages/{id}/source-sync`) + 기존 `BracketSyncScheduler`가 SWISS 단계도 순회 (기존 플래그, 기본 OFF)
+- 검증 (Hard Rule #8): 경기 없음, id 누락·중복, tournament 불일치, 알 수 없는 status, 일정 형식 오류, 상대 팀 id 누락, 종료 경기 승자 누락·상대 팀 밖 승자, 3페이지 초과 → 전체 REJECT, 기존 스냅샷 유지, SyncLog 기록. 조회 실패도 기존 스냅샷 유지
+- 저장: `stage_source_matches` (V28) — 단계별 전체 교체. `exclusion_reason`: `TBD`(상대 2팀 미만) / `CANCELLED`. 단계에는 `source_synced_at`만 저장
+- 완전성은 **조회 시 계산** (저장 상태는 결과 동기화 이후 금방 어긋나므로). 로컬 경기 연결도 조회 시 `external_id`로 대조하므로 `local_match_id` 컬럼은 두지 않는다
+  - `UNKNOWN`: 스냅샷 없음
+  - `INCOMPLETE`: 확정 원본 경기의 로컬 누락 / 원본 종료인데 로컬 결과 없음 / 승자 불일치 / 승자 대조 불가(로컬 팀 external id 없음) / 원본에 없는 로컬 경기
+  - `COMPLETE`: 위 사유 없음 — "마지막 스냅샷 기준 로컬과 일치"이지 단계 종료가 아님
+- Swiss 상태: `COMPLETE`가 아니면 모든 팀 `UNKNOWN` (승패 수는 확인된 전적으로 유지). 계산 중단 팀, 취소 경기 팀(이후 같은 두 팀 경기가 없을 때)도 `UNKNOWN`
+- 공개 응답: `coverageStatus`만 추가. 상세(사유·external id)는 어드민 `GET /api/admin/stages/{id}/coverage` 전용
+- 공개 화면: 미완전 시 "일부 경기 결과 확인 중" 한 줄 + `UNKNOWN` 팀 "확인 중" 배지
+
 ### 14.5 관리 기능 보완
 
 - 어드민 단계 목록에 리그와 시리즈 필터를 모두 제공한다.
