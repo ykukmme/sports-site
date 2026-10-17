@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '../../../components/ui/table'
 import type { AdminStageResponse, StageDisplayType } from '../../../types/domain'
+import { StageCoveragePanel } from './StageCoveragePanel'
 
 const DISPLAY_TYPE_LABELS: Record<StageDisplayType, string> = {
   NONE: '표시 안 함',
@@ -243,6 +244,7 @@ function StageRegisterPanel() {
 // 단계 한 행 — 표시 방식과 스위스 승/패 목표를 편집 후 저장
 function StageRow({ stage }: { stage: AdminStageResponse }) {
   const queryClient = useQueryClient()
+  const [coverageOpen, setCoverageOpen] = useState(false)
   const [displayType, setDisplayType] = useState<StageDisplayType>(stage.displayType)
   const [winTarget, setWinTarget] = useState(String(stage.swissWinTarget ?? 3))
   const [lossTarget, setLossTarget] = useState(String(stage.swissLossTarget ?? 3))
@@ -265,74 +267,94 @@ function StageRow({ stage }: { stage: AdminStageResponse }) {
       (winTarget !== String(stage.swissWinTarget ?? 3) || lossTarget !== String(stage.swissLossTarget ?? 3)))
 
   return (
-    <TableRow>
-      <TableCell>
-        <div className="font-medium text-foreground">{stage.leagueName}</div>
-        <div className="text-xs text-muted-foreground">{stage.seriesName ?? '-'}</div>
-      </TableCell>
-      <TableCell>
-        <div className="text-foreground">{stage.stageName}</div>
-        <div className="text-xs text-muted-foreground">tournament #{stage.externalTournamentId}</div>
-      </TableCell>
-      <TableCell className="text-right tabular-nums">{stage.matchCount}</TableCell>
-      <TableCell className="text-xs text-muted-foreground">
-        {stage.hasBracket ? '있음' : '없음/미확인'}
-        {stage.bracketSyncedAt && <div>동기화 {new Date(stage.bracketSyncedAt).toLocaleString('ko-KR')}</div>}
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="표시 방식"
-            value={displayType}
-            onChange={(event) => setDisplayType(event.target.value as StageDisplayType)}
-            className={SELECT_CLASS}
-          >
-            {(Object.keys(DISPLAY_TYPE_LABELS) as StageDisplayType[]).map((type) => (
-              <option key={type} value={type}>{DISPLAY_TYPE_LABELS[type]}</option>
-            ))}
-          </select>
-          {displayType === 'SWISS' && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Input
-                aria-label="진출 승수"
-                type="number"
-                min={1}
-                max={5}
-                value={winTarget}
-                onChange={(event) => setWinTarget(event.target.value)}
-                className="h-9 w-14"
-              />
-              승 진출 /
-              <Input
-                aria-label="탈락 패수"
-                type="number"
-                min={1}
-                max={5}
-                value={lossTarget}
-                onChange={(event) => setLossTarget(event.target.value)}
-                className="h-9 w-14"
-              />
-              패 탈락
-            </span>
-          )}
-        </div>
-        {errorMessage && <div className="mt-1 text-xs text-destructive">{errorMessage}</div>}
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          {stage.displayType === 'BRACKET' && (
-            <Link
-              to={`/admin/stages/${stage.id}/bracket`}
-              className={buttonVariants({ size: 'sm', variant: 'outline' })}
+    <>
+      <TableRow>
+        <TableCell>
+          <div className="font-medium text-foreground">{stage.leagueName}</div>
+          <div className="text-xs text-muted-foreground">{stage.seriesName ?? '-'}</div>
+        </TableCell>
+        <TableCell>
+          <div className="text-foreground">{stage.stageName}</div>
+          <div className="text-xs text-muted-foreground">tournament #{stage.externalTournamentId}</div>
+        </TableCell>
+        <TableCell className="text-right tabular-nums">{stage.matchCount}</TableCell>
+        <TableCell className="text-xs text-muted-foreground">
+          {stage.hasBracket ? '있음' : '없음/미확인'}
+          {stage.bracketSyncedAt && <div>동기화 {new Date(stage.bracketSyncedAt).toLocaleString('ko-KR')}</div>}
+        </TableCell>
+        <TableCell>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="표시 방식"
+              value={displayType}
+              onChange={(event) => setDisplayType(event.target.value as StageDisplayType)}
+              className={SELECT_CLASS}
             >
-              대진표 편집
-            </Link>
-          )}
-          <Button size="sm" disabled={!isDirty || mutation.isPending} onClick={() => mutation.mutate()}>
-            {mutation.isPending ? '저장 중...' : '저장'}
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
+              {(Object.keys(DISPLAY_TYPE_LABELS) as StageDisplayType[]).map((type) => (
+                <option key={type} value={type}>{DISPLAY_TYPE_LABELS[type]}</option>
+              ))}
+            </select>
+            {displayType === 'SWISS' && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Input
+                  aria-label="진출 승수"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={winTarget}
+                  onChange={(event) => setWinTarget(event.target.value)}
+                  className="h-9 w-14"
+                />
+                승 진출 /
+                <Input
+                  aria-label="탈락 패수"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={lossTarget}
+                  onChange={(event) => setLossTarget(event.target.value)}
+                  className="h-9 w-14"
+                />
+                패 탈락
+              </span>
+            )}
+          </div>
+          {errorMessage && <div className="mt-1 text-xs text-destructive">{errorMessage}</div>}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-2">
+            {stage.displayType === 'BRACKET' && (
+              <Link
+                to={`/admin/stages/${stage.id}/bracket`}
+                className={buttonVariants({ size: 'sm', variant: 'outline' })}
+              >
+                대진표 편집
+              </Link>
+            )}
+            {stage.displayType === 'SWISS' && (
+              <Button
+                size="sm"
+                variant="outline"
+                aria-expanded={coverageOpen}
+                onClick={() => setCoverageOpen((open) => !open)}
+              >
+                데이터 확인
+              </Button>
+            )}
+            <Button size="sm" disabled={!isDirty || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? '저장 중...' : '저장'}
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+      {/* 스위스 단계 데이터 완전성 — 펼쳤을 때만 조회 */}
+      {stage.displayType === 'SWISS' && coverageOpen && (
+        <TableRow>
+          <TableCell colSpan={6}>
+            <StageCoveragePanel stageId={stage.id} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   )
 }

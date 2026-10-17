@@ -384,7 +384,11 @@ export interface SwissBucketResponse {
   matches: MatchResponse[]
 }
 
-export type SwissTeamStatus = 'QUALIFIED' | 'ELIMINATED' | 'ALIVE'
+// UNKNOWN — 데이터 누락·이상으로 확정 불가 (확인 중)
+export type SwissTeamStatus = 'QUALIFIED' | 'ELIMINATED' | 'ALIVE' | 'UNKNOWN'
+
+// 스위스 데이터 완전성 — 원본 스냅샷과 로컬 경기 대조 결과
+export type CoverageStatus = 'UNKNOWN' | 'INCOMPLETE' | 'COMPLETE'
 
 export interface SwissTeamStatusResponse {
   team: TeamSummary
@@ -455,6 +459,46 @@ export interface SwissStandingResponse {
   buckets: SwissBucketResponse[]
   teams: SwissTeamStatusResponse[]
   warnings: string[]
+  coverageStatus: CoverageStatus
+}
+
+// 원본 스냅샷 동기화 결과 (어드민) — REJECTED 면 기존 스냅샷 유지
+export interface StageSourceSyncResponse {
+  status: 'SYNCED' | 'REJECTED'
+  totalMatches: number
+  tbdMatches: number
+  cancelledMatches: number
+  syncedAt: string | null
+  reasons: string[]
+}
+
+export type CoverageIssueType =
+  | 'MISSING_LOCAL'
+  | 'MISSING_RESULT'
+  | 'WINNER_MISMATCH'
+  | 'WINNER_UNVERIFIABLE'
+  | 'EXTRA_LOCAL'
+
+export interface CoverageIssue {
+  type: CoverageIssueType
+  externalMatchId: number | null
+  localMatchId: number | null
+  message: string
+}
+
+export interface CoverageExcluded {
+  externalMatchId: number
+  reason: 'TBD' | 'CANCELLED'
+}
+
+// 완전성 상세 (어드민 전용)
+export interface StageCoverageResponse {
+  stageId: number
+  status: CoverageStatus
+  sourceSyncedAt: string | null
+  sourceMatches: number
+  issues: CoverageIssue[]
+  excluded: CoverageExcluded[]
 }
 
 export type PandaScorePreviewStatus =

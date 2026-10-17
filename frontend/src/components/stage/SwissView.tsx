@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { groupTeamsByStatus, publicCoverageNotice } from '@/lib/swissCoverage'
 import { BestOfBadge } from '../match/BestOfBadge'
 import type {
   MatchResponse,
@@ -21,9 +23,15 @@ export function SwissView({ standing }: SwissViewProps) {
   }
 
   const rounds = groupByRound(standing.buckets)
+  const coverageNotice = publicCoverageNotice(standing.coverageStatus)
 
   return (
     <div className="flex flex-col gap-6">
+      {coverageNotice && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {coverageNotice}
+        </p>
+      )}
       {standing.warnings.length > 0 && (
         <div className="rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
           <div className="font-medium text-foreground">일부 데이터가 누락되어 전적이 정확하지 않을 수 있습니다.</div>
@@ -119,30 +127,32 @@ function TeamStatusList({
   winTarget: number
   lossTarget: number
 }) {
-  const groups: { label: string; items: SwissTeamStatusResponse[] }[] = [
-    { label: `진출 (${winTarget}승)`, items: teams.filter((t) => t.status === 'QUALIFIED') },
-    { label: '진행 중', items: teams.filter((t) => t.status === 'ALIVE') },
-    { label: `탈락 (${lossTarget}패)`, items: teams.filter((t) => t.status === 'ELIMINATED') },
-  ]
+  const groups = groupTeamsByStatus(teams, winTarget, lossTarget)
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      {groups
-        .filter((group) => group.items.length > 0)
-        .map((group) => (
-          <Card key={group.label} className="gap-2 p-4 shadow-[var(--shadow-card-subtle)]">
-            <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-            <ul className="flex flex-col gap-1 text-sm">
-              {group.items.map((item) => (
-                <li key={item.team.id} className="flex items-center justify-between">
-                  <span className="truncate text-foreground">{item.team.shortName || item.team.name}</span>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {groups.map((group) => (
+        <Card key={group.label} className="gap-2 p-4 shadow-[var(--shadow-card-subtle)]">
+          <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {group.items.map((item) => (
+              <li key={item.team.id} className="flex items-center justify-between gap-2">
+                <span className="truncate text-foreground">{item.team.shortName || item.team.name}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {/* 확인된 전적만 표시 — 진출/탈락 미확정 */}
+                  {group.unknown && (
+                    <Badge variant="outline" className="rounded-full text-muted-foreground">
+                      확인 중
+                    </Badge>
+                  )}
                   <span className="tabular-nums text-muted-foreground">
                     {item.wins}-{item.losses}
                   </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ))}
     </div>
   )
 }

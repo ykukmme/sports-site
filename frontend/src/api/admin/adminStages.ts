@@ -7,7 +7,9 @@ import type {
   BracketSyncResponse,
   BracketOutcome,
   StageBackfillResponse,
+  StageCoverageResponse,
   StageRegisterResponse,
+  StageSourceSyncResponse,
   StageUpdateRequest,
 } from '../../types/domain'
 
@@ -51,6 +53,20 @@ export async function backfillAdminStages(externalTournamentIds: number[]): Prom
 export async function updateAdminStage(id: number, body: StageUpdateRequest): Promise<AdminStageResponse> {
   const res = await apiClient.patch<ApiResponse<AdminStageResponse>>(`/api/admin/stages/${id}`, body)
   if (!res.data.data) throw new Error('단계 설정 저장에 실패했습니다.')
+  return res.data.data
+}
+
+// PandaScore 원본 경기 스냅샷 동기화 — 검증 실패 시 기존 스냅샷 유지
+export async function syncStageSource(stageId: number): Promise<StageSourceSyncResponse> {
+  const res = await apiClient.post<ApiResponse<StageSourceSyncResponse>>(`/api/admin/stages/${stageId}/source-sync`)
+  if (!res.data.data) throw new Error('원본 경기 동기화에 실패했습니다.')
+  return res.data.data
+}
+
+// 스위스 데이터 완전성 상세
+export async function fetchStageCoverage(stageId: number): Promise<StageCoverageResponse> {
+  const res = await apiClient.get<ApiResponse<StageCoverageResponse>>(`/api/admin/stages/${stageId}/coverage`)
+  if (!res.data.data) throw new Error('데이터 완전성 정보를 불러오지 못했습니다.')
   return res.data.data
 }
 
