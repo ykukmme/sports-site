@@ -52,10 +52,11 @@ class StageControllerTest {
     @Test
     void swissIsPublicWithoutAuth() throws Exception {
         when(swissStandingService.compute(2L)).thenReturn(new SwissStandingResponse(
-                2L, "Worlds", "2025", "Group Stage", 3, 3, List.of(), List.of(), List.of()));
+                2L, "Worlds", "2025", "Group Stage", 3, 3, List.of(), List.of(), List.of(), "INCOMPLETE"));
 
         mockMvc.perform(get("/api/v1/stages/2/swiss"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.stageName").value("Group Stage"));
+                .andExpect(jsonPath("$.data.stageName").value("Group Stage"))
+                .andExpect(jsonPath("$.data.coverageStatus").value("INCOMPLETE"));
     }
 }

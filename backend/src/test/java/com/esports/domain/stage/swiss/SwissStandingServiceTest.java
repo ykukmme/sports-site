@@ -2,8 +2,16 @@ package com.esports.domain.stage.swiss;
 
 import com.esports.domain.game.Game;
 import com.esports.domain.match.Match;
+import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchStatus;
 import com.esports.domain.matchresult.MatchResult;
+import com.esports.domain.matchresult.MatchResultRepository;
+import com.esports.domain.stage.CompetitionStage;
+import com.esports.domain.stage.CompetitionStageService;
+import com.esports.domain.stage.StageDisplayType;
+import com.esports.domain.stage.source.StageCoverageService;
+import com.esports.domain.stage.source.StageSourceMatch;
+import com.esports.domain.stage.source.StageSourceMatchRepository;
 import com.esports.domain.team.Team;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +24,9 @@ import java.time.OffsetDateTime;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SwissStandingServiceTest {
 
@@ -83,6 +94,64 @@ class SwissStandingServiceTest {
     }
 
     @Test
+    void blockedTeamsAreUnknown() {
+        Team a = team(1L, "AAA");
+        Team b = team(2L, "BBB");
+        Match match = match(10L, a, b, MatchStatus.COMPLETED, "2026-10-24T10:00:00Z");
+
+        SwissStandingService.Computation result = SwissStandingService.calculate(List.of(match), Map.of(), 3, 3);
+
+        assertThat(result.teams()).allMatch(t -> t.status().equals("UNKNOWN"));
+    }
+
+    @Test
+    void cancelledMatchTeamsAreUnknownUntilReplacement() {
+        Team a = team(1L, "AAA");
+        Team b = team(2L, "BBB");
+        Match cancelled = match(10L, a, b, MatchStatus.CANCELLED, "2026-10-24T10:00:00Z");
+
+        SwissStandingService.Computation pending = SwissStandingService.calculate(List.of(cancelled), Map.of(), 3, 3);
+        assertThat(pending.teams()).allMatch(t -> t.status().equals("UNKNOWN"));
+
+        // 같은 두 팀의 대체 경기가 이후 일정에 있으면 해제
+        Match replacement = match(11L, a, b, MatchStatus.SCHEDULED, "2026-10-25T10:00:00Z");
+        SwissStandingService.Computation replaced = SwissStandingService.calculate(List.of(cancelled, replacement), Map.of(), 3, 3);
+        assertThat(replaced.teams()).allMatch(t -> t.status().equals("ALIVE"));
+    }
+
+    // 설계 §14.6 #5 — 누락 라운드가 있는 스위스는 INCOMPLETE 이며 진출/탈락을 확정하지 않는다
+    @Test
+    void missingRoundMakesStageIncompleteAndAllTeamsUnknown() throws IOException {
+        Fixture fixture = loadWorldsFixture();
+        CompetitionStage stage = new CompetitionStage(17663L, "Worlds", "2025", "Group Stage");
+        ReflectionTestUtils.setField(stage, "id", 5L);
+        stage.changeDisplayType(StageDisplayType.SWISS, 3, 3);
+        stage.markSourceSynced(OffsetDateTime.parse("2026-10-17T03:00:00Z"));
+        List<StageSourceMatch> snapshot = fixture.matches.stream()
+                .map(m -> new StageSourceMatch(stage, Long.valueOf(m.getExternalId()), m.getScheduledAt(), "finished",
+                        Long.valueOf(m.getTeamA().getExternalId()), m.getTeamA().getShortName(),
+                        Long.valueOf(m.getTeamB().getExternalId()), m.getTeamB().getShortName(),
+                        Long.valueOf(fixture.results.get(m.getId()).getWinnerTeam().getExternalId())))
+                .toList();
+        List<Match> partial = fixture.matches.subList(0, fixture.matches.size() - 3);
+
+        CompetitionStageService stageService = mock(CompetitionStageService.class);
+        MatchRepository matchRepository = mock(MatchRepository.class);
+        MatchResultRepository resultRepository = mock(MatchResultRepository.class);
+        StageSourceMatchRepository sourceRepository = mock(StageSourceMatchRepository.class);
+        when(stageService.getStage(5L)).thenReturn(stage);
+        when(matchRepository.findByExternalTournamentIdOrderByScheduledAtAscIdAsc(17663L)).thenReturn(partial);
+        when(resultRepository.findByMatchIdIn(anyList())).thenReturn(List.copyOf(fixture.results.values()));
+        when(sourceRepository.findByStage_IdOrderByScheduledAtAscIdAsc(5L)).thenReturn(snapshot);
+        StageCoverageService coverageService = new StageCoverageService(stageService, sourceRepository, matchRepository, resultRepository);
+
+        SwissStandingResponse response = new SwissStandingService(stageService, matchRepository, coverageService).compute(5L);
+
+        assertThat(response.coverageStatus()).isEqualTo("INCOMPLETE");
+        assertThat(response.teams()).isNotEmpty().allMatch(t -> t.status().equals("UNKNOWN"));
+    }
+
+    @Test
     void emptyStageReturnsEmptyResult() {
         SwissStandingService.Computation result = SwissStandingService.calculate(List.of(), Map.of(), 3, 3);
 
@@ -110,6 +179,7 @@ class SwissStandingServiceTest {
             Team a = team(opponents.get(0).get("opponent").get("id").asLong(), opponents.get(0).get("opponent").get("acronym").asText());
             Team b = team(opponents.get(1).get("opponent").get("id").asLong(), opponents.get(1).get("opponent").get("acronym").asText());
             Match match = match(node.get("id").asLong(), a, b, MatchStatus.COMPLETED, node.get("scheduled_at").asText());
+            ReflectionTestUtils.setField(match, "externalId", node.get("id").asText());
             matches.add(match);
             Team winner = teams.get(node.get("winner_id").asLong());
             results.put(match.getId(), new MatchResult(match, winner, winner == a ? 1 : 0, winner == b ? 1 : 0, match.getScheduledAt()));
@@ -123,6 +193,7 @@ class SwissStandingServiceTest {
         return teams.computeIfAbsent(id, key -> {
             Team team = new Team(acronym, acronym, game);
             ReflectionTestUtils.setField(team, "id", key);
+            ReflectionTestUtils.setField(team, "externalId", String.valueOf(key));
             return team;
         });
     }

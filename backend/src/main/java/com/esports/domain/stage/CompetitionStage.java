@@ -50,6 +50,10 @@ public class CompetitionStage {
     @Column(name = "bracket_synced_at")
     private OffsetDateTime bracketSyncedAt;
 
+    // 마지막 원본 경기 스냅샷 시각 — null 이면 스위스 완전성 UNKNOWN (설계 §14.4.1)
+    @Column(name = "source_synced_at")
+    private OffsetDateTime sourceSyncedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -115,6 +119,11 @@ public class CompetitionStage {
         this.hasBracket = hasBracket;
     }
 
+    // 원본 경기 스냅샷 교체 완료 기록
+    public void markSourceSynced(OffsetDateTime syncedAt) {
+        this.sourceSyncedAt = syncedAt;
+    }
+
     // has_bracket 만 갱신 (브래킷이 없는 단계로 확인된 경우)
     public void updateHasBracket(boolean hasBracket) {
         this.hasBracket = hasBracket;
@@ -136,6 +145,7 @@ public class CompetitionStage {
     public Integer getSwissWinTarget() { return swissWinTarget; }
     public Integer getSwissLossTarget() { return swissLossTarget; }
     public OffsetDateTime getBracketSyncedAt() { return bracketSyncedAt; }
+    public OffsetDateTime getSourceSyncedAt() { return sourceSyncedAt; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

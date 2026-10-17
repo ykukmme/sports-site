@@ -9,12 +9,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @Component
 public class PandaScoreApiClient {
+
+    // 대회 경기 목록 페이지 크기 (PandaScore 최대값)
+    public static final int TOURNAMENT_MATCHES_PAGE_SIZE = 100;
 
     private final PandaScoreProperties properties;
     private final RestClient restClient;
@@ -115,6 +119,23 @@ public class PandaScoreApiClient {
                 .body(PandaScoreBracketMatch[].class);
         return nodes != null ? List.of(nodes) : List.of();
     }
+
+    // 대회 전체 경기 (TBD·취소 포함) — 100건씩 최대 maxPages 페이지
+    // 마지막 페이지까지 꽉 차 있으면 truncated=true (더 있을 수 있음 → 호출부에서 REJECT)
+    public TournamentMatches getTournamentMatches(Long tournamentId, int maxPages) {
+        List<PandaScoreMatch> all = new ArrayList<>();
+        for (int page = 1; page <= maxPages; page++) {
+            List<PandaScoreMatch> pageMatches = fetchMatches(
+                    "/tournaments/" + tournamentId + "/matches?per_page=" + TOURNAMENT_MATCHES_PAGE_SIZE + "&page=" + page);
+            all.addAll(pageMatches);
+            if (pageMatches.size() < TOURNAMENT_MATCHES_PAGE_SIZE) {
+                return new TournamentMatches(List.copyOf(all), false);
+            }
+        }
+        return new TournamentMatches(List.copyOf(all), true);
+    }
+
+    public record TournamentMatches(List<PandaScoreMatch> matches, boolean truncated) {}
 
     private List<PandaScoreMatch> fetchMatches(String path) {
         PandaScoreMatch[] matches = restClient.get()

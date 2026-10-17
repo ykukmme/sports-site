@@ -5,19 +5,21 @@ import com.esports.domain.match.MatchRepository;
 import com.esports.domain.match.MatchResponse;
 import com.esports.domain.match.MatchStatus;
 import com.esports.domain.matchresult.MatchResult;
-import com.esports.domain.matchresult.MatchResultRepository;
 import com.esports.domain.stage.CompetitionStage;
 import com.esports.domain.stage.CompetitionStageService;
 import com.esports.domain.stage.StageDisplayType;
+import com.esports.domain.stage.source.CoverageStatus;
+import com.esports.domain.stage.source.StageCoverageService;
+import com.esports.domain.stage.source.SwissCoverageCalculator;
 import com.esports.domain.team.Team;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 // 스위스 전적표 계산 — 저장 없이 경기·결과로 매번 계산 (설계 §6)
 // 데이터가 비거나 어긋나면 추정하지 않고 warnings 로 드러낸다 (Hard Rule #4)
+// 원본 스냅샷 대조 결과가 COMPLETE 가 아니면 팀 상태를 확정하지 않는다 (설계 §14.4.1)
 @Service
 @Transactional(readOnly = true)
 public class SwissStandingService {
@@ -25,17 +27,19 @@ public class SwissStandingService {
     static final String QUALIFIED = "QUALIFIED";
     static final String ELIMINATED = "ELIMINATED";
     static final String ALIVE = "ALIVE";
+    // 데이터 누락·이상으로 진출/탈락/진행 여부를 확정할 수 없음 (설계 §14.4.1)
+    static final String UNKNOWN = "UNKNOWN";
 
     private final CompetitionStageService stageService;
     private final MatchRepository matchRepository;
-    private final MatchResultRepository matchResultRepository;
+    private final StageCoverageService coverageService;
 
     public SwissStandingService(CompetitionStageService stageService,
                                 MatchRepository matchRepository,
-                                MatchResultRepository matchResultRepository) {
+                                StageCoverageService coverageService) {
         this.stageService = stageService;
         this.matchRepository = matchRepository;
-        this.matchResultRepository = matchResultRepository;
+        this.coverageService = coverageService;
     }
 
     public SwissStandingResponse compute(Long stageId) {
@@ -47,8 +51,12 @@ public class SwissStandingService {
         int lossTarget = stage.getSwissLossTarget() != null ? stage.getSwissLossTarget() : CompetitionStage.DEFAULT_SWISS_TARGET;
 
         List<Match> matches = matchRepository.findByExternalTournamentIdOrderByScheduledAtAscIdAsc(stage.getExternalTournamentId());
-        Map<Long, MatchResult> results = loadResults(matches);
+        Map<Long, MatchResult> results = coverageService.loadResults(matches);
         Computation computation = calculate(matches, results, winTarget, lossTarget);
+        CoverageStatus coverage = coverageService.evaluate(stage, matches, results).status();
+        List<SwissTeamStatusResponse> teams = coverage == CoverageStatus.COMPLETE
+                ? computation.teams()
+                : allUnknown(computation.teams());
 
         return new SwissStandingResponse(
                 stage.getId(),
@@ -58,9 +66,17 @@ public class SwissStandingService {
                 winTarget,
                 lossTarget,
                 computation.buckets(),
-                computation.teams(),
-                computation.warnings()
+                teams,
+                computation.warnings(),
+                coverage.name()
         );
+    }
+
+    // 완전성이 COMPLETE 가 아니면 전 팀 상태 미확정 — 승패 수는 확인된 전적으로 유지 (Hard Rule #4)
+    static List<SwissTeamStatusResponse> allUnknown(List<SwissTeamStatusResponse> teams) {
+        return teams.stream()
+                .map(team -> new SwissTeamStatusResponse(team.team(), team.wins(), team.losses(), UNKNOWN))
+                .toList();
     }
 
     // 순수 계산 — 경기는 일정 오름차순이어야 한다
@@ -78,8 +94,13 @@ public class SwissStandingService {
 
             if (match.getStatus() == MatchStatus.CANCELLED) {
                 warnings.add("취소된 경기가 있습니다: " + label(a) + " vs " + label(b));
+                // 같은 두 팀의 이후 경기(대체 경기)가 확인될 때까지 두 팀 상태 미확정
+                a.cancelledOpponents.add(b.team.getId());
+                b.cancelledOpponents.add(a.team.getId());
                 continue;
             }
+            a.cancelledOpponents.remove(b.team.getId());
+            b.cancelledOpponents.remove(a.team.getId());
             if (a.blocked || b.blocked) {
                 continue;
             }
@@ -111,7 +132,8 @@ public class SwissStandingService {
                 // 예정/진행 중 경기 — 전적 변화 없음
                 continue;
             }
-            Long winnerId = winnerId(match, result);
+            Team winnerTeam = SwissCoverageCalculator.winnerTeam(match, result);
+            Long winnerId = winnerTeam != null ? winnerTeam.getId() : null;
             if (winnerId == null) {
                 warnings.add(label(a) + " vs " + label(b) + " 경기의 승자를 판정할 수 없어 이후 전적을 계산하지 않았습니다.");
                 a.blocked = true;
@@ -150,7 +172,7 @@ public class SwissStandingService {
                         MatchResponse.TeamSummary.from(record.team),
                         record.wins,
                         record.losses,
-                        record.wins >= winTarget ? QUALIFIED : record.losses >= lossTarget ? ELIMINATED : ALIVE))
+                        status(record, winTarget, lossTarget)))
                 .sorted(Comparator.comparingInt(SwissTeamStatusResponse::wins).reversed()
                         .thenComparingInt(SwissTeamStatusResponse::losses))
                 .toList();
@@ -158,23 +180,12 @@ public class SwissStandingService {
         return new Computation(buckets, teams, List.copyOf(warnings));
     }
 
-    private Map<Long, MatchResult> loadResults(List<Match> matches) {
-        List<Long> ids = matches.stream().map(Match::getId).toList();
-        if (ids.isEmpty()) {
-            return Map.of();
+    // 팀 상태 — 계산 중단 팀, 대체 경기가 없는 취소 경기 팀은 UNKNOWN
+    private static String status(TeamRecord record, int winTarget, int lossTarget) {
+        if (record.blocked || !record.cancelledOpponents.isEmpty()) {
+            return UNKNOWN;
         }
-        return matchResultRepository.findByMatchIdIn(ids).stream()
-                .collect(Collectors.toMap(result -> result.getMatch().getId(), result -> result, (x, y) -> x));
-    }
-
-    // 결과의 승자 — winnerTeam 우선, 없으면 스코어 비교, 동점이면 null
-    private static Long winnerId(Match match, MatchResult result) {
-        if (result.getWinnerTeam() != null) {
-            return result.getWinnerTeam().getId();
-        }
-        if (result.getScoreTeamA() > result.getScoreTeamB()) return match.getTeamA().getId();
-        if (result.getScoreTeamB() > result.getScoreTeamA()) return match.getTeamB().getId();
-        return null;
+        return record.wins >= winTarget ? QUALIFIED : record.losses >= lossTarget ? ELIMINATED : ALIVE;
     }
 
     // 진행 중 팀이 현재 전적 칸에 들어왔음을 기록
@@ -210,6 +221,8 @@ public class SwissStandingService {
         private int losses;
         // 데이터 이상으로 이후 계산을 멈춘 팀
         private boolean blocked;
+        // 대체 경기가 아직 없는 취소 경기 상대 팀 id
+        private final Set<Long> cancelledOpponents = new HashSet<>();
 
         private TeamRecord(Team team) {
             this.team = team;
